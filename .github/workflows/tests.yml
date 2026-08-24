@@ -25,7 +25,9 @@ jobs:
           python -m pip install pytest openpyxl
 
       - name: Compile Python sources
-        run: python -m compileall -q core import_engine tests
+        run: |
+          python -m compileall -q \
+            app core dialogs import_engine pages services tests widgets
 
       - name: Run tests
         run: python -m pytest -q
