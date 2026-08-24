@@ -37,6 +37,7 @@ class SourceSyncReport:
 
     added: int = 0
     changed: int = 0
+    restored: int = 0
     unchanged: int = 0
     missing: int = 0
 
@@ -54,6 +55,7 @@ class SourceSyncReport:
 
     added_files: list[ScannedSourceFile] = field(default_factory=list)
     changed_files: list[ScannedSourceFile] = field(default_factory=list)
+    restored_files: list[ScannedSourceFile] = field(default_factory=list)
 
     inspections: dict[str, WorkbookInspection] = field(default_factory=dict)
     parse_results: dict[str, ScriptParseResult] = field(default_factory=dict)
@@ -66,7 +68,11 @@ class SourceSyncReport:
 
     @property
     def files_to_process(self) -> list[ScannedSourceFile]:
-        return [*self.added_files, *self.changed_files]
+        return [
+            *self.added_files,
+            *self.changed_files,
+            *self.restored_files,
+        ]
 
     def summary(self) -> str:
         return (
@@ -76,6 +82,7 @@ class SourceSyncReport:
             f"Parsed Dialogues: {self.parsed_dialogues}\n"
             f"New Source: {self.added}\n"
             f"Changed Source: {self.changed}\n"
+            f"Restored Source: {self.restored}\n"
             f"Unchanged Source: {self.unchanged}\n"
             f"Missing Source: {self.missing}\n"
             f"Dialogues Added: {self.dialogues_added}\n"
@@ -207,9 +214,21 @@ class SourceSyncEngine:
                 report.added_files.append(item)
                 continue
 
-            if str(existing["fingerprint"] or "") != item.fingerprint:
+            fingerprint_changed = (
+                str(existing["fingerprint"] or "") != item.fingerprint
+            )
+
+            if fingerprint_changed:
                 report.changed += 1
                 report.changed_files.append(item)
+                continue
+
+            if int(existing["is_active"] or 0) != 1:
+                # A source can disappear temporarily (for example while Drive
+                # Desktop is syncing) and later return byte-identical.  It must
+                # still be inspected/parsed so its dialogue set is reactivated.
+                report.restored += 1
+                report.restored_files.append(item)
                 continue
 
             report.unchanged += 1
