@@ -12,6 +12,11 @@ from core.project_settings import ProjectSettings
 
 PROJECT_FILE_NAME = "project.json"
 DATABASE_FILE_NAME = "project.db"
+PROJECT_FORMAT_VERSION = 1
+
+
+class ProjectFormatError(ValueError):
+    pass
 
 
 @dataclass
@@ -57,7 +62,7 @@ class Project:
         self.settings.project_folder = str(self.root)
 
         payload: dict[str, Any] = {
-            "format_version": 1,
+            "format_version": PROJECT_FORMAT_VERSION,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "settings": self.settings.to_dict(),
@@ -78,12 +83,53 @@ class Project:
         if path.is_dir():
             path = path / PROJECT_FILE_NAME
 
+        if path.name.casefold() != PROJECT_FILE_NAME.casefold():
+            raise ProjectFormatError(
+                f"File project harus bernama {PROJECT_FILE_NAME}: {path.name}"
+            )
+
         if not path.exists():
             raise FileNotFoundError(f"Project file not found: {path}")
 
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not path.is_file():
+            raise ProjectFormatError(f"Project descriptor bukan file: {path}")
 
-        settings = ProjectSettings.from_dict(payload.get("settings", {}))
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ProjectFormatError(
+                f"Project descriptor bukan JSON yang valid: {exc}"
+            ) from exc
+        except (OSError, UnicodeError) as exc:
+            raise ProjectFormatError(
+                f"Project descriptor tidak dapat dibaca: {exc}"
+            ) from exc
+
+        if not isinstance(payload, dict):
+            raise ProjectFormatError("Project descriptor harus berupa JSON object.")
+
+        format_version = payload.get("format_version")
+        if type(format_version) is not int or format_version != PROJECT_FORMAT_VERSION:
+            raise ProjectFormatError(
+                "Project format tidak didukung: "
+                f"{format_version!r}; aplikasi mendukung {PROJECT_FORMAT_VERSION}."
+            )
+
+        settings_payload = payload.get("settings")
+        if not isinstance(settings_payload, dict):
+            raise ProjectFormatError("Project descriptor tidak memiliki object settings.")
+
+        project_name = str(settings_payload.get("project_name", "") or "").strip()
+        if not project_name:
+            raise ProjectFormatError("Project descriptor tidak memiliki Project Name.")
+
+        try:
+            settings = ProjectSettings.from_dict(settings_payload)
+        except (TypeError, ValueError) as exc:
+            raise ProjectFormatError(
+                f"Project settings tidak valid: {exc}"
+            ) from exc
+
         settings.project_folder = str(path.parent)
 
         project = cls(
