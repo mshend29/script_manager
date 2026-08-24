@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,22 @@ from import_engine.synchronizer import DialogueSynchronizer
 
 class SourceSyncError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class SourceSyncProgress:
+    stage: str
+    current: int = 0
+    total: int = 0
+    message: str = ""
+    file_name: str = ""
+
+    @property
+    def is_determinate(self) -> bool:
+        return self.total > 0
+
+
+ProgressCallback = Callable[[SourceSyncProgress], None]
 
 
 @dataclass
@@ -108,12 +125,23 @@ class SourceSyncEngine:
         self.parser = parser or ScriptParser()
         self.synchronizer = synchronizer or DialogueSynchronizer()
 
-    def synchronize(self, project: Project) -> SourceSyncReport:
+    def synchronize(
+        self,
+        project: Project,
+        *,
+        progress_callback: ProgressCallback | None = None,
+    ) -> SourceSyncReport:
         settings = project.settings
         source_folder = settings.source_folder.strip()
 
         if not source_folder:
             raise SourceSyncError("Source Folder belum diisi di Project Settings.")
+
+        self._emit_progress(
+            progress_callback,
+            stage="scanning",
+            message="Scanning source files...",
+        )
 
         scan = self.scanner.scan(
             source_folder,
@@ -130,6 +158,14 @@ class SourceSyncEngine:
             duplicate_episodes=scan.duplicate_episodes,
         )
 
+        self._emit_progress(
+            progress_callback,
+            stage="classifying",
+            current=len(scan.files),
+            total=len(scan.files),
+            message=f"Scanned {len(scan.files)} source files",
+        )
+
         if not scan.files and not report.problems:
             report.problems.append(
                 "Tidak ada file Excel .xlsx atau .xlsm di Source Folder."
@@ -144,13 +180,19 @@ class SourceSyncEngine:
             report=report,
         )
 
-        self._inspect_files(report)
+        self._inspect_files(report, progress_callback)
         if report.has_errors:
             return report
 
-        self._parse_files(report)
+        self._parse_files(report, progress_callback)
         if report.has_errors:
             return report
+
+        self._emit_progress(
+            progress_callback,
+            stage="synchronizing",
+            message="Synchronizing database...",
+        )
 
         now = datetime.now().isoformat(timespec="seconds")  # noqa: DTZ005
         report.synced_at = now
@@ -176,7 +218,38 @@ class SourceSyncEngine:
                 for warning in parse_result.warnings
             )
 
+        self._emit_progress(
+            progress_callback,
+            stage="complete",
+            current=1,
+            total=1,
+            message="Source synchronization complete",
+        )
+
         return report
+
+    @staticmethod
+    def _emit_progress(
+        callback: ProgressCallback | None,
+        *,
+        stage: str,
+        current: int = 0,
+        total: int = 0,
+        message: str = "",
+        file_name: str = "",
+    ) -> None:
+        if callback is None:
+            return
+
+        callback(
+            SourceSyncProgress(
+                stage=stage,
+                current=current,
+                total=total,
+                message=message,
+                file_name=file_name,
+            )
+        )
 
     @staticmethod
     def _classify_scan(
@@ -225,7 +298,7 @@ class SourceSyncEngine:
 
             if int(existing["is_active"] or 0) != 1:
                 # A source can disappear temporarily (for example while Drive
-                # Desktop is syncing) and later return byte-identical.  It must
+                # Desktop is syncing) and later return byte-identical. It must
                 # still be inspected/parsed so its dialogue set is reactivated.
                 report.restored += 1
                 report.restored_files.append(item)
@@ -233,19 +306,59 @@ class SourceSyncEngine:
 
             report.unchanged += 1
 
-    def _inspect_files(self, report: SourceSyncReport) -> None:
-        for item in report.files_to_process:
+    def _inspect_files(
+        self,
+        report: SourceSyncReport,
+        progress_callback: ProgressCallback | None = None,
+    ) -> None:
+        files = report.files_to_process
+        total = len(files)
+
+        if total:
+            self._emit_progress(
+                progress_callback,
+                stage="inspecting",
+                current=0,
+                total=total,
+                message=f"Inspecting workbooks 0/{total}",
+            )
+
+        for index, item in enumerate(files, start=1):
             try:
                 inspection = self.inspector.inspect(item.file_path)
             except WorkbookInspectionError as exc:
                 report.problems.append(f"{item.file_name}: {exc}")
-                continue
+            else:
+                report.inspected += 1
+                report.inspections[item.file_path] = inspection
 
-            report.inspected += 1
-            report.inspections[item.file_path] = inspection
+            self._emit_progress(
+                progress_callback,
+                stage="inspecting",
+                current=index,
+                total=total,
+                message=f"Inspecting workbooks {index}/{total}",
+                file_name=item.file_name,
+            )
 
-    def _parse_files(self, report: SourceSyncReport) -> None:
-        for item in report.files_to_process:
+    def _parse_files(
+        self,
+        report: SourceSyncReport,
+        progress_callback: ProgressCallback | None = None,
+    ) -> None:
+        files = report.files_to_process
+        total = len(files)
+
+        if total:
+            self._emit_progress(
+                progress_callback,
+                stage="parsing",
+                current=0,
+                total=total,
+                message=f"Parsing scripts 0/{total}",
+            )
+
+        for index, item in enumerate(files, start=1):
             try:
                 parse_result = self.parser.parse(
                     item.file_path,
@@ -253,11 +366,19 @@ class SourceSyncEngine:
                 )
             except ScriptParseError as exc:
                 report.problems.append(f"{item.file_name}: {exc}")
-                continue
+            else:
+                report.parsed_files += 1
+                report.parsed_dialogues += parse_result.dialogue_count
+                report.parse_results[item.file_path] = parse_result
 
-            report.parsed_files += 1
-            report.parsed_dialogues += parse_result.dialogue_count
-            report.parse_results[item.file_path] = parse_result
+            self._emit_progress(
+                progress_callback,
+                stage="parsing",
+                current=index,
+                total=total,
+                message=f"Parsing scripts {index}/{total}",
+                file_name=item.file_name,
+            )
 
     def get_last_sync_at(self, project: Project) -> str:
         with project.database.connect() as connection:
