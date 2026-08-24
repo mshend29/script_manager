@@ -137,10 +137,12 @@ class ScriptPage(PageShell):
             self._reset_combo(self.episode_combo)
             self._reset_combo(self.character_combo)
             self._reset_combo(self.talent_combo)
+            self.search_edit.blockSignals(True)
+            self.search_edit.clear()
+            self.search_edit.blockSignals(False)
         finally:
             self._loading_filters = False
 
-        self.search_edit.clear()
         self.table.setRowCount(0)
         self.result_label.setText("No project open")
 
@@ -287,7 +289,6 @@ class ScriptPage(PageShell):
                 )
 
                 for column, item in enumerate(items):
-                    item.setData(Qt.ItemDataRole.UserRole + 1, row.dialogue_id)
                     self.table.setItem(row_index, column, item)
         finally:
             self.table.setSortingEnabled(True)
