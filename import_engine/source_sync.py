@@ -6,7 +6,13 @@ from pathlib import Path
 
 from core.database import Database
 from core.project import Project
+from import_engine.inspector import (
+    WorkbookInspection,
+    WorkbookInspectionError,
+    WorkbookInspector,
+)
 from import_engine.scanner import (
+    ScannedSourceFile,
     SourceScanner,
     SourceScanResult,
 )
@@ -19,13 +25,11 @@ class SourceSyncError(RuntimeError):
 @dataclass
 class SourceSyncReport:
     scanned: int = 0
+    inspected: int = 0
 
     added: int = 0
-
     changed: int = 0
-
     unchanged: int = 0
-
     missing: int = 0
 
     problems: list[str] = field(default_factory=list)
@@ -35,17 +39,25 @@ class SourceSyncReport:
         list[str],
     ] = field(default_factory=dict)
 
+    added_files: list[ScannedSourceFile] = field(default_factory=list)
+    changed_files: list[ScannedSourceFile] = field(default_factory=list)
+
+    inspections: dict[str, WorkbookInspection] = field(default_factory=dict)
+
     synced_at: str = ""
 
     @property
     def has_errors(self) -> bool:
-
         return bool(self.problems or self.duplicate_episodes)
 
-    def summary(self) -> str:
+    @property
+    def files_to_process(self) -> list[ScannedSourceFile]:
+        return [*self.added_files, *self.changed_files]
 
+    def summary(self) -> str:
         return (
             f"Scanned: {self.scanned}\n"
+            f"Inspected: {self.inspected}\n"
             f"New: {self.added}\n"
             f"Changed: {self.changed}\n"
             f"Unchanged: {self.unchanged}\n"
@@ -57,9 +69,10 @@ class SourceSyncEngine:
     def __init__(
         self,
         scanner: SourceScanner | None = None,
-    ):
-
+        inspector: WorkbookInspector | None = None,
+    ) -> None:
         self.scanner = scanner or SourceScanner()
+        self.inspector = inspector or WorkbookInspector()
 
     # =========================================================
     # SYNCHRONIZE
@@ -69,63 +82,122 @@ class SourceSyncEngine:
         self,
         project: Project,
     ) -> SourceSyncReport:
-
         settings = project.settings
-
         source_folder = settings.source_folder.strip()
 
         if not source_folder:
             raise SourceSyncError("Source Folder belum diisi di Project Settings.")
 
-        # ---------------------------------
-        # SCAN SOURCE
-        # ---------------------------------
-
         scan = self.scanner.scan(
             source_folder,
-            episode_before=(settings.episode_before),
-            episode_after=(settings.episode_after),
+            episode_before=settings.episode_before,
+            episode_after=settings.episode_after,
         )
 
         report = SourceSyncReport(
             scanned=len(scan.files),
             problems=[
-                (f"{Path(problem.file_path).name}: {problem.message}")
+                f"{Path(problem.file_path).name}: {problem.message}"
                 for problem in scan.problems
             ],
-            duplicate_episodes=(scan.duplicate_episodes),
+            duplicate_episodes=scan.duplicate_episodes,
         )
-
-        # ---------------------------------
-        # JANGAN KOSONGKAN DATABASE
-        # JIKA SOURCE SALAH
-        # ---------------------------------
 
         if not scan.files and not report.problems:
             report.problems.append(
                 "Tidak ada file Excel .xlsx atau .xlsm di Source Folder."
             )
 
-        # ---------------------------------
-        # JIKA ADA ERROR
-        # DATABASE TIDAK DIUBAH
-        # ---------------------------------
+        if report.has_errors:
+            return report
 
+        self._classify_scan(
+            database=project.database,
+            scan=scan,
+            report=report,
+        )
+
+        self._inspect_files(report)
+
+        # Inspector error must not advance source metadata/fingerprint.
+        # That way the next Refresh can try the same file again.
         if report.has_errors:
             return report
 
         now = datetime.now().isoformat(timespec="seconds")  # noqa: DTZ005
-
         report.synced_at = now
 
         self._apply_scan(
             database=project.database,
             scan=scan,
-            report=report,
             synced_at=now,
         )
 
         return report
+
+    # =========================================================
+    # CLASSIFY NEW / CHANGED / UNCHANGED / MISSING
+    # =========================================================
+
+    @staticmethod
+    def _classify_scan(
+        *,
+        database: Database,
+        scan: SourceScanResult,
+        report: SourceSyncReport,
+    ) -> None:
+        scanned_by_path = {item.file_path: item for item in scan.files}
+
+        with database.connect() as connection:
+            existing_rows = connection.execute(
+                """
+                SELECT
+                    file_path,
+                    fingerprint,
+                    is_active
+                FROM source_files
+                """
+            ).fetchall()
+
+        existing_by_path = {str(row["file_path"]): row for row in existing_rows}
+
+        missing_paths = set(existing_by_path) - set(scanned_by_path)
+
+        report.missing = sum(
+            1
+            for file_path in missing_paths
+            if int(existing_by_path[file_path]["is_active"] or 0) == 1
+        )
+
+        for item in scan.files:
+            existing = existing_by_path.get(item.file_path)
+
+            if existing is None:
+                report.added += 1
+                report.added_files.append(item)
+                continue
+
+            if str(existing["fingerprint"] or "") != item.fingerprint:
+                report.changed += 1
+                report.changed_files.append(item)
+                continue
+
+            report.unchanged += 1
+
+    # =========================================================
+    # INSPECT ONLY NEW / CHANGED WORKBOOKS
+    # =========================================================
+
+    def _inspect_files(self, report: SourceSyncReport) -> None:
+        for item in report.files_to_process:
+            try:
+                inspection = self.inspector.inspect(item.file_path)
+            except WorkbookInspectionError as exc:
+                report.problems.append(f"{item.file_name}: {exc}")
+                continue
+
+            report.inspected += 1
+            report.inspections[item.file_path] = inspection
 
     # =========================================================
     # LAST REFRESH
@@ -135,7 +207,6 @@ class SourceSyncEngine:
         self,
         project: Project,
     ) -> str:
-
         with project.database.connect() as connection:
             row = connection.execute(
                 """
@@ -151,7 +222,7 @@ class SourceSyncEngine:
         return ""
 
     # =========================================================
-    # APPLY SCAN
+    # APPLY SCAN TO DATABASE
     # =========================================================
 
     @staticmethod
@@ -159,17 +230,11 @@ class SourceSyncEngine:
         *,
         database: Database,
         scan: SourceScanResult,
-        report: SourceSyncReport,
         synced_at: str,
     ) -> None:
-
         scanned_by_path = {item.file_path: item for item in scan.files}
 
         with database.connect() as connection:
-            # ---------------------------------
-            # SOURCE FILE YANG SUDAH ADA
-            # ---------------------------------
-
             existing_rows = connection.execute(
                 """
                 SELECT
@@ -192,17 +257,12 @@ class SourceSyncEngine:
             for file_path in missing_paths:
                 row = existing_by_path[file_path]
 
-                if int(row["is_active"] or 0) == 1:
-                    report.missing += 1
-
                 connection.execute(
                     """
                     UPDATE source_files
-
                     SET
                         is_active = 0,
                         last_seen_at = ?
-
                     WHERE id = ?
                     """,
                     (
@@ -218,58 +278,37 @@ class SourceSyncEngine:
             for item in scan.files:
                 existing = existing_by_path.get(item.file_path)
 
+                if existing is None:
+                    imported_at = synced_at
+                elif str(existing["fingerprint"] or "") != item.fingerprint:
+                    imported_at = synced_at
+                else:
+                    imported_at = None
+
                 # ---------------------------------
                 # FILE BARU
                 # ---------------------------------
 
                 if existing is None:
-                    report.added += 1
-
-                    imported_at = synced_at
-
-                # ---------------------------------
-                # FILE BERUBAH
-                # ---------------------------------
-
-                elif str(existing["fingerprint"] or "") != item.fingerprint:
-                    report.changed += 1
-
-                    imported_at = synced_at
-
-                # ---------------------------------
-                # FILE TIDAK BERUBAH
-                # ---------------------------------
-
-                else:
-                    report.unchanged += 1
-
-                    imported_at = None
-
-                # =================================================
-                # INSERT SOURCE FILE
-                # =================================================
-
-                if existing is None:
                     cursor = connection.execute(
                         """
-                            INSERT INTO source_files(
-                                file_path,
-                                file_name,
-                                episode_number,
-                                file_size,
-                                modified_at,
-                                fingerprint,
-                                is_active,
-                                imported_at,
-                                last_seen_at
-                            )
-
-                            VALUES(
-                                ?, ?, ?, ?, ?, ?,
-                                1,
-                                ?, ?
-                            )
-                            """,
+                        INSERT INTO source_files(
+                            file_path,
+                            file_name,
+                            episode_number,
+                            file_size,
+                            modified_at,
+                            fingerprint,
+                            is_active,
+                            imported_at,
+                            last_seen_at
+                        )
+                        VALUES(
+                            ?, ?, ?, ?, ?, ?,
+                            1,
+                            ?, ?
+                        )
+                        """,
                         (
                             item.file_path,
                             item.file_name,
@@ -284,9 +323,9 @@ class SourceSyncEngine:
 
                     source_file_id = int(cursor.lastrowid)
 
-                # =================================================
-                # UPDATE SOURCE FILE
-                # =================================================
+                # ---------------------------------
+                # FILE EXISTING
+                # ---------------------------------
 
                 else:
                     source_file_id = int(existing["id"])
@@ -294,7 +333,6 @@ class SourceSyncEngine:
                     connection.execute(
                         """
                         UPDATE source_files
-
                         SET
                             file_name = ?,
                             episode_number = ?,
@@ -302,16 +340,13 @@ class SourceSyncEngine:
                             modified_at = ?,
                             fingerprint = ?,
                             is_active = 1,
-
                             imported_at =
                                 CASE
                                     WHEN ? IS NULL
                                     THEN imported_at
                                     ELSE ?
                                 END,
-
                             last_seen_at = ?
-
                         WHERE id = ?
                         """,
                         (
@@ -339,20 +374,13 @@ class SourceSyncEngine:
                         title,
                         is_active
                     )
-
                     VALUES(
                         ?, ?, ?, 1
                     )
-
                     ON CONFLICT(episode_number)
                     DO UPDATE SET
-
-                        source_file_id =
-                            excluded.source_file_id,
-
-                        title =
-                            excluded.title,
-
+                        source_file_id = excluded.source_file_id,
+                        title = excluded.title,
                         is_active = 1
                     """,
                     (
@@ -369,17 +397,11 @@ class SourceSyncEngine:
             connection.execute(
                 """
                 UPDATE episodes
-
                 SET is_active = 0
-
                 WHERE source_file_id IS NOT NULL
-
                 AND source_file_id IN (
-
                     SELECT id
-
                     FROM source_files
-
                     WHERE is_active = 0
                 )
                 """
@@ -395,17 +417,13 @@ class SourceSyncEngine:
                     key,
                     value
                 )
-
                 VALUES(
                     'last_source_sync_at',
                     ?
                 )
-
                 ON CONFLICT(key)
                 DO UPDATE SET
-
-                    value =
-                        excluded.value
+                    value = excluded.value
                 """,
                 (synced_at,),
             )
