@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class Database:
@@ -165,6 +165,10 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_dialog_cast_talent
                     ON dialog_cast(talent_id);
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
+                    ON character_talent(character_id)
+                    WHERE is_locked = 1;
                 """
             )
 
