@@ -3,6 +3,7 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
+from PySide6.QtCore import QThread
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.ribbon import Ribbon
+from app.source_sync_worker import SourceSyncWorker
 from core.project_manager import ProjectManager
 from dialogs.new_project_dialog import NewProjectDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
@@ -47,6 +49,9 @@ class MainWindow(QMainWindow):
 
         self.project_manager = ProjectManager()
         self.source_sync_engine = SourceSyncEngine()
+        self._source_sync_thread: QThread | None = None
+        self._source_sync_worker: SourceSyncWorker | None = None
+        self._source_sync_title = ""
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -114,6 +119,9 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def new_project(self) -> None:
+        if self._block_project_change_during_sync("New Project"):
+            return
+
         dialog = NewProjectDialog(self)
 
         if not dialog.exec():
@@ -143,6 +151,9 @@ class MainWindow(QMainWindow):
         )
 
     def open_project(self) -> None:
+        if self._block_project_change_during_sync("Open Project"):
+            return
+
         start_dir = ""
 
         if self.project_manager.current:
@@ -201,6 +212,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Project saved", 3000)
 
     def close_project(self) -> None:
+        if self._block_project_change_during_sync("Close Project"):
+            return
+
         if not self.project_manager.is_open:
             return
 
@@ -226,6 +240,9 @@ class MainWindow(QMainWindow):
         self.pages["DATA"].set_database(None)
 
     def open_project_settings(self) -> None:
+        if self._block_project_change_during_sync("Project Settings"):
+            return
+
         project = self.project_manager.current
 
         if project is None:
@@ -292,6 +309,22 @@ class MainWindow(QMainWindow):
 
         webbrowser.open(url)
 
+    def _source_sync_running(self) -> bool:
+        thread = self._source_sync_thread
+        return thread is not None and thread.isRunning()
+
+    def _block_project_change_during_sync(self, action_title: str) -> bool:
+        if not self._source_sync_running():
+            return False
+
+        QMessageBox.information(
+            self,
+            action_title,
+            "Source Import/Refresh sedang berjalan. "
+            "Project tidak dapat diganti sampai proses selesai.",
+        )
+        return True
+
     # ------------------------------------------------------------------
     # SOURCE IMPORT / REFRESH
     # ------------------------------------------------------------------
@@ -303,6 +336,13 @@ class MainWindow(QMainWindow):
         self._run_source_sync("Refresh Data")
 
     def _run_source_sync(self, title: str) -> None:
+        if self._source_sync_running():
+            self.statusBar().showMessage(
+                f"{self._source_sync_title or 'Source sync'} masih berjalan",
+                3000,
+            )
+            return
+
         project = self.project_manager.current
 
         if project is None:
@@ -324,18 +364,48 @@ class MainWindow(QMainWindow):
             )
             return
 
-        try:
-            report = self.source_sync_engine.synchronize(project)
-        except Exception as exc:
-            QMessageBox.critical(
-                self,
-                title,
-                f"Gagal membaca Source Folder.\n\n{exc}",
-            )
-            return
+        thread = QThread(self)
+        worker = SourceSyncWorker(self.source_sync_engine, project)
+        worker.moveToThread(thread)
 
+        thread.started.connect(worker.run)
+        worker.completed.connect(
+            lambda report, sync_title=title, sync_project=project:
+                self._source_sync_completed(
+                    sync_title,
+                    sync_project,
+                    report,
+                )
+        )
+        worker.failed.connect(
+            lambda exc, sync_title=title:
+                self._source_sync_failed(sync_title, exc)
+        )
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._source_sync_thread_finished)
+
+        self._source_sync_thread = thread
+        self._source_sync_worker = worker
+        self._source_sync_title = title
+        self.statusBar().showMessage(
+            f"{title} berjalan — aplikasi tetap dapat digunakan"
+        )
+        thread.start()
+
+    def _source_sync_completed(
+        self,
+        title: str,
+        project,
+        report: SourceSyncReport,
+    ) -> None:
         if report.has_errors:
             self._show_source_sync_errors(title, report)
+            self.statusBar().showMessage(
+                f"{title} selesai dengan masalah",
+                5000,
+            )
             return
 
         self.refresh_project_page()
@@ -351,6 +421,19 @@ class MainWindow(QMainWindow):
             f"{title} selesai — {report.scanned} file",
             5000,
         )
+
+    def _source_sync_failed(self, title: str, exc: object) -> None:
+        QMessageBox.critical(
+            self,
+            title,
+            f"Gagal membaca Source Folder.\n\n{exc}",
+        )
+        self.statusBar().showMessage(f"{title} gagal", 5000)
+
+    def _source_sync_thread_finished(self) -> None:
+        self._source_sync_thread = None
+        self._source_sync_worker = None
+        self._source_sync_title = ""
 
     def _refresh_current_data_page(self, project) -> None:
         current_page = self.page_stack.currentWidget()
@@ -654,6 +737,16 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event) -> None:
+        if self._source_sync_running():
+            event.ignore()
+            QMessageBox.information(
+                self,
+                "Source Sync",
+                "Source Import/Refresh sedang berjalan. "
+                "Aplikasi tetap terbuka untuk menjaga proses database tetap aman.",
+            )
+            return
+
         if self.project_manager.is_open:
             try:
                 self.project_manager.save()
