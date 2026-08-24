@@ -7,10 +7,12 @@ from datetime import datetime, time, timedelta
 
 _DASHES = "-–—−"
 _MULTI_DASH_PATTERN = re.compile(r"(?:^|\s)[-–—−]\s*")
-_SPLIT_PATTERN = re.compile(r"\s+[-–—−]\s+|\s*/\s*|\s*,\s*|\s*;\s*|\n+")
+_SPLIT_PATTERN = re.compile(
+    r"\s+[-–—−]\s+|\s+&\s+|\s*/\s*|\s*,\s*|\s*;\s*|\n+"
+)
 _WHITESPACE_PATTERN = re.compile(r"\s+")
 _TIMECODE_PATTERN = re.compile(
-    r"^\s*(\d{1,2}):(\d{2}):(\d{2})(?:[,.](\d{1,3}))?\s*$"
+    r"^\s*(\d{1,2}):(\d{2}):(\d{2})(?:[,.](\d{0,3}))?\s*$"
 )
 
 
@@ -33,10 +35,22 @@ def clean_text(value: object) -> str:
     return "\n".join(lines)
 
 
-def normalize_key(value: object) -> str:
-    """Case-insensitive normalized key for character/talent lookups."""
+def clean_name(value: object) -> str:
     text = clean_text(value).strip()
     text = re.sub(rf"^[{re.escape(_DASHES)}•·]+\s*", "", text)
+
+    # Some writers wrap crowd / reaction labels in square brackets.
+    # Treat the wrapper as decoration so [Crowded] and Crowded resolve together.
+    if len(text) >= 2 and text.startswith("[") and text.endswith("]"):
+        text = text[1:-1].strip()
+
+    text = re.sub(r"^[,;]+\s*|\s*[,;]+$", "", text)
+    return _WHITESPACE_PATTERN.sub(" ", text).strip()
+
+
+def normalize_key(value: object) -> str:
+    """Case-insensitive normalized key for character/talent lookups."""
+    text = clean_name(value)
     text = text.translate(str.maketrans({dash: "-" for dash in _DASHES}))
     text = _WHITESPACE_PATTERN.sub(" ", text).strip()
     return text.casefold()
@@ -47,23 +61,20 @@ def normalize_dialogue_key(value: object) -> str:
     return _WHITESPACE_PATTERN.sub(" ", clean_text(value)).strip().casefold()
 
 
-def clean_name(value: object) -> str:
-    text = clean_text(value).strip()
-    text = re.sub(rf"^[{re.escape(_DASHES)}•·]+\s*", "", text)
-    return _WHITESPACE_PATTERN.sub(" ", text).strip()
-
-
 def split_cast_value(value: object) -> list[str]:
     """
-    Split a character/talent cell conservatively.
+    Split a character/talent cell conservatively while preserving positions.
 
     Handles variants such as:
     - ``Hendra - Joko``
     - ``-Indah -Teguh``
     - ``Hendra / Joko``
+    - ``Fitri & Anisa``
     - line-separated names
 
-    A single leading dash is treated as decoration, not a separator.
+    Duplicate values are intentionally preserved because positional source rows
+    can legitimately contain two different characters performed by the same
+    talent (for example ``Vega / Vega``).
     """
     text = clean_text(value)
 
@@ -73,22 +84,23 @@ def split_cast_value(value: object) -> list[str]:
     dash_markers = list(_MULTI_DASH_PATTERN.finditer(text))
 
     if text.lstrip()[:1] in _DASHES and len(dash_markers) >= 2:
-        parts = [part for part in _MULTI_DASH_PATTERN.split(text) if part.strip()]
+        primary_parts = [
+            part for part in _MULTI_DASH_PATTERN.split(text) if part.strip()
+        ]
     else:
-        parts = _SPLIT_PATTERN.split(text)
+        primary_parts = [text]
+
+    parts: list[str] = []
+    for primary in primary_parts:
+        parts.extend(_SPLIT_PATTERN.split(primary))
 
     cleaned: list[str] = []
-    seen: set[str] = set()
 
     for part in parts:
         name = clean_name(part)
-        key = normalize_key(name)
-
-        if not key or key in seen:
+        if not normalize_key(name):
             continue
-
         cleaned.append(name)
-        seen.add(key)
 
     return cleaned
 
