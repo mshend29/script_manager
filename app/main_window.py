@@ -80,6 +80,9 @@ class MainWindow(QMainWindow):
         project_page.new_button.clicked.connect(self.new_project)
         project_page.open_button.clicked.connect(self.open_project)
 
+        tracking_page = self.pages["TRACKING"]
+        tracking_page.drive_button.clicked.connect(self.open_client_drive)
+
         self.statusBar().showMessage("Ready")
         self.set_page("PROJECT")
         self.refresh_project_page()
@@ -89,16 +92,16 @@ class MainWindow(QMainWindow):
             return
 
         project = self.project_manager.current
+        database = project.database if project is not None else None
 
         if page_name == "SCRIPT":
-            self.pages["SCRIPT"].set_database(
-                project.database if project is not None else None
-            )
+            self.pages["SCRIPT"].set_database(database)
 
         elif page_name == "DIALOG":
-            self.pages["DIALOG"].set_database(
-                project.database if project is not None else None
-            )
+            self.pages["DIALOG"].set_database(database)
+
+        elif page_name == "TRACKING":
+            self.pages["TRACKING"].set_database(database)
 
         self.page_stack.setCurrentWidget(self.pages[page_name])
         self.statusBar().showMessage(f"{page_name.title()} page")
@@ -126,8 +129,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.pages["SCRIPT"].set_database(None)
-        self.pages["DIALOG"].set_database(None)
+        self._clear_data_pages()
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -163,8 +165,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.pages["SCRIPT"].set_database(None)
-        self.pages["DIALOG"].set_database(None)
+        self._clear_data_pages()
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -209,12 +210,16 @@ class MainWindow(QMainWindow):
                 f"Project ditutup, tetapi terjadi error saat save:\n{exc}",
             )
 
-        self.pages["SCRIPT"].set_database(None)
-        self.pages["DIALOG"].set_database(None)
+        self._clear_data_pages()
         self.setWindowTitle("Script Manager")
         self.refresh_project_page()
         self.set_page("PROJECT")
         self.statusBar().showMessage("Project closed", 3000)
+
+    def _clear_data_pages(self) -> None:
+        self.pages["SCRIPT"].set_database(None)
+        self.pages["DIALOG"].set_database(None)
+        self.pages["TRACKING"].set_database(None)
 
     def open_project_settings(self) -> None:
         project = self.project_manager.current
@@ -351,6 +356,9 @@ class MainWindow(QMainWindow):
 
         elif current_page is self.pages["DIALOG"]:
             self.pages["DIALOG"].set_database(project.database)
+
+        elif current_page is self.pages["TRACKING"]:
+            self.pages["TRACKING"].set_database(project.database)
 
     def _show_source_sync_errors(
         self,
