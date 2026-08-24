@@ -104,8 +104,7 @@ class WorkbookInspector:
             workbook.close()
 
     def _inspect_sheet(self, sheet) -> SheetInspection:
-        max_row = int(sheet.max_row or 0)
-        max_column = int(sheet.max_column or 0)
+        max_row, max_column = self._resolve_sheet_dimensions(sheet)
 
         row_limit = min(max_row, self.sample_row_limit) if max_row else 0
         column_limit = (
@@ -154,6 +153,31 @@ class WorkbookInspector:
             max_column=max_column,
             sample_cells=sample_cells,
         )
+
+    @staticmethod
+    def _resolve_sheet_dimensions(sheet) -> tuple[int, int]:
+        """Return worksheet bounds, including read-only sheets without <dimension>.
+
+        Some client-generated Excel files omit the worksheet ``dimension`` element.
+        ``openpyxl`` then exposes ``max_row`` / ``max_column`` as ``None`` in
+        read-only mode even though cell data is present. Force a one-time dimension
+        calculation so inspection does not incorrectly report an empty worksheet.
+        """
+        max_row = int(sheet.max_row or 0)
+        max_column = int(sheet.max_column or 0)
+
+        if max_row and max_column:
+            return max_row, max_column
+
+        try:
+            sheet.calculate_dimension(force=True)
+        except (AttributeError, TypeError, ValueError):
+            # Keep the inspector non-destructive. If a third-party workbook cannot
+            # calculate dimensions, the parser can still produce the actionable
+            # validation error later in the pipeline.
+            return max_row, max_column
+
+        return int(sheet.max_row or 0), int(sheet.max_column or 0)
 
     @staticmethod
     def _serializable_value(value: Any) -> Any:
