@@ -13,17 +13,13 @@ from PySide6.QtWidgets import (
 )
 
 from app.ribbon import Ribbon
-from core.project import PROJECT_FILE_NAME
-from core.project_manager import ProjectError, ProjectManager
+from core.project_manager import ProjectManager
 from dialogs.new_project_dialog import NewProjectDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
-<<<<<<< HEAD
 from import_engine.source_sync import (
     SourceSyncEngine,
     SourceSyncReport,
 )
-=======
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
 from pages.data_page import DataPage
 from pages.dialog_page import DialogPage
 from pages.project_page import ProjectPage
@@ -50,10 +46,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1100, 700)
 
         self.project_manager = ProjectManager()
-<<<<<<< HEAD
         self.source_sync_engine = SourceSyncEngine()
-=======
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -81,13 +74,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.ribbon.tab_changed.connect(self.set_page)
-<<<<<<< HEAD
         self.ribbon.action_triggered.connect(self.handle_ribbon_action)
-=======
-        self.ribbon.action_triggered.connect(
-            self.handle_ribbon_action
-        )
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
 
         project_page = self.pages["PROJECT"]
         project_page.new_button.clicked.connect(self.new_project)
@@ -119,11 +106,7 @@ class MainWindow(QMainWindow):
                 dialog.settings,
                 dialog.parent_folder,
             )
-<<<<<<< HEAD
-        except Exception as exc:  # noqa: BLE001
-=======
         except Exception as exc:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
             QMessageBox.critical(
                 self,
                 "New Project",
@@ -132,13 +115,9 @@ class MainWindow(QMainWindow):
             return
 
         self.refresh_project_page()
-<<<<<<< HEAD
-        self.setWindowTitle(f"{project.settings.project_name} - Script Manager")
-=======
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
         )
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
         self.statusBar().showMessage(
             f"Project created: {project.root}",
             5000,
@@ -162,11 +141,7 @@ class MainWindow(QMainWindow):
 
         try:
             project = self.project_manager.open(project_file)
-<<<<<<< HEAD
-        except Exception as exc:  # noqa: BLE001
-=======
         except Exception as exc:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
             QMessageBox.critical(
                 self,
                 "Open Project",
@@ -175,13 +150,9 @@ class MainWindow(QMainWindow):
             return
 
         self.refresh_project_page()
-<<<<<<< HEAD
-        self.setWindowTitle(f"{project.settings.project_name} - Script Manager")
-=======
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
         )
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
         self.statusBar().showMessage(
             f"Project opened: {project.root}",
             5000,
@@ -198,11 +169,7 @@ class MainWindow(QMainWindow):
 
         try:
             self.project_manager.save()
-<<<<<<< HEAD
-        except Exception as exc:  # noqa: BLE001
-=======
         except Exception as exc:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
             QMessageBox.critical(
                 self,
                 "Save Project",
@@ -219,11 +186,7 @@ class MainWindow(QMainWindow):
 
         try:
             self.project_manager.close()
-<<<<<<< HEAD
-        except Exception as exc:  # noqa: BLE001
-=======
         except Exception as exc:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
             QMessageBox.warning(
                 self,
                 "Close Project",
@@ -255,15 +218,10 @@ class MainWindow(QMainWindow):
             return
 
         try:
-<<<<<<< HEAD
-            self.project_manager.update_settings(dialog.result_settings)
-        except Exception as exc:  # noqa: BLE001
-=======
             self.project_manager.update_settings(
                 dialog.result_settings
             )
         except Exception as exc:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
             QMessageBox.critical(
                 self,
                 "Project Settings",
@@ -275,13 +233,9 @@ class MainWindow(QMainWindow):
 
         current = self.project_manager.current
         if current:
-<<<<<<< HEAD
-            self.setWindowTitle(f"{current.settings.project_name} - Script Manager")
-=======
             self.setWindowTitle(
                 f"{current.settings.project_name} - Script Manager"
             )
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
 
         self.statusBar().showMessage(
             "Project settings saved",
@@ -311,25 +265,18 @@ class MainWindow(QMainWindow):
 
         webbrowser.open(url)
 
-<<<<<<< HEAD
-    def import_source(self) -> None:
+    # ------------------------------------------------------------------
+    # SOURCE IMPORT / REFRESH
+    # ------------------------------------------------------------------
 
+    def import_source(self) -> None:
         self._run_source_sync("Import Source")
 
     def refresh_source(self) -> None:
-
         self._run_source_sync("Refresh Data")
 
-    def _run_source_sync(
-        self,
-        title: str,
-    ) -> None:
-
+    def _run_source_sync(self, title: str) -> None:
         project = self.project_manager.current
-
-        # ---------------------------------
-        # PROJECT BELUM DIBUKA
-        # ---------------------------------
 
         if project is None:
             QMessageBox.information(
@@ -337,12 +284,7 @@ class MainWindow(QMainWindow):
                 title,
                 "Buka atau buat project terlebih dahulu.",
             )
-
             return
-
-        # ---------------------------------
-        # SOURCE FOLDER BELUM DISET
-        # ---------------------------------
 
         if not project.settings.source_folder.strip():
             QMessageBox.information(
@@ -350,55 +292,35 @@ class MainWindow(QMainWindow):
                 title,
                 (
                     "Source Folder belum diisi.\n\n"
-                    "Isi melalui "
-                    "PROJECT → Project Settings."
+                    "Isi melalui PROJECT → Project Settings."
                 ),
             )
-
             return
-
-        # ---------------------------------
-        # RUN SCANNER
-        # ---------------------------------
 
         try:
             report = self.source_sync_engine.synchronize(project)
-
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             QMessageBox.critical(
                 self,
                 title,
-                (f"Gagal membaca Source Folder.\n\n{exc}"),
+                f"Gagal membaca Source Folder.\n\n{exc}",
             )
-
             return
-
-        # ---------------------------------
-        # ADA ERROR / DUPLICATE
-        # ---------------------------------
 
         if report.has_errors:
-            self._show_source_sync_errors(
-                title,
-                report,
-            )
-
+            self._show_source_sync_errors(title, report)
             return
-
-        # ---------------------------------
-        # REFRESH DASHBOARD
-        # ---------------------------------
 
         self.refresh_project_page()
 
         QMessageBox.information(
             self,
             title,
-            ("Source scan selesai.\n\n" + report.summary()),
+            "Source scan selesai.\n\n" + report.summary(),
         )
 
         self.statusBar().showMessage(
-            (f"{title} selesai — {report.scanned} file"),
+            f"{title} selesai — {report.scanned} file",
             5000,
         )
 
@@ -407,49 +329,43 @@ class MainWindow(QMainWindow):
         title: str,
         report: SourceSyncReport,
     ) -> None:
-
         sections: list[str] = []
-
-        # ---------------------------------
-        # FILE INVALID
-        # ---------------------------------
 
         if report.problems:
             sections.append(
-                ("FILE YANG TIDAK DAPAT DIPROSES:\n")
-                + "\n".join(f"• {item}" for item in report.problems)
+                "FILE YANG TIDAK DAPAT DIPROSES:\n"
+                + "\n".join(
+                    f"• {item}" for item in report.problems
+                )
             )
-
-        # ---------------------------------
-        # DUPLICATE EPISODE
-        # ---------------------------------
 
         if report.duplicate_episodes:
             duplicate_lines: list[str] = []
 
-            for episode, paths in sorted(report.duplicate_episodes.items()):
+            for episode, paths in sorted(
+                report.duplicate_episodes.items()
+            ):
                 duplicate_lines.append(f"Episode {episode}:")
+                duplicate_lines.extend(
+                    f"  • {Path(path).name}"
+                    for path in paths
+                )
 
-                duplicate_lines.extend((f"  • {Path(path).name}" for path in paths))  # noqa: UP034
-
-            sections.append(("DUPLICATE EPISODE:\n" + "\n".join(duplicate_lines)))  # noqa: UP034
-
-        # ---------------------------------
-        # DATABASE TIDAK DIUBAH
-        # ---------------------------------
+            sections.append(
+                "DUPLICATE EPISODE:\n"
+                + "\n".join(duplicate_lines)
+            )
 
         QMessageBox.warning(
             self,
             title,
             (
-                "Database tidak diubah karena "
-                "ditemukan masalah."
-                "\n\n" + "\n\n".join(sections)
+                "Database tidak diubah karena ditemukan masalah."
+                "\n\n"
+                + "\n\n".join(sections)
             ),
         )
 
-=======
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
     def refresh_project_page(self) -> None:
         page = self.pages["PROJECT"]
         project = self.project_manager.current
@@ -460,23 +376,6 @@ class MainWindow(QMainWindow):
 
         settings = project.settings
 
-<<<<<<< HEAD
-        page.project_name.setText(settings.project_name or "Unnamed Project")
-        page.project_location.setText(f"Location: {project.root}")
-        page.source_path.setText(f"Source: {settings.source_folder or '-'}")
-        page.start_date.setText(f"Start date: {settings.start_date or '-'}")
-        try:
-            last_sync = self.source_sync_engine.get_last_sync_at(project)
-
-        except Exception:  # noqa: BLE001
-            last_sync = ""
-
-        page.last_refresh.setText(f"Last refresh: {last_sync or '-'}")
-
-        try:
-            counts = self.project_manager.get_dashboard_counts()
-        except Exception:  # noqa: BLE001
-=======
         page.project_name.setText(
             settings.project_name or "Unnamed Project"
         )
@@ -489,26 +388,31 @@ class MainWindow(QMainWindow):
         page.start_date.setText(
             f"Start date: {settings.start_date or '-'}"
         )
-        page.last_refresh.setText("Last refresh: -")
+
+        try:
+            last_sync = self.source_sync_engine.get_last_sync_at(
+                project
+            )
+        except Exception:
+            last_sync = ""
+
+        page.last_refresh.setText(
+            f"Last refresh: {last_sync or '-'}"
+        )
 
         try:
             counts = self.project_manager.get_dashboard_counts()
         except Exception:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
             counts = {}
 
         page.set_counts(counts)
 
-<<<<<<< HEAD
-        page.info_title.setText(f"{settings.project_name or 'Project'} ready")
-=======
         page.info_title.setText(
             f"{settings.project_name or 'Project'} ready"
         )
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
         page.info_text.setText(
             "Project system dan SQLite sudah aktif. "
-            "Tahap berikutnya adalah Import Source / Refresh Data otomatis."
+            "Source Import / Refresh scanner sudah terhubung."
         )
 
     # ------------------------------------------------------------------
@@ -523,21 +427,15 @@ class MainWindow(QMainWindow):
             "project.settings": self.open_project_settings,
             "project.close": self.close_project,
             "client.drive": self.open_client_drive,
-<<<<<<< HEAD
             "source.import": self.import_source,
             "source.refresh": self.refresh_source,
             "data.refresh": self.refresh_source,
-            "dialog.check_all": (lambda: self.pages["DIALOG"].set_all_checked(True)),
-            "dialog.uncheck_all": (lambda: self.pages["DIALOG"].set_all_checked(False)),
-=======
-
             "dialog.check_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(True)
             ),
             "dialog.uncheck_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(False)
             ),
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
         }
 
         handler = handlers.get(action_id)
@@ -555,11 +453,7 @@ class MainWindow(QMainWindow):
         if self.project_manager.is_open:
             try:
                 self.project_manager.save()
-<<<<<<< HEAD
-            except Exception:  # noqa: BLE001, S110
-=======
             except Exception:
->>>>>>> 304491f43ae4054f86c506e92433e9658f5231c4
                 pass
 
         event.accept()
