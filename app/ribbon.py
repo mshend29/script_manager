@@ -1,8 +1,15 @@
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushButton,
-    QStackedWidget, QVBoxLayout, QWidget
+    QButtonGroup,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 
 class RibbonGroup(QFrame):
     action_triggered = Signal(str)
@@ -32,7 +39,6 @@ class RibbonGroup(QFrame):
         title_label.setAlignment(Qt.AlignCenter)
         root.addWidget(title_label)
 
-from PySide6.QtCore import Qt
 
 class Ribbon(QWidget):
     tab_changed = Signal(str)
@@ -56,11 +62,13 @@ class Ribbon(QWidget):
             ("Client", [("client.drive", "Open Client Drive")]),
         ],
         "SCRIPT": [
-            ("View", [("script.refresh", "Refresh View"), ("script.search", "Search")]),
-            ("Data", [("script.export", "Export")]),
+            ("View", [
+                ("script.refresh", "Refresh View"),
+                ("script.search", "Search"),
+            ]),
         ],
         "DIALOG": [
-            ("View", [("dialog.refresh", "Refresh View"), ("dialog.search", "Search")]),
+            ("View", [("dialog.refresh", "Refresh View")]),
             ("Recording", [
                 ("dialog.check_all", "Check All"),
                 ("dialog.uncheck_all", "Uncheck All"),
@@ -69,23 +77,26 @@ class Ribbon(QWidget):
         ],
         "TRACKING": [
             ("View", [("tracking.refresh", "Refresh View")]),
-            ("Delivery", [
-                ("tracking.open_drive", "Open Client Drive"),
-                ("tracking.mark_stemmed", "Mark Stemmed"),
-            ]),
+            ("Delivery", [("tracking.open_drive", "Open Client Drive")]),
         ],
         "DATA": [
-            ("Source", [("data.refresh", "Refresh Data"), ("data.rebuild", "Rebuild Index")]),
+            ("Source", [
+                ("data.refresh", "Refresh Data"),
+                ("data.rebuild", "Rebuild Index"),
+            ]),
             ("Mapping", [
                 ("data.characters", "Characters"),
                 ("data.talents", "Talents"),
                 ("data.cast", "Cast Mapping"),
             ]),
-            ("Database", [("data.validate", "Validate"), ("data.backup", "Backup")]),
+            ("Database", [
+                ("data.validate", "Validate"),
+                ("data.backup", "Backup"),
+            ]),
         ],
-        "TOOLS": [
-            ("Utilities", [("tools.settings", "Settings"), ("tools.logs", "Logs")])
-        ],
+        # TOOLS remains as a page for future utilities, but unsupported
+        # actions are intentionally not advertised as clickable commands.
+        "TOOLS": [],
     }
 
     def __init__(self, parent=None):

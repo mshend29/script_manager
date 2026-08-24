@@ -459,6 +459,44 @@ class MainWindow(QMainWindow):
         )
 
     # ------------------------------------------------------------------
+    # VIEW ACTIONS
+    # ------------------------------------------------------------------
+
+    def refresh_data_view(self, page_name: str) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Refresh View",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        page = self.pages.get(page_name)
+        if page is None or not hasattr(page, "set_database"):
+            return
+
+        page.set_database(project.database)
+        self.statusBar().showMessage(f"{page_name.title()} view refreshed", 3000)
+
+    def focus_script_search(self) -> None:
+        page = self.pages["SCRIPT"]
+        page.search_edit.setFocus()
+        page.search_edit.selectAll()
+        self.statusBar().showMessage("Script search focused", 2000)
+
+    def open_dialog_source(self) -> None:
+        page = self.pages["DIALOG"]
+        if not page.open_source_button.isEnabled():
+            self.statusBar().showMessage(
+                "Pilih character dan episode yang memiliki source file.",
+                3000,
+            )
+            return
+
+        page.open_source_button.click()
+
+    # ------------------------------------------------------------------
     # DATA ADMIN
     # ------------------------------------------------------------------
 
@@ -583,6 +621,18 @@ class MainWindow(QMainWindow):
             "client.drive": self.open_client_drive,
             "source.import": self.import_source,
             "source.refresh": self.refresh_source,
+            "script.refresh": lambda: self.refresh_data_view("SCRIPT"),
+            "script.search": self.focus_script_search,
+            "dialog.refresh": lambda: self.refresh_data_view("DIALOG"),
+            "dialog.open_source": self.open_dialog_source,
+            "dialog.check_all": (
+                lambda: self.pages["DIALOG"].set_all_checked(True)
+            ),
+            "dialog.uncheck_all": (
+                lambda: self.pages["DIALOG"].set_all_checked(False)
+            ),
+            "tracking.refresh": lambda: self.refresh_data_view("TRACKING"),
+            "tracking.open_drive": self.open_client_drive,
             "data.refresh": self.refresh_source,
             "data.rebuild": self.rebuild_data_indexes,
             "data.characters": lambda: self.show_data_section("characters"),
@@ -590,12 +640,6 @@ class MainWindow(QMainWindow):
             "data.cast": lambda: self.show_data_section("cast"),
             "data.validate": self.validate_data,
             "data.backup": self.backup_database,
-            "dialog.check_all": (
-                lambda: self.pages["DIALOG"].set_all_checked(True)
-            ),
-            "dialog.uncheck_all": (
-                lambda: self.pages["DIALOG"].set_all_checked(False)
-            ),
         }
 
         handler = handlers.get(action_id)
@@ -605,7 +649,7 @@ class MainWindow(QMainWindow):
             return
 
         self.statusBar().showMessage(
-            f"Action: {action_id}",
+            f"Action unavailable: {action_id}",
             3000,
         )
 
