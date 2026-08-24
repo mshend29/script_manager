@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 3
 
 
 class Database:
@@ -139,15 +139,19 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     episode_id INTEGER NOT NULL,
                     talent_id INTEGER NOT NULL,
+                    character_id INTEGER NOT NULL,
                     status TEXT NOT NULL DEFAULT 'NOT_READY',
                     note TEXT,
                     updated_at TEXT,
-                    UNIQUE(episode_id, talent_id),
+                    UNIQUE(episode_id, talent_id, character_id),
                     FOREIGN KEY (episode_id)
                         REFERENCES episodes(id)
                         ON DELETE CASCADE,
                     FOREIGN KEY (talent_id)
                         REFERENCES talents(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (character_id)
+                        REFERENCES characters(id)
                         ON DELETE CASCADE
                 );
 
@@ -165,6 +169,25 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_dialog_cast_talent
                     ON dialog_cast(talent_id);
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
+                    ON character_talent(character_id)
+                    WHERE is_locked = 1;
+                """
+            )
+
+            self._migrate_stem_status_v3(connection)
+
+            connection.executescript(
+                """
+                CREATE INDEX IF NOT EXISTS idx_stem_status_episode
+                    ON stem_status(episode_id);
+
+                CREATE INDEX IF NOT EXISTS idx_stem_status_talent
+                    ON stem_status(talent_id);
+
+                CREATE INDEX IF NOT EXISTS idx_stem_status_character
+                    ON stem_status(character_id);
                 """
             )
 
@@ -176,6 +199,78 @@ class Database:
                 """,
                 (str(SCHEMA_VERSION),),
             )
+
+    @staticmethod
+    def _migrate_stem_status_v3(connection: sqlite3.Connection) -> None:
+        columns = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(stem_status)"
+            ).fetchall()
+        }
+
+        if "character_id" in columns:
+            return
+
+        connection.execute("ALTER TABLE stem_status RENAME TO stem_status_v2")
+
+        connection.execute(
+            """
+            CREATE TABLE stem_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                episode_id INTEGER NOT NULL,
+                talent_id INTEGER NOT NULL,
+                character_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'NOT_READY',
+                note TEXT,
+                updated_at TEXT,
+                UNIQUE(episode_id, talent_id, character_id),
+                FOREIGN KEY (episode_id)
+                    REFERENCES episodes(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (talent_id)
+                    REFERENCES talents(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (character_id)
+                    REFERENCES characters(id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+
+        # Old status rows were scoped only to Episode + Talent. Preserve them
+        # only when that pair maps to exactly one character, otherwise there is
+        # no safe way to decide which character owned the old downstream state.
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id,
+                talent_id,
+                character_id,
+                status,
+                note,
+                updated_at
+            )
+            SELECT
+                legacy.episode_id,
+                legacy.talent_id,
+                MIN(dc.character_id),
+                legacy.status,
+                legacy.note,
+                legacy.updated_at
+            FROM stem_status_v2 AS legacy
+            JOIN dialogues AS d
+              ON d.episode_id = legacy.episode_id
+             AND d.is_active = 1
+            JOIN dialog_cast AS dc
+              ON dc.dialogue_id = d.id
+             AND dc.talent_id = legacy.talent_id
+            GROUP BY legacy.id
+            HAVING COUNT(DISTINCT dc.character_id) = 1
+            """
+        )
+
+        connection.execute("DROP TABLE stem_status_v2")
 
     def get_counts(self) -> dict[str, int]:
         tables = {
