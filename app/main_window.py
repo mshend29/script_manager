@@ -3,7 +3,7 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Qt, Slot
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
@@ -370,16 +370,12 @@ class MainWindow(QMainWindow):
 
         thread.started.connect(worker.run)
         worker.completed.connect(
-            lambda report, sync_title=title, sync_project=project:
-                self._source_sync_completed(
-                    sync_title,
-                    sync_project,
-                    report,
-                )
+            self._source_sync_completed,
+            Qt.ConnectionType.QueuedConnection,
         )
         worker.failed.connect(
-            lambda exc, sync_title=title:
-                self._source_sync_failed(sync_title, exc)
+            self._source_sync_failed,
+            Qt.ConnectionType.QueuedConnection,
         )
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
@@ -394,12 +390,18 @@ class MainWindow(QMainWindow):
         )
         thread.start()
 
-    def _source_sync_completed(
-        self,
-        title: str,
-        project,
-        report: SourceSyncReport,
-    ) -> None:
+    @Slot(object)
+    def _source_sync_completed(self, report: SourceSyncReport) -> None:
+        title = self._source_sync_title or "Source Sync"
+        project = self.project_manager.current
+
+        if project is None:
+            self.statusBar().showMessage(
+                f"{title} selesai, tetapi project sudah tidak tersedia",
+                5000,
+            )
+            return
+
         if report.has_errors:
             self._show_source_sync_errors(title, report)
             self.statusBar().showMessage(
@@ -422,7 +424,9 @@ class MainWindow(QMainWindow):
             5000,
         )
 
-    def _source_sync_failed(self, title: str, exc: object) -> None:
+    @Slot(object)
+    def _source_sync_failed(self, exc: object) -> None:
+        title = self._source_sync_title or "Source Sync"
         QMessageBox.critical(
             self,
             title,
@@ -430,6 +434,7 @@ class MainWindow(QMainWindow):
         )
         self.statusBar().showMessage(f"{title} gagal", 5000)
 
+    @Slot()
     def _source_sync_thread_finished(self) -> None:
         self._source_sync_thread = None
         self._source_sync_worker = None
