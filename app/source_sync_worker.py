@@ -9,6 +9,7 @@ from import_engine.source_sync import SourceSyncEngine
 class SourceSyncWorker(QObject):
     """Run the source synchronization pipeline outside the Qt GUI thread."""
 
+    progress = Signal(object)
     completed = Signal(object)
     failed = Signal(object)
     finished = Signal()
@@ -26,7 +27,10 @@ class SourceSyncWorker(QObject):
     @Slot()
     def run(self) -> None:
         try:
-            report = self._engine.synchronize(self._project)
+            report = self._engine.synchronize(
+                self._project,
+                progress_callback=self.progress.emit,
+            )
         except Exception as exc:  # noqa: BLE001 - forwarded to the GUI boundary
             self.failed.emit(exc)
         else:

@@ -6,8 +6,10 @@ from pathlib import Path
 from PySide6.QtCore import QThread, Qt, Slot
 from PySide6.QtWidgets import (
     QFileDialog,
+    QLabel,
     QMainWindow,
     QMessageBox,
+    QProgressBar,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -20,6 +22,7 @@ from dialogs.new_project_dialog import NewProjectDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
 from import_engine.source_sync import (
     SourceSyncEngine,
+    SourceSyncProgress,
     SourceSyncReport,
 )
 from pages.data_page import DataPage
@@ -88,6 +91,7 @@ class MainWindow(QMainWindow):
         tracking_page = self.pages["TRACKING"]
         tracking_page.drive_button.clicked.connect(self.open_client_drive)
 
+        self._init_source_sync_progress_ui()
         self.statusBar().showMessage("Ready")
         self.set_page("PROJECT")
         self.refresh_project_page()
@@ -325,6 +329,49 @@ class MainWindow(QMainWindow):
         )
         return True
 
+    def _init_source_sync_progress_ui(self) -> None:
+        self._source_sync_progress_label = QLabel()
+        self._source_sync_progress_label.setMaximumWidth(360)
+        self._source_sync_progress_label.hide()
+
+        self._source_sync_progress_bar = QProgressBar()
+        self._source_sync_progress_bar.setFixedWidth(180)
+        self._source_sync_progress_bar.setTextVisible(True)
+        self._source_sync_progress_bar.hide()
+
+        self.statusBar().addPermanentWidget(
+            self._source_sync_progress_label,
+        )
+        self.statusBar().addPermanentWidget(
+            self._source_sync_progress_bar,
+        )
+
+    def _hide_source_sync_progress(self) -> None:
+        self._source_sync_progress_label.clear()
+        self._source_sync_progress_label.setToolTip("")
+        self._source_sync_progress_label.hide()
+        self._source_sync_progress_bar.reset()
+        self._source_sync_progress_bar.hide()
+
+    @Slot(object)
+    def _source_sync_progress(self, progress: SourceSyncProgress) -> None:
+        message = progress.message or progress.stage.replace("_", " ").title()
+        self._source_sync_progress_label.setText(message)
+        self._source_sync_progress_label.setToolTip(progress.file_name)
+
+        if progress.is_determinate:
+            self._source_sync_progress_bar.setRange(0, progress.total)
+            self._source_sync_progress_bar.setValue(
+                min(max(progress.current, 0), progress.total)
+            )
+            self._source_sync_progress_bar.setFormat("%v/%m")
+        else:
+            self._source_sync_progress_bar.setRange(0, 0)
+            self._source_sync_progress_bar.setFormat("")
+
+        self._source_sync_progress_label.show()
+        self._source_sync_progress_bar.show()
+
     # ------------------------------------------------------------------
     # SOURCE IMPORT / REFRESH
     # ------------------------------------------------------------------
@@ -369,6 +416,10 @@ class MainWindow(QMainWindow):
         worker.moveToThread(thread)
 
         thread.started.connect(worker.run)
+        worker.progress.connect(
+            self._source_sync_progress,
+            Qt.ConnectionType.QueuedConnection,
+        )
         worker.completed.connect(
             self._source_sync_completed,
             Qt.ConnectionType.QueuedConnection,
@@ -385,6 +436,12 @@ class MainWindow(QMainWindow):
         self._source_sync_thread = thread
         self._source_sync_worker = worker
         self._source_sync_title = title
+        self._source_sync_progress(
+            SourceSyncProgress(
+                stage="starting",
+                message=f"{title} starting...",
+            )
+        )
         self.statusBar().showMessage(
             f"{title} berjalan — aplikasi tetap dapat digunakan"
         )
@@ -394,6 +451,7 @@ class MainWindow(QMainWindow):
     def _source_sync_completed(self, report: SourceSyncReport) -> None:
         title = self._source_sync_title or "Source Sync"
         project = self.project_manager.current
+        self._hide_source_sync_progress()
 
         if project is None:
             self.statusBar().showMessage(
@@ -427,6 +485,7 @@ class MainWindow(QMainWindow):
     @Slot(object)
     def _source_sync_failed(self, exc: object) -> None:
         title = self._source_sync_title or "Source Sync"
+        self._hide_source_sync_progress()
         QMessageBox.critical(
             self,
             title,
@@ -436,6 +495,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _source_sync_thread_finished(self) -> None:
+        self._hide_source_sync_progress()
         self._source_sync_thread = None
         self._source_sync_worker = None
         self._source_sync_title = ""
