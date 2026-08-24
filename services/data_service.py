@@ -43,7 +43,7 @@ class TalentAdminRow:
 class UnresolvedCastRow:
     dialogue_id: int
     episode_number: int
-    character_id: int
+    character_id: int | None
     character_name: str
     dialogue: str
     source_file_name: str
@@ -95,10 +95,21 @@ class DataService:
                 unresolved_cast=count(
                     """
                     SELECT COUNT(*)
-                    FROM dialog_cast AS dc
-                    JOIN dialogues AS d ON d.id = dc.dialogue_id
+                    FROM dialogues AS d
                     WHERE d.is_active = 1
-                      AND dc.talent_id IS NULL
+                      AND (
+                          NOT EXISTS (
+                              SELECT 1
+                              FROM dialog_cast AS dc
+                              WHERE dc.dialogue_id = d.id
+                          )
+                          OR EXISTS (
+                              SELECT 1
+                              FROM dialog_cast AS dc
+                              WHERE dc.dialogue_id = d.id
+                                AND dc.talent_id IS NULL
+                          )
+                      )
                     """
                 ),
             )
@@ -192,20 +203,32 @@ class DataService:
                 SELECT
                     d.id AS dialogue_id,
                     e.episode_number,
-                    c.id AS character_id,
-                    c.name AS character_name,
+                    dc.character_id,
+                    CASE
+                        WHEN dc.id IS NULL THEN '⚠ Missing Character'
+                        ELSE c.name
+                    END AS character_name,
                     d.dialog_text,
                     COALESCE(sf.file_name, '') AS source_file_name
-                FROM dialog_cast AS dc
-                JOIN dialogues AS d ON d.id = dc.dialogue_id
+                FROM dialogues AS d
                 JOIN episodes AS e ON e.id = d.episode_id
-                JOIN characters AS c ON c.id = dc.character_id
+                LEFT JOIN dialog_cast AS dc ON dc.dialogue_id = d.id
+                LEFT JOIN characters AS c ON c.id = dc.character_id
                 LEFT JOIN source_files AS sf ON sf.id = d.source_file_id
                 WHERE d.is_active = 1
                   AND e.is_active = 1
-                  AND c.is_active = 1
-                  AND dc.talent_id IS NULL
-                ORDER BY e.episode_number, d.source_row, d.id, dc.position
+                  AND (
+                      dc.id IS NULL
+                      OR (
+                          dc.talent_id IS NULL
+                          AND c.is_active = 1
+                      )
+                  )
+                ORDER BY
+                    e.episode_number,
+                    d.source_row,
+                    d.id,
+                    COALESCE(dc.position, 0)
                 """
             ).fetchall()
 
@@ -213,7 +236,11 @@ class DataService:
             UnresolvedCastRow(
                 dialogue_id=int(row["dialogue_id"]),
                 episode_number=int(row["episode_number"]),
-                character_id=int(row["character_id"]),
+                character_id=(
+                    int(row["character_id"])
+                    if row["character_id"] is not None
+                    else None
+                ),
                 character_name=str(row["character_name"]),
                 dialogue=str(row["dialog_text"]),
                 source_file_name=str(row["source_file_name"] or ""),
@@ -478,6 +505,28 @@ class DataService:
                     )
                 )
 
+            missing_cast = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM dialogues AS d
+                WHERE d.is_active = 1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM dialog_cast AS dc
+                      WHERE dc.dialogue_id = d.id
+                  )
+                """
+            ).fetchone()
+            missing_cast_count = int(missing_cast["total"] or 0)
+            if missing_cast_count:
+                issues.append(
+                    ValidationIssue(
+                        "WARNING",
+                        "ACTIVE_DIALOGUE_NO_CAST",
+                        f"{missing_cast_count} dialog aktif tidak memiliki character/cast.",
+                    )
+                )
+
             duplicate_sources = connection.execute(
                 """
                 SELECT episode_number, COUNT(*) AS total
@@ -512,6 +561,36 @@ class DataService:
                         "ERROR",
                         "ACTIVE_DIALOGUE_INACTIVE_EPISODE",
                         f"{invalid_dialogue_count} dialog aktif berada pada episode inactive.",
+                    )
+                )
+
+            empty_active_episodes = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM episodes AS e
+                JOIN source_files AS sf ON sf.id = e.source_file_id
+                WHERE e.is_active = 1
+                  AND sf.is_active = 1
+                  AND EXISTS (
+                      SELECT 1
+                      FROM dialogues AS history
+                      WHERE history.episode_id = e.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM dialogues AS active_dialogue
+                      WHERE active_dialogue.episode_id = e.id
+                        AND active_dialogue.is_active = 1
+                  )
+                """
+            ).fetchone()
+            empty_active_episode_count = int(empty_active_episodes["total"] or 0)
+            if empty_active_episode_count:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "ACTIVE_EPISODE_WITHOUT_ACTIVE_DIALOGUES",
+                        f"{empty_active_episode_count} episode/source aktif hanya memiliki dialog inactive.",
                     )
                 )
 
@@ -574,8 +653,12 @@ class DataService:
     def backup_database(self) -> Path:
         backup_dir = self.database.path.parent / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         target = backup_dir / f"project_{stamp}.db"
+        suffix = 1
+        while target.exists():
+            target = backup_dir / f"project_{stamp}_{suffix}.db"
+            suffix += 1
 
         with self.database.connect() as source:
             destination = sqlite3.connect(target)
