@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from core.database import DatabaseCompatibilityError
 from core.project import DATABASE_FILE_NAME, PROJECT_FILE_NAME, Project
 from core.project_settings import ProjectSettings
 
@@ -73,12 +74,15 @@ class ProjectManager:
     def open(self, path: str | Path) -> Project:
         project = Project.load(path)
 
-        if not project.database_file.exists():
-            # Project lama / database hilang: buat struktur database kosong.
-            project.database.initialize()
-        else:
-            # Tetap jalankan initialize untuk migration-safe CREATE IF NOT EXISTS.
-            project.database.initialize()
+        try:
+            if not project.database_file.exists():
+                # Project lama / database hilang: buat struktur database kosong.
+                project.database.initialize()
+            else:
+                # Tetap jalankan initialize untuk migration-safe CREATE IF NOT EXISTS.
+                project.database.initialize()
+        except DatabaseCompatibilityError as exc:
+            raise ProjectError(str(exc)) from exc
 
         project.ensure_structure()
         self.current = project
