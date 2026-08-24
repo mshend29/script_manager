@@ -119,6 +119,8 @@ _HEADER_ALIASES: dict[str, set[str]] = {
     },
 }
 
+_GENERIC_TALENT_KEYS = {"all"}
+
 
 class ScriptParser:
     """
@@ -406,24 +408,63 @@ class ScriptParser:
         raw_talent = clean_text(raw_talent_value)
 
         characters = tuple(split_cast_value(raw_character))
-        talents = tuple(split_cast_value(raw_talent))
+        parsed_talents = tuple(split_cast_value(raw_talent))
+        generic_talents = tuple(
+            name
+            for name in parsed_talents
+            if normalize_key(name) in _GENERIC_TALENT_KEYS
+        )
+        talents = tuple(
+            name
+            for name in parsed_talents
+            if normalize_key(name) not in _GENERIC_TALENT_KEYS
+        )
         cast_pairs = self._safe_cast_pairs(characters, talents)
 
         statuses: list[str] = []
 
         if not time_in:
             statuses.append("MISSING_IN")
+        elif raw_in not in (None, "") and not looks_like_timecode(raw_in):
+            statuses.append("INVALID_IN")
+            warnings.append(
+                f"Row {row_number}: IN tidak dikenali sebagai timecode: {raw_in!r}."
+            )
 
         if not time_out:
             statuses.append("MISSING_OUT")
+        elif raw_out not in (None, "") and not looks_like_timecode(raw_out):
+            statuses.append("INVALID_OUT")
+            warnings.append(
+                f"Row {row_number}: OUT tidak dikenali sebagai timecode: {raw_out!r}."
+            )
 
         if not characters:
             statuses.append("MISSING_CHARACTER")
 
+        if generic_talents:
+            statuses.append("GENERIC_TALENT")
+            warnings.append(
+                f"Row {row_number}: TALENT generik "
+                f"({', '.join(generic_talents)}) tidak dipakai sebagai talent canonical."
+            )
+
         if characters and not talents:
             statuses.append("MISSING_TALENT")
 
-        if characters and talents and len(characters) != len(talents):
+        if len(characters) == 1 and len(talents) > 1:
+            statuses.append("MULTI_TALENT")
+
+        is_safe_single_character_multi_talent = (
+            len(characters) == 1 and len(talents) > 1
+        )
+
+        if (
+            characters
+            and talents
+            and len(characters) != len(talents)
+            and not is_safe_single_character_multi_talent
+        ):
             statuses.append("CAST_COUNT_MISMATCH")
             warnings.append(
                 f"Row {row_number}: jumlah TOKOH ({len(characters)}) dan "
@@ -463,6 +504,15 @@ class ScriptParser:
 
         if not talents:
             return tuple(CastPair(character=name, talent="") for name in characters)
+
+        if len(characters) == 1 and len(talents) > 1:
+            # Crowd/group rows can legitimately use multiple voice talents for
+            # one source character label. Preserve all explicit talent names,
+            # but do not turn them into a stable character lock later.
+            return tuple(
+                CastPair(character=characters[0], talent=talent)
+                for talent in talents
+            )
 
         if len(characters) != len(talents):
             # Do not guess a many-to-many relationship when counts differ.
