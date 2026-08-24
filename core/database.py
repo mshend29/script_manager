@@ -7,6 +7,10 @@ from pathlib import Path
 SCHEMA_VERSION = 3
 
 
+class DatabaseCompatibilityError(RuntimeError):
+    pass
+
+
 class Database:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -18,6 +22,9 @@ class Database:
         return connection
 
     def initialize(self) -> None:
+        if self.path.exists():
+            self._validate_existing_schema_version()
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
         with self.connect() as connection:
@@ -199,6 +206,43 @@ class Database:
                 """,
                 (str(SCHEMA_VERSION),),
             )
+
+    def _validate_existing_schema_version(self) -> None:
+        connection = sqlite3.connect(self.path)
+        connection.row_factory = sqlite3.Row
+        try:
+            app_meta_exists = connection.execute(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'app_meta'
+                """
+            ).fetchone()
+            if app_meta_exists is None:
+                return
+
+            row = connection.execute(
+                "SELECT value FROM app_meta WHERE key = 'schema_version'"
+            ).fetchone()
+            if row is None:
+                return
+
+            raw_value = str(row["value"] or "").strip()
+            try:
+                version = int(raw_value)
+            except ValueError as exc:
+                raise DatabaseCompatibilityError(
+                    f"Database memiliki schema_version tidak valid: {raw_value!r}."
+                ) from exc
+
+            if version > SCHEMA_VERSION:
+                raise DatabaseCompatibilityError(
+                    "Database dibuat oleh versi aplikasi yang lebih baru "
+                    f"(schema {version}); aplikasi ini hanya mendukung sampai "
+                    f"schema {SCHEMA_VERSION}."
+                )
+        finally:
+            connection.close()
 
     @staticmethod
     def _migrate_stem_status_v3(connection: sqlite3.Connection) -> None:
