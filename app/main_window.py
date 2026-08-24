@@ -88,9 +88,15 @@ class MainWindow(QMainWindow):
         if page_name not in self.pages:
             return
 
+        project = self.project_manager.current
+
         if page_name == "SCRIPT":
-            project = self.project_manager.current
             self.pages["SCRIPT"].set_database(
+                project.database if project is not None else None
+            )
+
+        elif page_name == "DIALOG":
+            self.pages["DIALOG"].set_database(
                 project.database if project is not None else None
             )
 
@@ -120,6 +126,8 @@ class MainWindow(QMainWindow):
             )
             return
 
+        self.pages["SCRIPT"].set_database(None)
+        self.pages["DIALOG"].set_database(None)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -155,6 +163,8 @@ class MainWindow(QMainWindow):
             )
             return
 
+        self.pages["SCRIPT"].set_database(None)
+        self.pages["DIALOG"].set_database(None)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -199,6 +209,8 @@ class MainWindow(QMainWindow):
                 f"Project ditutup, tetapi terjadi error saat save:\n{exc}",
             )
 
+        self.pages["SCRIPT"].set_database(None)
+        self.pages["DIALOG"].set_database(None)
         self.setWindowTitle("Script Manager")
         self.refresh_project_page()
         self.set_page("PROJECT")
@@ -318,6 +330,7 @@ class MainWindow(QMainWindow):
             return
 
         self.refresh_project_page()
+        self._refresh_current_data_page(project)
 
         QMessageBox.information(
             self,
@@ -329,6 +342,15 @@ class MainWindow(QMainWindow):
             f"{title} selesai — {report.scanned} file",
             5000,
         )
+
+    def _refresh_current_data_page(self, project) -> None:
+        current_page = self.page_stack.currentWidget()
+
+        if current_page is self.pages["SCRIPT"]:
+            self.pages["SCRIPT"].set_database(project.database)
+
+        elif current_page is self.pages["DIALOG"]:
+            self.pages["DIALOG"].set_database(project.database)
 
     def _show_source_sync_errors(
         self,
