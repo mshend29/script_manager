@@ -258,36 +258,49 @@ class CharacterTalentResolver:
         warnings: list[str] = []
         result: list[ResolvedCastMember] = []
 
-        provided_by_character = {
-            normalize_key(pair.character): pair.talent
-            for pair in row.cast_pairs
-            if normalize_key(pair.character)
-        }
+        provided_by_character: dict[str, list[str]] = defaultdict(list)
+        for pair in row.cast_pairs:
+            character_key = normalize_key(pair.character)
+            talent_key = normalize_key(pair.talent)
+            if not character_key or not talent_key:
+                continue
+
+            existing_keys = {
+                normalize_key(name)
+                for name in provided_by_character[character_key]
+            }
+            if talent_key not in existing_keys:
+                provided_by_character[character_key].append(pair.talent)
+
+        processed_characters: set[str] = set()
 
         for character_name in row.characters:
+            character_key = normalize_key(character_name)
+            if not character_key or character_key in processed_characters:
+                continue
+            processed_characters.add(character_key)
+
             character_id = self.ensure_character(
                 character_name,
                 timestamp=timestamp,
             )
 
             locked = self._get_locked_mapping(character_id)
-            provided_talent = provided_by_character.get(
-                normalize_key(character_name),
-                "",
-            )
+            provided_talents = provided_by_character.get(character_key, [])
 
             if locked is not None:
                 talent_id = int(locked["talent_id"])
                 talent_name = str(locked["name"])
+                locked_talent_key = str(locked["normalized_name"])
+                provided_keys = {
+                    normalize_key(name) for name in provided_talents
+                }
 
-                if (
-                    provided_talent
-                    and normalize_key(provided_talent)
-                    != str(locked["normalized_name"])
-                ):
+                if provided_keys and locked_talent_key not in provided_keys:
                     warnings.append(
                         f"Tokoh '{character_name}' menggunakan talent terkunci "
-                        f"'{talent_name}', bukan '{provided_talent}' dari posisi source."
+                        f"'{talent_name}', bukan "
+                        f"'{', '.join(provided_talents)}' dari source."
                     )
 
                 result.append(
@@ -301,20 +314,25 @@ class CharacterTalentResolver:
                 )
                 continue
 
-            if provided_talent:
-                talent_id = self.ensure_talent(
-                    provided_talent,
-                    timestamp=timestamp,
+            if provided_talents:
+                source_label = (
+                    "source-multi" if len(provided_talents) > 1 else "source-pair"
                 )
-                result.append(
-                    ResolvedCastMember(
-                        character_id=character_id,
-                        character_name=character_name,
-                        talent_id=talent_id,
-                        talent_name=provided_talent,
-                        source="source-pair",
+
+                for provided_talent in provided_talents:
+                    talent_id = self.ensure_talent(
+                        provided_talent,
+                        timestamp=timestamp,
                     )
-                )
+                    result.append(
+                        ResolvedCastMember(
+                            character_id=character_id,
+                            character_name=character_name,
+                            talent_id=talent_id,
+                            talent_name=provided_talent,
+                            source=source_label,
+                        )
+                    )
                 continue
 
             result.append(
