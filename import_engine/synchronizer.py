@@ -107,9 +107,11 @@ class DialogueSynchronizer:
             # -------------------------------------------------
 
             source_context: dict[str, tuple[int, int]] = {}
+            changed_episode_numbers: dict[int, int] = {}
 
             for item in scan.files:
                 existing = existing_by_path.get(item.file_path)
+                changed = False
 
                 if existing is None:
                     cursor = connection.execute(
@@ -210,6 +212,28 @@ class DialogueSynchronizer:
                     source_file_id,
                     episode_id,
                 )
+
+                if changed:
+                    changed_episode_numbers[episode_id] = item.episode_number
+
+            # A changed source invalidates downstream approval for that episode.
+            # Recording checkboxes remain untouched. REVISION is deliberately
+            # preserved because it already represents work that needs attention.
+            for episode_id, episode_number in changed_episode_numbers.items():
+                cursor = connection.execute(
+                    """
+                    DELETE FROM stem_status
+                    WHERE episode_id = ?
+                      AND status IN ('READY_TO_STEM', 'STEMMED', 'DELIVERED')
+                    """,
+                    (episode_id,),
+                )
+                invalidated = max(int(cursor.rowcount or 0), 0)
+                if invalidated:
+                    report.warnings.append(
+                        f"Episode {episode_number}: {invalidated} status tracking "
+                        "downstream direset karena source berubah."
+                    )
 
             # -------------------------------------------------
             # RESOLVER PREPARATION + AUTO-LOCK LEARNING
