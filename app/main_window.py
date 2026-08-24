@@ -103,6 +103,9 @@ class MainWindow(QMainWindow):
         elif page_name == "TRACKING":
             self.pages["TRACKING"].set_database(database)
 
+        elif page_name == "DATA":
+            self.pages["DATA"].set_database(database)
+
         self.page_stack.setCurrentWidget(self.pages[page_name])
         self.statusBar().showMessage(f"{page_name.title()} page")
 
@@ -220,6 +223,7 @@ class MainWindow(QMainWindow):
         self.pages["SCRIPT"].set_database(None)
         self.pages["DIALOG"].set_database(None)
         self.pages["TRACKING"].set_database(None)
+        self.pages["DATA"].set_database(None)
 
     def open_project_settings(self) -> None:
         project = self.project_manager.current
@@ -360,6 +364,9 @@ class MainWindow(QMainWindow):
         elif current_page is self.pages["TRACKING"]:
             self.pages["TRACKING"].set_database(project.database)
 
+        elif current_page is self.pages["DATA"]:
+            self.pages["DATA"].set_database(project.database)
+
     def _show_source_sync_errors(
         self,
         title: str,
@@ -452,6 +459,117 @@ class MainWindow(QMainWindow):
         )
 
     # ------------------------------------------------------------------
+    # DATA ADMIN
+    # ------------------------------------------------------------------
+
+    def show_data_section(self, section: str) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Data",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        self.pages["DATA"].set_database(project.database)
+        self.pages["DATA"].show_section(section)
+
+    def validate_data(self) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Validate Database",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        page = self.pages["DATA"]
+        page.set_database(project.database)
+        try:
+            issues = page.run_validation()
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Validate Database",
+                f"Validation gagal.\n\n{exc}",
+            )
+            return
+
+        errors = sum(1 for issue in issues if issue.severity == "ERROR")
+        warnings = sum(1 for issue in issues if issue.severity == "WARNING")
+        if issues:
+            QMessageBox.warning(
+                self,
+                "Validate Database",
+                f"Validation selesai: {errors} error, {warnings} warning.",
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Validate Database",
+                "Validation passed. Tidak ada issue.",
+            )
+
+    def backup_database(self) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Backup Database",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        page = self.pages["DATA"]
+        page.set_database(project.database)
+        try:
+            backup_path = page.backup_database()
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Backup Database",
+                f"Backup gagal.\n\n{exc}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Backup Database",
+            f"Backup tersimpan:\n{backup_path}",
+        )
+
+    def rebuild_data_indexes(self) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Rebuild Index",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        page = self.pages["DATA"]
+        page.set_database(project.database)
+        try:
+            page.rebuild_indexes()
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Rebuild Index",
+                f"Rebuild index gagal.\n\n{exc}",
+            )
+            return
+
+        self.statusBar().showMessage("Database indexes rebuilt", 3000)
+        QMessageBox.information(
+            self,
+            "Rebuild Index",
+            "SQLite REINDEX + ANALYZE selesai. Data tidak dihapus.",
+        )
+
+    # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
 
@@ -466,6 +584,12 @@ class MainWindow(QMainWindow):
             "source.import": self.import_source,
             "source.refresh": self.refresh_source,
             "data.refresh": self.refresh_source,
+            "data.rebuild": self.rebuild_data_indexes,
+            "data.characters": lambda: self.show_data_section("characters"),
+            "data.talents": lambda: self.show_data_section("talents"),
+            "data.cast": lambda: self.show_data_section("cast"),
+            "data.validate": self.validate_data,
+            "data.backup": self.backup_database,
             "dialog.check_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(True)
             ),
