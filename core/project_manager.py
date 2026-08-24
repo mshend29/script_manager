@@ -4,7 +4,12 @@ import shutil
 from pathlib import Path
 
 from core.database import DatabaseCompatibilityError
-from core.project import DATABASE_FILE_NAME, PROJECT_FILE_NAME, Project
+from core.project import (
+    DATABASE_FILE_NAME,
+    PROJECT_FILE_NAME,
+    Project,
+    ProjectFormatError,
+)
 from core.project_settings import ProjectSettings
 
 
@@ -72,7 +77,10 @@ class ProjectManager:
         return project
 
     def open(self, path: str | Path) -> Project:
-        project = Project.load(path)
+        try:
+            project = Project.load(path)
+        except ProjectFormatError as exc:
+            raise ProjectError(str(exc)) from exc
 
         try:
             if not project.database_file.exists():
