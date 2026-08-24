@@ -33,6 +33,61 @@ def _called_names(function: ast.FunctionDef) -> set[str]:
     return result
 
 
+def _worker_connect_call(
+    function: ast.FunctionDef,
+    signal_name: str,
+) -> ast.Call:
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "connect":
+            continue
+        signal = node.func.value
+        if (
+            isinstance(signal, ast.Attribute)
+            and signal.attr == signal_name
+            and isinstance(signal.value, ast.Name)
+            and signal.value.id == "worker"
+        ):
+            return node
+    raise AssertionError(f"worker.{signal_name}.connect(...) not found")
+
+
+def _is_self_method(node: ast.AST, method_name: str) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == method_name
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    )
+
+
+def _is_queued_connection(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "QueuedConnection"
+        and isinstance(node.value, ast.Attribute)
+        and node.value.attr == "ConnectionType"
+        and isinstance(node.value.value, ast.Name)
+        and node.value.value.id == "Qt"
+    )
+
+
+def _has_slot_object_decorator(function: ast.FunctionDef) -> bool:
+    for decorator in function.decorator_list:
+        if not isinstance(decorator, ast.Call):
+            continue
+        if not isinstance(decorator.func, ast.Name) or decorator.func.id != "Slot":
+            continue
+        if (
+            len(decorator.args) == 1
+            and isinstance(decorator.args[0], ast.Name)
+            and decorator.args[0].id == "object"
+        ):
+            return True
+    return False
+
+
 def test_source_sync_engine_runs_in_worker_not_main_window():
     main_run = _method(
         ROOT / "app" / "main_window.py",
@@ -62,6 +117,34 @@ def test_main_window_starts_worker_on_qthread():
     assert {"QThread", "SourceSyncWorker"} <= _called_names(main_run)
     attributes = _called_attributes(main_run)
     assert {"moveToThread", "start", "connect"} <= attributes
+
+
+def test_worker_results_are_queued_to_main_window_slots_not_lambdas():
+    main_path = ROOT / "app" / "main_window.py"
+    main_run = _method(main_path, "MainWindow", "_run_source_sync")
+
+    completed = _worker_connect_call(main_run, "completed")
+    failed = _worker_connect_call(main_run, "failed")
+
+    assert len(completed.args) >= 2
+    assert len(failed.args) >= 2
+
+    assert _is_self_method(completed.args[0], "_source_sync_completed")
+    assert _is_self_method(failed.args[0], "_source_sync_failed")
+    assert not isinstance(completed.args[0], ast.Lambda)
+    assert not isinstance(failed.args[0], ast.Lambda)
+
+    assert _is_queued_connection(completed.args[1])
+    assert _is_queued_connection(failed.args[1])
+
+
+def test_source_sync_result_handlers_are_qt_object_slots():
+    main_path = ROOT / "app" / "main_window.py"
+    completed = _method(main_path, "MainWindow", "_source_sync_completed")
+    failed = _method(main_path, "MainWindow", "_source_sync_failed")
+
+    assert _has_slot_object_decorator(completed)
+    assert _has_slot_object_decorator(failed)
 
 
 def test_project_close_is_guarded_while_source_sync_runs():
