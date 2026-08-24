@@ -203,45 +203,32 @@ class DataService:
                 SELECT
                     d.id AS dialogue_id,
                     e.episode_number,
-                    c.id AS character_id,
-                    c.name AS character_name,
+                    dc.character_id,
+                    CASE
+                        WHEN dc.id IS NULL THEN '⚠ Missing Character'
+                        ELSE c.name
+                    END AS character_name,
                     d.dialog_text,
-                    COALESCE(sf.file_name, '') AS source_file_name,
-                    d.source_row,
-                    dc.position
-                FROM dialog_cast AS dc
-                JOIN dialogues AS d ON d.id = dc.dialogue_id
-                JOIN episodes AS e ON e.id = d.episode_id
-                JOIN characters AS c ON c.id = dc.character_id
-                LEFT JOIN source_files AS sf ON sf.id = d.source_file_id
-                WHERE d.is_active = 1
-                  AND e.is_active = 1
-                  AND c.is_active = 1
-                  AND dc.talent_id IS NULL
-
-                UNION ALL
-
-                SELECT
-                    d.id AS dialogue_id,
-                    e.episode_number,
-                    NULL AS character_id,
-                    '⚠ Missing Character' AS character_name,
-                    d.dialog_text,
-                    COALESCE(sf.file_name, '') AS source_file_name,
-                    d.source_row,
-                    0 AS position
+                    COALESCE(sf.file_name, '') AS source_file_name
                 FROM dialogues AS d
                 JOIN episodes AS e ON e.id = d.episode_id
+                LEFT JOIN dialog_cast AS dc ON dc.dialogue_id = d.id
+                LEFT JOIN characters AS c ON c.id = dc.character_id
                 LEFT JOIN source_files AS sf ON sf.id = d.source_file_id
                 WHERE d.is_active = 1
                   AND e.is_active = 1
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM dialog_cast AS dc
-                      WHERE dc.dialogue_id = d.id
+                  AND (
+                      dc.id IS NULL
+                      OR (
+                          dc.talent_id IS NULL
+                          AND c.is_active = 1
+                      )
                   )
-
-                ORDER BY episode_number, source_row, dialogue_id, position
+                ORDER BY
+                    e.episode_number,
+                    d.source_row,
+                    d.id,
+                    COALESCE(dc.position, 0)
                 """
             ).fetchall()
 
