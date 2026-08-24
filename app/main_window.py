@@ -88,6 +88,12 @@ class MainWindow(QMainWindow):
         if page_name not in self.pages:
             return
 
+        if page_name == "SCRIPT":
+            project = self.project_manager.current
+            self.pages["SCRIPT"].set_database(
+                project.database if project is not None else None
+            )
+
         self.page_stack.setCurrentWidget(self.pages[page_name])
         self.statusBar().showMessage(f"{page_name.title()} page")
 
