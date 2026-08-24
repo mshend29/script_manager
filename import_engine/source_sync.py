@@ -11,6 +11,11 @@ from import_engine.inspector import (
     WorkbookInspectionError,
     WorkbookInspector,
 )
+from import_engine.parser import (
+    ScriptParseError,
+    ScriptParseResult,
+    ScriptParser,
+)
 from import_engine.scanner import (
     ScannedSourceFile,
     SourceScanner,
@@ -26,6 +31,8 @@ class SourceSyncError(RuntimeError):
 class SourceSyncReport:
     scanned: int = 0
     inspected: int = 0
+    parsed_files: int = 0
+    parsed_dialogues: int = 0
 
     added: int = 0
     changed: int = 0
@@ -43,6 +50,7 @@ class SourceSyncReport:
     changed_files: list[ScannedSourceFile] = field(default_factory=list)
 
     inspections: dict[str, WorkbookInspection] = field(default_factory=dict)
+    parse_results: dict[str, ScriptParseResult] = field(default_factory=dict)
 
     synced_at: str = ""
 
@@ -58,6 +66,8 @@ class SourceSyncReport:
         return (
             f"Scanned: {self.scanned}\n"
             f"Inspected: {self.inspected}\n"
+            f"Parsed Files: {self.parsed_files}\n"
+            f"Parsed Dialogues: {self.parsed_dialogues}\n"
             f"New: {self.added}\n"
             f"Changed: {self.changed}\n"
             f"Unchanged: {self.unchanged}\n"
@@ -70,9 +80,11 @@ class SourceSyncEngine:
         self,
         scanner: SourceScanner | None = None,
         inspector: WorkbookInspector | None = None,
+        parser: ScriptParser | None = None,
     ) -> None:
         self.scanner = scanner or SourceScanner()
         self.inspector = inspector or WorkbookInspector()
+        self.parser = parser or ScriptParser()
 
     # =========================================================
     # SYNCHRONIZE
@@ -121,6 +133,13 @@ class SourceSyncEngine:
 
         # Inspector error must not advance source metadata/fingerprint.
         # That way the next Refresh can try the same file again.
+        if report.has_errors:
+            return report
+
+        self._parse_files(report)
+
+        # Parser errors use the same transaction boundary as Inspector errors:
+        # source metadata remains untouched until every New/Changed file can be read.
         if report.has_errors:
             return report
 
@@ -198,6 +217,25 @@ class SourceSyncEngine:
 
             report.inspected += 1
             report.inspections[item.file_path] = inspection
+
+    # =========================================================
+    # PARSE ONLY NEW / CHANGED WORKBOOKS
+    # =========================================================
+
+    def _parse_files(self, report: SourceSyncReport) -> None:
+        for item in report.files_to_process:
+            try:
+                parse_result = self.parser.parse(
+                    item.file_path,
+                    episode_number=item.episode_number,
+                )
+            except ScriptParseError as exc:
+                report.problems.append(f"{item.file_name}: {exc}")
+                continue
+
+            report.parsed_files += 1
+            report.parsed_dialogues += parse_result.dialogue_count
+            report.parse_results[item.file_path] = parse_result
 
     # =========================================================
     # LAST REFRESH
