@@ -34,8 +34,9 @@ def clean_text(value: object) -> str:
 
 
 def normalize_key(value: object) -> str:
-    """Case-insensitive normalized key for names and lookups."""
-    text = clean_text(value)
+    """Case-insensitive normalized key for character/talent lookups."""
+    text = clean_text(value).strip()
+    text = re.sub(rf"^[{re.escape(_DASHES)}•·]+\s*", "", text)
     text = text.translate(str.maketrans({dash: "-" for dash in _DASHES}))
     text = _WHITESPACE_PATTERN.sub(" ", text).strip()
     return text.casefold()
