@@ -308,6 +308,22 @@ class DataService:
             if talent is None:
                 raise ValueError("Talent tidak ditemukan atau sudah inactive.")
 
+            affected_cast = connection.execute(
+                """
+                SELECT
+                    dc.dialogue_id,
+                    d.episode_id,
+                    MIN(dc.position) AS position
+                FROM dialog_cast AS dc
+                JOIN dialogues AS d ON d.id = dc.dialogue_id
+                WHERE dc.character_id = ?
+                  AND d.is_active = 1
+                GROUP BY dc.dialogue_id, d.episode_id
+                ORDER BY dc.dialogue_id
+                """,
+                (character_id,),
+            ).fetchall()
+
             connection.execute(
                 """
                 UPDATE character_talent
@@ -348,19 +364,53 @@ class DataService:
                     (character_id, talent_id, now, now),
                 )
 
-            # A manual lock is authoritative for the active cast.  This makes
-            # SCRIPT, DIALOG and TRACKING consistent immediately.
+            # A manual lock is authoritative. Some crowd/group source rows can
+            # legitimately contain multiple talent links for one character.
+            # Rebuild those links per dialogue instead of UPDATE-ing them into
+            # duplicate UNIQUE(dialogue_id, character_id, talent_id) keys.
             connection.execute(
                 """
-                UPDATE dialog_cast
-                SET talent_id = ?
+                DELETE FROM dialog_cast
                 WHERE character_id = ?
                   AND dialogue_id IN (
                       SELECT id FROM dialogues WHERE is_active = 1
                   )
                 """,
-                (talent_id, character_id),
+                (character_id,),
             )
+
+            connection.executemany(
+                """
+                INSERT INTO dialog_cast(
+                    dialogue_id,
+                    character_id,
+                    talent_id,
+                    position
+                )
+                VALUES(?, ?, ?, ?)
+                """,
+                [
+                    (
+                        int(row["dialogue_id"]),
+                        int(character_id),
+                        int(talent_id),
+                        int(row["position"] or 0),
+                    )
+                    for row in affected_cast
+                ],
+            )
+
+            episode_ids = sorted({int(row["episode_id"]) for row in affected_cast})
+            if episode_ids:
+                placeholders = ",".join("?" for _ in episode_ids)
+                connection.execute(
+                    f"""
+                    DELETE FROM stem_status
+                    WHERE character_id = ?
+                      AND episode_id IN ({placeholders})
+                    """,
+                    (int(character_id), *episode_ids),
+                )
 
     def unlock_mapping(self, character_id: int) -> None:
         now = datetime.now().isoformat(timespec="seconds")
