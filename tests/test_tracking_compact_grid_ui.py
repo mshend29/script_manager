@@ -50,20 +50,31 @@ def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_col
     assert "status_item.setForeground" in source
 
 
-def test_tracking_detail_and_status_controls_live_in_ribbon_and_autosave():
+def test_tracking_detail_uses_full_width_colored_style_picker_and_autosave():
     ribbon = _read("app/ribbon.py")
     tracking = _read("pages/tracking_page.py")
 
     assert "class TrackingDetailGroup" in ribbon
-    assert 'QLabel("Ubah status:")' in ribbon
-    assert 'self.status_combo.addItem("Auto (Recording Status)"' in ribbon
-    assert 'self.status_combo.addItem("Ready to Stem"' in ribbon
-    assert 'self.status_combo.addItem("Stemmed"' in ribbon
-    assert 'self.status_combo.addItem("Delivered"' in ribbon
-    assert 'self.status_combo.addItem("Revision"' in ribbon
-    assert "self.status_change_requested.emit(str(status))" in ribbon
+    assert 'picker_title = QLabel("Ubah\\nStatus")' in ribbon
+    assert "QGridLayout()" in ribbon
+    assert "QComboBox" not in ribbon
+    assert "status_palette(status)" in ribbon
+    assert "self._set_status_card(chip.display_status)" in ribbon
+    assert "self.status_change_requested.emit(str(requested))" in ribbon
     assert "tracking_status_change_requested" in ribbon
     assert "set_tracking_detail" in ribbon
+
+    # TRACKING gets a dedicated vertical ribbon page so the detail strip spans
+    # the available application width under the normal action row.
+    assert 'if tab_name == "TRACKING":' in ribbon
+    assert "root = QVBoxLayout(page)" in ribbon
+    assert "root.addWidget(self.tracking_detail_group)" in ribbon
+
+    # Recording-derived statuses stay automatic; the actual recording status
+    # button is the way to reset downstream state back to Auto.
+    assert "if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:" in ribbon
+    assert "requested = NOT_READY" in ribbon
+    assert "status == chip.recording_status" in ribbon
 
     assert "TrackingEpisodeDialog" not in tracking
     assert "dialog.exec()" not in tracking

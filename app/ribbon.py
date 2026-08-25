@@ -1,11 +1,12 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
-    QComboBox,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -13,13 +14,16 @@ from PySide6.QtWidgets import (
 
 from services.tracking_service import (
     DELIVERED,
+    IN_PROGRESS,
     NOT_READY,
+    NOT_STARTED,
     READY_TO_STEM,
     RECORDED,
     REVISION,
     STATUS_LABELS,
     STEMMED,
 )
+from widgets.episode_chip import status_palette
 
 
 class RibbonGroup(QFrame):
@@ -54,51 +58,185 @@ class RibbonGroup(QFrame):
 class TrackingDetailGroup(QFrame):
     status_change_requested = Signal(str)
 
+    STATUS_BUTTON_ORDER = (
+        NOT_STARTED,
+        IN_PROGRESS,
+        RECORDED,
+        READY_TO_STEM,
+        STEMMED,
+        DELIVERED,
+        REVISION,
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("RibbonGroup")
+        self.setObjectName("TrackingDetailGroup")
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
         self._loading = False
         self._chip = None
+        self._status_buttons: dict[str, QPushButton] = {}
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 5, 10, 4)
-        root.setSpacing(2)
+        root.setContentsMargins(8, 4, 8, 3)
+        root.setSpacing(3)
 
-        top = QHBoxLayout()
-        top.setSpacing(10)
-        self.identity_label = QLabel("Klik nomor episode untuk melihat detail")
-        self.identity_label.setStyleSheet("font-weight: 600;")
-        self.progress_label = QLabel("")
-        top.addWidget(self.identity_label)
-        top.addWidget(self.progress_label)
-        top.addStretch(1)
-        root.addLayout(top)
+        body = QHBoxLayout()
+        body.setSpacing(10)
 
-        controls = QHBoxLayout()
-        controls.setSpacing(7)
-        self.current_status_label = QLabel("Status: -")
-        controls.addWidget(self.current_status_label)
-        controls.addWidget(QLabel("Ubah status:"))
+        episode_card, self.episode_caption, self.character_value = self._make_card(
+            "Episode -",
+            "Pilih episode",
+        )
+        dialogue_card, self.dialogue_caption, self.dialogue_value = self._make_card(
+            "Dialog",
+            "0/0",
+        )
+        status_card, self.status_caption, self.status_value = self._make_card(
+            "Status",
+            "-",
+        )
+        self.status_card = status_card
 
-        self.status_combo = QComboBox()
-        self.status_combo.setMinimumWidth(170)
-        self.status_combo.addItem("Auto (Recording Status)", NOT_READY)
-        self.status_combo.addItem("Ready to Stem", READY_TO_STEM)
-        self.status_combo.addItem("Stemmed", STEMMED)
-        self.status_combo.addItem("Delivered", DELIVERED)
-        self.status_combo.addItem("Revision", REVISION)
-        self.status_combo.setEnabled(False)
-        controls.addWidget(self.status_combo)
-        controls.addStretch(1)
-        root.addLayout(controls)
+        body.addWidget(episode_card, 2)
+        body.addWidget(dialogue_card, 2)
+        body.addWidget(status_card, 2)
+
+        picker = QFrame()
+        picker.setObjectName("TrackingStatusPicker")
+        picker.setStyleSheet(
+            "QFrame#TrackingStatusPicker {"
+            "background: #ffffff; border: 1px solid #c8cdd1; "
+            "border-radius: 9px;"
+            "}"
+        )
+        picker_layout = QHBoxLayout(picker)
+        picker_layout.setContentsMargins(10, 6, 10, 6)
+        picker_layout.setSpacing(10)
+
+        picker_title = QLabel("Ubah\nStatus")
+        picker_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        picker_title.setStyleSheet("font-weight: 700; font-size: 11pt;")
+        picker_layout.addWidget(picker_title)
+
+        button_grid = QGridLayout()
+        button_grid.setContentsMargins(0, 0, 0, 0)
+        button_grid.setHorizontalSpacing(8)
+        button_grid.setVerticalSpacing(6)
+
+        self.status_button_group = QButtonGroup(self)
+        self.status_button_group.setExclusive(True)
+
+        for index, status in enumerate(self.STATUS_BUTTON_ORDER):
+            button = QPushButton(STATUS_LABELS[status])
+            button.setCheckable(True)
+            button.setMinimumWidth(105)
+            button.setMinimumHeight(30)
+            button.setToolTip(self._status_tooltip(status))
+            self._apply_status_button_style(button, status)
+            button.clicked.connect(
+                lambda checked=False, value=status:
+                    self._status_button_clicked(value)
+            )
+            self.status_button_group.addButton(button)
+            self._status_buttons[status] = button
+            button_grid.addWidget(button, index // 4, index % 4)
+
+        picker_layout.addLayout(button_grid, 1)
+        body.addWidget(picker, 6)
+        root.addLayout(body)
 
         title_label = QLabel("Episode Detail")
         title_label.setObjectName("RibbonGroupTitle")
         title_label.setAlignment(Qt.AlignCenter)
         root.addWidget(title_label)
 
-        self.status_combo.currentIndexChanged.connect(
-            self._status_changed
+        self.set_chip(None)
+
+    @staticmethod
+    def _make_card(caption: str, value: str):
+        frame = QFrame()
+        frame.setObjectName("TrackingDetailCard")
+        frame.setStyleSheet(
+            "QFrame#TrackingDetailCard {"
+            "background: #ffffff; border: 1px solid #c8cdd1; "
+            "border-radius: 9px;"
+            "}"
+        )
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(1)
+
+        caption_label = QLabel(caption)
+        caption_label.setAlignment(Qt.AlignCenter)
+        caption_label.setStyleSheet("font-weight: 650;")
+
+        value_label = QLabel(value)
+        value_label.setAlignment(Qt.AlignCenter)
+        value_label.setStyleSheet("font-size: 14pt; font-weight: 700;")
+
+        layout.addWidget(caption_label)
+        layout.addWidget(value_label, 1)
+        return frame, caption_label, value_label
+
+    @staticmethod
+    def _status_tooltip(status: str) -> str:
+        if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:
+            return (
+                "Status recording bersifat otomatis dari checkbox DIALOG. "
+                "Status recording yang sedang aktual dapat dipilih untuk kembali ke mode Auto."
+            )
+        return "Pilih untuk menyimpan status tracking secara otomatis."
+
+    @staticmethod
+    def _apply_status_button_style(button: QPushButton, status: str) -> None:
+        background, foreground, border = status_palette(status)
+        button.setStyleSheet(
+            "QPushButton {"
+            f"background: {background}; color: {foreground}; "
+            f"border: 1px solid {border}; border-radius: 5px; "
+            "padding: 4px 9px; font-weight: 650;"
+            "}"
+            "QPushButton:hover {"
+            f"border: 2px solid {border};"
+            "}"
+            "QPushButton:checked {"
+            "border: 3px solid #202124; font-weight: 800;"
+            "}"
+            "QPushButton:disabled {"
+            f"background: {background}; color: {foreground}; "
+            "border: 1px dashed #b7bcc1;"
+            "}"
+        )
+
+    def _set_status_card(self, status: str | None) -> None:
+        if not status:
+            self.status_card.setStyleSheet(
+                "QFrame#TrackingDetailCard {"
+                "background: #ffffff; border: 1px solid #c8cdd1; "
+                "border-radius: 9px;"
+                "}"
+            )
+            self.status_caption.setStyleSheet("font-weight: 650;")
+            self.status_value.setStyleSheet(
+                "font-size: 14pt; font-weight: 700;"
+            )
+            return
+
+        background, foreground, border = status_palette(status)
+        self.status_card.setStyleSheet(
+            "QFrame#TrackingDetailCard {"
+            f"background: {background}; border: 1px solid {border}; "
+            "border-radius: 9px;"
+            "}"
+        )
+        self.status_caption.setStyleSheet(
+            f"font-weight: 650; color: {foreground};"
+        )
+        self.status_value.setStyleSheet(
+            f"font-size: 14pt; font-weight: 800; color: {foreground};"
         )
 
     def set_chip(self, chip) -> None:
@@ -106,73 +244,63 @@ class TrackingDetailGroup(QFrame):
         try:
             self._chip = chip
             if chip is None:
-                self.identity_label.setText(
-                    "Klik nomor episode untuk melihat detail"
-                )
-                self.progress_label.clear()
-                self.current_status_label.setText("Status: -")
-                self.status_combo.setCurrentIndex(0)
-                self.status_combo.setEnabled(False)
-                self._set_downstream_options_enabled(False)
+                self.episode_caption.setText("Episode -")
+                self.character_value.setText("Pilih episode")
+                self.dialogue_value.setText("0/0")
+                self.status_value.setText("-")
+                self._set_status_card(None)
+                self._clear_checked_status()
+                for button in self._status_buttons.values():
+                    button.setEnabled(False)
                 return
 
-            self.identity_label.setText(
-                f"Episode {chip.episode_number} • "
-                f"{chip.character_name} • {chip.talent_name}"
+            self.episode_caption.setText(f"Episode {chip.episode_number}")
+            self.character_value.setText(chip.character_name)
+            self.dialogue_value.setText(
+                f"{chip.recorded_dialogues}/{chip.total_dialogues}"
             )
-            self.progress_label.setText(
-                f"Dialog {chip.recorded_dialogues}/{chip.total_dialogues}"
+            self.status_value.setText(
+                STATUS_LABELS.get(chip.display_status, chip.display_status)
             )
-            self.current_status_label.setText(
-                f"Status: {STATUS_LABELS.get(chip.display_status, chip.display_status)}"
-            )
+            self._set_status_card(chip.display_status)
 
             recording_complete = chip.recording_status == RECORDED
-            self._set_downstream_options_enabled(recording_complete)
-            self.status_combo.setEnabled(True)
+            for status, button in self._status_buttons.items():
+                if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:
+                    button.setEnabled(status == chip.recording_status)
+                elif status in {READY_TO_STEM, STEMMED, DELIVERED}:
+                    button.setEnabled(recording_complete)
+                else:
+                    button.setEnabled(True)
 
-            downstream = chip.downstream_status
-            if downstream not in {
-                READY_TO_STEM,
-                STEMMED,
-                DELIVERED,
-                REVISION,
-            }:
-                downstream = NOT_READY
-
-            index = self.status_combo.findData(downstream)
-            self.status_combo.setCurrentIndex(index if index >= 0 else 0)
+            self._clear_checked_status()
+            current_button = self._status_buttons.get(chip.display_status)
+            if current_button is not None:
+                current_button.setChecked(True)
         finally:
             self._loading = False
 
-    def _set_downstream_options_enabled(self, recording_complete: bool) -> None:
-        model = self.status_combo.model()
-        for status in (READY_TO_STEM, STEMMED, DELIVERED):
-            index = self.status_combo.findData(status)
-            if index < 0:
-                continue
-            item = model.item(index)
-            if item is not None:
-                item.setEnabled(recording_complete)
+    def _clear_checked_status(self) -> None:
+        exclusive = self.status_button_group.exclusive()
+        self.status_button_group.setExclusive(False)
+        try:
+            for button in self._status_buttons.values():
+                button.setChecked(False)
+        finally:
+            self.status_button_group.setExclusive(exclusive)
 
-        revision_index = self.status_combo.findData(REVISION)
-        if revision_index >= 0:
-            item = model.item(revision_index)
-            if item is not None:
-                item.setEnabled(True)
-
-        auto_index = self.status_combo.findData(NOT_READY)
-        if auto_index >= 0:
-            item = model.item(auto_index)
-            if item is not None:
-                item.setEnabled(True)
-
-    def _status_changed(self) -> None:
+    def _status_button_clicked(self, status: str) -> None:
         if self._loading or self._chip is None:
             return
-        status = self.status_combo.currentData()
-        if status:
-            self.status_change_requested.emit(str(status))
+
+        if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:
+            if status != self._chip.recording_status:
+                return
+            requested = NOT_READY
+        else:
+            requested = status
+
+        self.status_change_requested.emit(str(requested))
 
 
 class Ribbon(QWidget):
@@ -281,6 +409,28 @@ class Ribbon(QWidget):
 
     def _create_ribbon_page(self, tab_name):
         page = QWidget()
+
+        if tab_name == "TRACKING":
+            root = QVBoxLayout(page)
+            root.setContentsMargins(4, 2, 4, 2)
+            root.setSpacing(3)
+
+            action_row = QHBoxLayout()
+            action_row.setSpacing(0)
+            for group_title, actions in self.TAB_GROUPS[tab_name]:
+                group = RibbonGroup(group_title, actions)
+                group.action_triggered.connect(self.action_triggered)
+                action_row.addWidget(group)
+            action_row.addStretch(1)
+            root.addLayout(action_row)
+
+            self.tracking_detail_group = TrackingDetailGroup()
+            self.tracking_detail_group.status_change_requested.connect(
+                self.tracking_status_change_requested
+            )
+            root.addWidget(self.tracking_detail_group)
+            return page
+
         row = QHBoxLayout(page)
         row.setContentsMargins(4, 2, 4, 2)
         row.setSpacing(0)
@@ -288,14 +438,6 @@ class Ribbon(QWidget):
             group = RibbonGroup(group_title, actions)
             group.action_triggered.connect(self.action_triggered)
             row.addWidget(group)
-
-        if tab_name == "TRACKING":
-            self.tracking_detail_group = TrackingDetailGroup()
-            self.tracking_detail_group.status_change_requested.connect(
-                self.tracking_status_change_requested
-            )
-            row.addWidget(self.tracking_detail_group, 1)
-
         row.addStretch(1)
         return page
 
