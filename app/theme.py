@@ -58,7 +58,26 @@ QHeaderView::section {
     padding: 7px; font-weight: 600;
 }
 QStatusBar {
-    background: #f3f3f3; color: #4d5156;
-    border-top: 1px solid #d8d8d8;
+    background: #eef6f1; color: #234c35;
+    border-top: 1px solid #b8d5c2;
+    min-height: 34px;
+    font-weight: 600;
+}
+QStatusBar QLabel {
+    color: #234c35;
+    padding: 2px 6px;
+}
+QProgressBar {
+    background: #ffffff;
+    border: 1px solid #8ab79a;
+    border-radius: 6px;
+    min-height: 20px;
+    text-align: center;
+    color: #173d28;
+    font-weight: 700;
+}
+QProgressBar::chunk {
+    background: #217346;
+    border-radius: 5px;
 }
 """
