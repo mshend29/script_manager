@@ -71,6 +71,7 @@ class TrackingDetailGroup(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("TrackingDetailGroup")
+        self.setMinimumWidth(0)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred,
@@ -80,11 +81,11 @@ class TrackingDetailGroup(QFrame):
         self._status_buttons: dict[str, QPushButton] = {}
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(8, 4, 8, 3)
-        root.setSpacing(3)
+        root.setContentsMargins(6, 3, 6, 3)
+        root.setSpacing(2)
 
         body = QHBoxLayout()
-        body.setSpacing(10)
+        body.setSpacing(6)
 
         episode_card, self.episode_caption, self.character_value = self._make_card(
             "Episode -",
@@ -106,6 +107,11 @@ class TrackingDetailGroup(QFrame):
 
         picker = QFrame()
         picker.setObjectName("TrackingStatusPicker")
+        picker.setMinimumWidth(0)
+        picker.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
         picker.setStyleSheet(
             "QFrame#TrackingStatusPicker {"
             "background: #ffffff; border: 1px solid #c8cdd1; "
@@ -113,18 +119,22 @@ class TrackingDetailGroup(QFrame):
             "}"
         )
         picker_layout = QHBoxLayout(picker)
-        picker_layout.setContentsMargins(10, 6, 10, 6)
-        picker_layout.setSpacing(10)
+        picker_layout.setContentsMargins(8, 5, 8, 5)
+        picker_layout.setSpacing(7)
 
         picker_title = QLabel("Ubah\nStatus")
         picker_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        picker_title.setStyleSheet("font-weight: 700; font-size: 11pt;")
+        picker_title.setMinimumWidth(48)
+        picker_title.setMaximumWidth(62)
+        picker_title.setStyleSheet("font-weight: 700; font-size: 10pt;")
         picker_layout.addWidget(picker_title)
 
         button_grid = QGridLayout()
         button_grid.setContentsMargins(0, 0, 0, 0)
-        button_grid.setHorizontalSpacing(8)
-        button_grid.setVerticalSpacing(6)
+        button_grid.setHorizontalSpacing(6)
+        button_grid.setVerticalSpacing(5)
+        for column in range(4):
+            button_grid.setColumnStretch(column, 1)
 
         self.status_button_group = QButtonGroup(self)
         self.status_button_group.setExclusive(True)
@@ -132,8 +142,12 @@ class TrackingDetailGroup(QFrame):
         for index, status in enumerate(self.STATUS_BUTTON_ORDER):
             button = QPushButton(STATUS_LABELS[status])
             button.setCheckable(True)
-            button.setMinimumWidth(105)
-            button.setMinimumHeight(30)
+            button.setMinimumWidth(78)
+            button.setMinimumHeight(28)
+            button.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
             button.setToolTip(self._status_tooltip(status))
             self._apply_status_button_style(button, status)
             button.clicked.connect(
@@ -145,7 +159,7 @@ class TrackingDetailGroup(QFrame):
             button_grid.addWidget(button, index // 4, index % 4)
 
         picker_layout.addLayout(button_grid, 1)
-        body.addWidget(picker, 6)
+        body.addWidget(picker, 7)
         root.addLayout(body)
 
         title_label = QLabel("Episode Detail")
@@ -159,6 +173,11 @@ class TrackingDetailGroup(QFrame):
     def _make_card(caption: str, value: str):
         frame = QFrame()
         frame.setObjectName("TrackingDetailCard")
+        frame.setMinimumWidth(92)
+        frame.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
         frame.setStyleSheet(
             "QFrame#TrackingDetailCard {"
             "background: #ffffff; border: 1px solid #c8cdd1; "
@@ -166,16 +185,26 @@ class TrackingDetailGroup(QFrame):
             "}"
         )
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setContentsMargins(8, 5, 8, 5)
         layout.setSpacing(1)
 
         caption_label = QLabel(caption)
         caption_label.setAlignment(Qt.AlignCenter)
+        caption_label.setMinimumWidth(0)
+        caption_label.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
         caption_label.setStyleSheet("font-weight: 650;")
 
         value_label = QLabel(value)
         value_label.setAlignment(Qt.AlignCenter)
-        value_label.setStyleSheet("font-size: 14pt; font-weight: 700;")
+        value_label.setMinimumWidth(0)
+        value_label.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
+        value_label.setStyleSheet("font-size: 12pt; font-weight: 700;")
 
         layout.addWidget(caption_label)
         layout.addWidget(value_label, 1)
@@ -197,7 +226,7 @@ class TrackingDetailGroup(QFrame):
             "QPushButton {"
             f"background: {background}; color: {foreground}; "
             f"border: 1px solid {border}; border-radius: 5px; "
-            "padding: 4px 9px; font-weight: 650;"
+            "padding: 3px 6px; font-weight: 650;"
             "}"
             "QPushButton:hover {"
             f"border: 2px solid {border};"
@@ -221,7 +250,7 @@ class TrackingDetailGroup(QFrame):
             )
             self.status_caption.setStyleSheet("font-weight: 650;")
             self.status_value.setStyleSheet(
-                "font-size: 14pt; font-weight: 700;"
+                "font-size: 12pt; font-weight: 700;"
             )
             return
 
@@ -236,7 +265,7 @@ class TrackingDetailGroup(QFrame):
             f"font-weight: 650; color: {foreground};"
         )
         self.status_value.setStyleSheet(
-            f"font-size: 14pt; font-weight: 800; color: {foreground};"
+            f"font-size: 12pt; font-weight: 800; color: {foreground};"
         )
 
     def set_chip(self, chip) -> None:
@@ -246,6 +275,7 @@ class TrackingDetailGroup(QFrame):
             if chip is None:
                 self.episode_caption.setText("Episode -")
                 self.character_value.setText("Pilih episode")
+                self.character_value.setToolTip("")
                 self.dialogue_value.setText("0/0")
                 self.status_value.setText("-")
                 self._set_status_card(None)
@@ -256,6 +286,7 @@ class TrackingDetailGroup(QFrame):
 
             self.episode_caption.setText(f"Episode {chip.episode_number}")
             self.character_value.setText(chip.character_name)
+            self.character_value.setToolTip(chip.character_name)
             self.dialogue_value.setText(
                 f"{chip.recorded_dialogues}/{chip.total_dialogues}"
             )
@@ -409,36 +440,24 @@ class Ribbon(QWidget):
 
     def _create_ribbon_page(self, tab_name):
         page = QWidget()
-
-        if tab_name == "TRACKING":
-            root = QVBoxLayout(page)
-            root.setContentsMargins(4, 2, 4, 2)
-            root.setSpacing(3)
-
-            action_row = QHBoxLayout()
-            action_row.setSpacing(0)
-            for group_title, actions in self.TAB_GROUPS[tab_name]:
-                group = RibbonGroup(group_title, actions)
-                group.action_triggered.connect(self.action_triggered)
-                action_row.addWidget(group)
-            action_row.addStretch(1)
-            root.addLayout(action_row)
-
-            self.tracking_detail_group = TrackingDetailGroup()
-            self.tracking_detail_group.status_change_requested.connect(
-                self.tracking_status_change_requested
-            )
-            root.addWidget(self.tracking_detail_group)
-            return page
-
         row = QHBoxLayout(page)
         row.setContentsMargins(4, 2, 4, 2)
         row.setSpacing(0)
+
         for group_title, actions in self.TAB_GROUPS[tab_name]:
             group = RibbonGroup(group_title, actions)
             group.action_triggered.connect(self.action_triggered)
             row.addWidget(group)
-        row.addStretch(1)
+
+        if tab_name == "TRACKING":
+            self.tracking_detail_group = TrackingDetailGroup()
+            self.tracking_detail_group.status_change_requested.connect(
+                self.tracking_status_change_requested
+            )
+            row.addWidget(self.tracking_detail_group, 1)
+        else:
+            row.addStretch(1)
+
         return page
 
     def set_tracking_detail(self, chip) -> None:
