@@ -60,6 +60,7 @@ class TrackingPage(PageShell):
         self._loading = False
         self._workspace_rows: list[TrackingCharacterRow] = []
         self._selected_chip_key: tuple[int, int, int] | None = None
+        self._connected_ribbon = None
 
         context = ContextPanel("TRACKING")
 
@@ -170,6 +171,7 @@ class TrackingPage(PageShell):
     # ------------------------------------------------------------------
 
     def set_database(self, database: Database | None) -> None:
+        self._ensure_ribbon_connection()
         current_talent = self.talent_combo.currentData()
         current_episode = self.episode_combo.currentData()
 
@@ -445,7 +447,20 @@ class TrackingPage(PageShell):
     # RIBBON EPISODE DETAIL / DOWNSTREAM STATUS
     # ------------------------------------------------------------------
 
+    def _ensure_ribbon_connection(self) -> None:
+        window = self.window()
+        ribbon = getattr(window, "ribbon", None)
+        if ribbon is None or ribbon is self._connected_ribbon:
+            return
+
+        self.tracking_detail_changed.connect(ribbon.set_tracking_detail)
+        ribbon.tracking_status_change_requested.connect(
+            self.apply_selected_status
+        )
+        self._connected_ribbon = ribbon
+
     def _select_episode_detail(self, chip: TrackingChip) -> None:
+        self._ensure_ribbon_connection()
         self._selected_chip_key = (
             chip.episode_id,
             chip.talent_id,
