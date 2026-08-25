@@ -8,6 +8,12 @@ from core.database import Database
 
 
 @dataclass(frozen=True)
+class RecordingTalentOption:
+    id: int
+    name: str
+
+
+@dataclass(frozen=True)
 class RecordingCharacterOption:
     id: int
     name: str
@@ -43,6 +49,35 @@ class RecordingService:
     def __init__(self, database: Database):
         self.database = database
 
+    def get_talents(self) -> list[RecordingTalentOption]:
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT DISTINCT
+                    t.id,
+                    t.name
+                FROM talents AS t
+                JOIN dialog_cast AS dc
+                  ON dc.talent_id = t.id
+                JOIN dialogues AS d
+                  ON d.id = dc.dialogue_id
+                JOIN episodes AS e
+                  ON e.id = d.episode_id
+                WHERE t.is_active = 1
+                  AND d.is_active = 1
+                  AND e.is_active = 1
+                ORDER BY t.name COLLATE NOCASE, t.id
+                """
+            ).fetchall()
+
+        return [
+            RecordingTalentOption(
+                id=int(row["id"]),
+                name=str(row["name"]),
+            )
+            for row in rows
+        ]
+
     def get_characters(self) -> list[RecordingCharacterOption]:
         with self.database.connect() as connection:
             rows = connection.execute(
@@ -62,6 +97,40 @@ class RecordingService:
                   AND e.is_active = 1
                 ORDER BY c.name COLLATE NOCASE, c.id
                 """
+            ).fetchall()
+
+        return [
+            RecordingCharacterOption(
+                id=int(row["id"]),
+                name=str(row["name"]),
+            )
+            for row in rows
+        ]
+
+    def get_characters_for_talent(
+        self,
+        talent_id: int,
+    ) -> list[RecordingCharacterOption]:
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT DISTINCT
+                    c.id,
+                    c.name
+                FROM dialog_cast AS dc
+                JOIN characters AS c
+                  ON c.id = dc.character_id
+                JOIN dialogues AS d
+                  ON d.id = dc.dialogue_id
+                JOIN episodes AS e
+                  ON e.id = d.episode_id
+                WHERE dc.talent_id = ?
+                  AND c.is_active = 1
+                  AND d.is_active = 1
+                  AND e.is_active = 1
+                ORDER BY c.name COLLATE NOCASE, c.id
+                """,
+                (int(talent_id),),
             ).fetchall()
 
         return [
@@ -92,6 +161,41 @@ class RecordingService:
                 ORDER BY e.episode_number
                 """,
                 (int(character_id),),
+            ).fetchall()
+
+        return [
+            RecordingEpisodeOption(
+                episode_number=int(row["episode_number"]),
+            )
+            for row in rows
+        ]
+
+    def get_episodes_for_cast(
+        self,
+        *,
+        talent_id: int,
+        character_id: int,
+    ) -> list[RecordingEpisodeOption]:
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT DISTINCT
+                    e.episode_number
+                FROM episodes AS e
+                JOIN dialogues AS d
+                  ON d.episode_id = e.id
+                JOIN dialog_cast AS dc
+                  ON dc.dialogue_id = d.id
+                WHERE e.is_active = 1
+                  AND d.is_active = 1
+                  AND dc.character_id = ?
+                  AND dc.talent_id = ?
+                ORDER BY e.episode_number
+                """,
+                (
+                    int(character_id),
+                    int(talent_id),
+                ),
             ).fetchall()
 
         return [
@@ -152,10 +256,23 @@ class RecordingService:
         *,
         character_id: int,
         episode_number: int,
+        talent_id: int | None = None,
     ) -> list[RecordingDialogueRow]:
+        cast_conditions = ["dc.character_id = ?"]
+        params: list[object] = [
+            int(episode_number),
+            int(character_id),
+        ]
+
+        if talent_id is not None:
+            cast_conditions.append("dc.talent_id = ?")
+            params.append(int(talent_id))
+
+        cast_where = " AND ".join(cast_conditions)
+
         with self.database.connect() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT
                     d.id AS dialogue_id,
                     COALESCE(d.time_in, '') AS time_in,
@@ -174,17 +291,14 @@ class RecordingService:
                       SELECT 1
                       FROM dialog_cast AS dc
                       WHERE dc.dialogue_id = d.id
-                        AND dc.character_id = ?
+                        AND {cast_where}
                   )
                 ORDER BY
                     d.time_in,
                     d.source_row,
                     d.id
                 """,
-                (
-                    int(episode_number),
-                    int(character_id),
-                ),
+                params,
             ).fetchall()
 
         return [
