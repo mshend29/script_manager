@@ -136,8 +136,8 @@ class ScriptPage(PageShell):
         self.result_label.setObjectName("MutedLabel")
         layout.addWidget(self.result_label)
 
-        self.table_model = ScriptTableModel(self)
         self.table = ScriptTableView()
+        self.table_model = ScriptTableModel(self.table)
         self.table.setModel(self.table_model)
         self.table.setAlternatingRowColors(True)
         self.table.setWordWrap(True)
