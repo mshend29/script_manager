@@ -6,10 +6,11 @@ from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QHeaderView,
+    QHBoxLayout,
     QLabel,
-    QListWidget,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -31,12 +32,19 @@ class DialogPage(PageShell):
         self._loading_controls = False
         self._updating_checks = False
         self._source_file_path = ""
+        self._checkboxes: dict[int, QCheckBox] = {}
 
         context = ContextPanel("DIALOG")
+
+        context.add_widget(QLabel("Talent"))
+        self.talent_combo = QComboBox()
+        self.talent_combo.addItem("Pilih talent", None)
+        context.add_widget(self.talent_combo)
 
         context.add_widget(QLabel("Tokoh"))
         self.character_combo = QComboBox()
         self.character_combo.addItem("Pilih tokoh", None)
+        self.character_combo.setEnabled(False)
         context.add_widget(self.character_combo)
 
         context.add_widget(QLabel("Episode"))
@@ -51,9 +59,17 @@ class DialogPage(PageShell):
         context.add_widget(self.open_source_button)
 
         context.add_section_title("CAST EPISODE")
-        self.cast_list = QListWidget()
-        self.cast_list.setMinimumHeight(190)
-        context.add_widget(self.cast_list)
+        self.cast_table = QTableWidget(0, 2)
+        self.cast_table.setHorizontalHeaderLabels(["TOKOH", "TALENT"])
+        self.cast_table.setMinimumHeight(190)
+        self.cast_table.setAlternatingRowColors(True)
+        self.cast_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.cast_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.cast_table.verticalHeader().setVisible(False)
+        cast_header = self.cast_table.horizontalHeader()
+        cast_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        cast_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        context.add_widget(self.cast_table)
         context.add_stretch()
 
         workspace = QWidget()
@@ -65,7 +81,7 @@ class DialogPage(PageShell):
         title.setObjectName("PageTitle")
 
         self.selection_info = QLabel(
-            "Pilih tokoh dan episode untuk menampilkan dialog."
+            "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
         )
         self.selection_info.setObjectName("PageSubtitle")
 
@@ -88,27 +104,24 @@ class DialogPage(PageShell):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
-        self.table.setColumnWidth(0, 42)
+        self.table.setColumnWidth(0, 48)
         self.table.setColumnWidth(1, 115)
         self.table.setColumnWidth(2, 115)
         layout.addWidget(self.table, 1)
 
         super().__init__(context, workspace, parent)
 
-        self.character_combo.currentIndexChanged.connect(
-            self._character_changed
-        )
-        self.episode_combo.currentIndexChanged.connect(
-            self._episode_changed
-        )
+        self.talent_combo.currentIndexChanged.connect(self._talent_changed)
+        self.character_combo.currentIndexChanged.connect(self._character_changed)
+        self.episode_combo.currentIndexChanged.connect(self._episode_changed)
         self.open_source_button.clicked.connect(self._open_source_file)
-        self.table.itemChanged.connect(self._recording_item_changed)
 
     # ------------------------------------------------------------------
     # PROJECT / DATABASE BINDING
     # ------------------------------------------------------------------
 
     def set_database(self, database: Database | None) -> None:
+        selected_talent = self.talent_combo.currentData()
         selected_character = self.character_combo.currentData()
         selected_episode = self.episode_combo.currentData()
 
@@ -120,6 +133,7 @@ class DialogPage(PageShell):
             return
 
         self.reload(
+            preferred_talent_id=selected_talent,
             preferred_character_id=selected_character,
             preferred_episode=selected_episode,
         )
@@ -128,11 +142,15 @@ class DialogPage(PageShell):
         self._service = None
         self._database = None
         self._source_file_path = ""
+        self._checkboxes.clear()
 
         self._loading_controls = True
         try:
+            self.talent_combo.clear()
+            self.talent_combo.addItem("Pilih talent", None)
             self.character_combo.clear()
             self.character_combo.addItem("Pilih tokoh", None)
+            self.character_combo.setEnabled(False)
             self.episode_combo.clear()
             self.episode_combo.addItem("Pilih episode", None)
             self.episode_combo.setEnabled(False)
@@ -140,13 +158,14 @@ class DialogPage(PageShell):
             self._loading_controls = False
 
         self.open_source_button.setEnabled(False)
-        self.cast_list.clear()
+        self.cast_table.setRowCount(0)
         self.table.setRowCount(0)
         self.selection_info.setText("No project open")
 
     def reload(
         self,
         *,
+        preferred_talent_id: int | None = None,
         preferred_character_id: int | None = None,
         preferred_episode: int | None = None,
     ) -> None:
@@ -155,7 +174,69 @@ class DialogPage(PageShell):
             return
 
         try:
-            characters = self._service.get_characters()
+            talents = self._service.get_talents()
+        except Exception as exc:
+            self._show_load_error("Gagal membaca daftar talent", exc)
+            return
+
+        self._loading_controls = True
+        try:
+            self.talent_combo.clear()
+            self.talent_combo.addItem("Pilih talent", None)
+            for talent in talents:
+                self.talent_combo.addItem(talent.name, talent.id)
+
+            talent_index = self.talent_combo.findData(preferred_talent_id)
+            self.talent_combo.setCurrentIndex(
+                talent_index if talent_index >= 0 else 0
+            )
+        finally:
+            self._loading_controls = False
+
+        selected_talent = self.talent_combo.currentData()
+        if selected_talent is None:
+            self._reset_character_selection()
+            self.selection_info.setText(
+                "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
+            )
+            return
+
+        self._load_characters(
+            int(selected_talent),
+            preferred_character_id=preferred_character_id,
+            preferred_episode=preferred_episode,
+        )
+
+    # ------------------------------------------------------------------
+    # TALENT / CHARACTER / EPISODE SELECTION
+    # ------------------------------------------------------------------
+
+    def _talent_changed(self) -> None:
+        if self._loading_controls:
+            return
+
+        talent_id = self.talent_combo.currentData()
+        if talent_id is None:
+            self._reset_character_selection()
+            self.selection_info.setText(
+                "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
+            )
+            return
+
+        self._load_characters(int(talent_id))
+
+    def _load_characters(
+        self,
+        talent_id: int,
+        *,
+        preferred_character_id: int | None = None,
+        preferred_episode: int | None = None,
+    ) -> None:
+        if self._service is None:
+            return
+
+        try:
+            characters = self._service.get_characters_for_talent(talent_id)
         except Exception as exc:
             self._show_load_error("Gagal membaca daftar tokoh", exc)
             return
@@ -164,9 +245,9 @@ class DialogPage(PageShell):
         try:
             self.character_combo.clear()
             self.character_combo.addItem("Pilih tokoh", None)
-
             for character in characters:
                 self.character_combo.addItem(character.name, character.id)
+            self.character_combo.setEnabled(bool(characters))
 
             character_index = self.character_combo.findData(
                 preferred_character_id
@@ -178,40 +259,34 @@ class DialogPage(PageShell):
             self._loading_controls = False
 
         selected_character = self.character_combo.currentData()
-
         if selected_character is None:
             self._reset_episode_selection()
-            self.selection_info.setText(
-                "Pilih tokoh dan episode untuk menampilkan dialog."
-            )
+            self.selection_info.setText("Pilih tokoh untuk melanjutkan.")
             return
 
         self._load_episodes(
+            talent_id,
             int(selected_character),
             preferred_episode=preferred_episode,
         )
-
-    # ------------------------------------------------------------------
-    # CHARACTER / EPISODE SELECTION
-    # ------------------------------------------------------------------
 
     def _character_changed(self) -> None:
         if self._loading_controls:
             return
 
+        talent_id = self.talent_combo.currentData()
         character_id = self.character_combo.currentData()
 
-        if character_id is None:
+        if talent_id is None or character_id is None:
             self._reset_episode_selection()
-            self.selection_info.setText(
-                "Pilih tokoh dan episode untuk menampilkan dialog."
-            )
+            self.selection_info.setText("Pilih talent dan tokoh untuk melanjutkan.")
             return
 
-        self._load_episodes(int(character_id))
+        self._load_episodes(int(talent_id), int(character_id))
 
     def _load_episodes(
         self,
+        talent_id: int,
         character_id: int,
         *,
         preferred_episode: int | None = None,
@@ -220,7 +295,10 @@ class DialogPage(PageShell):
             return
 
         try:
-            episodes = self._service.get_episodes_for_character(character_id)
+            episodes = self._service.get_episodes_for_cast(
+                talent_id=talent_id,
+                character_id=character_id,
+            )
         except Exception as exc:
             self._show_load_error("Gagal membaca daftar episode", exc)
             return
@@ -229,11 +307,9 @@ class DialogPage(PageShell):
         try:
             self.episode_combo.clear()
             self.episode_combo.addItem("Pilih episode", None)
-
             for episode in episodes:
                 number = episode.episode_number
                 self.episode_combo.addItem(f"Episode {number}", number)
-
             self.episode_combo.setEnabled(bool(episodes))
 
             episode_index = self.episode_combo.findData(preferred_episode)
@@ -247,24 +323,22 @@ class DialogPage(PageShell):
 
         if not episodes:
             self.selection_info.setText(
-                f"{self.character_combo.currentText()} belum memiliki episode aktif."
+                "Kombinasi talent dan tokoh ini belum memiliki episode aktif."
             )
             return
 
         if self.episode_combo.currentData() is not None:
             self._load_selected_episode()
         else:
-            self.selection_info.setText(
-                "Pilih episode untuk menampilkan dialog."
-            )
+            self.selection_info.setText("Pilih episode untuk menampilkan dialog.")
 
     def _episode_changed(self) -> None:
         if self._loading_controls:
             return
-
         self._load_selected_episode()
 
     def _load_selected_episode(self) -> None:
+        talent_id = self.talent_combo.currentData()
         character_id = self.character_combo.currentData()
         episode_number = self.episode_combo.currentData()
 
@@ -272,17 +346,19 @@ class DialogPage(PageShell):
 
         if (
             self._service is None
+            or talent_id is None
             or character_id is None
             or episode_number is None
         ):
             self.selection_info.setText(
-                "Pilih tokoh dan episode untuk menampilkan dialog."
+                "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
             )
             return
 
         try:
             cast = self._service.get_episode_cast(int(episode_number))
             rows = self._service.get_dialogues(
+                talent_id=int(talent_id),
                 character_id=int(character_id),
                 episode_number=int(episode_number),
             )
@@ -293,19 +369,21 @@ class DialogPage(PageShell):
             self._show_load_error("Gagal membaca data dialog", exc)
             return
 
-        for member in cast:
-            if member.is_resolved:
-                text = f"{member.character_name} — {member.talent_name}"
-            else:
-                text = f"⚠ {member.character_name} — Unresolved"
-            self.cast_list.addItem(text)
-
+        self._populate_cast(cast)
         self._populate_dialogues(rows)
 
-        self.open_source_button.setEnabled(
-            bool(self._source_file_path)
-        )
+        self.open_source_button.setEnabled(bool(self._source_file_path))
         self._update_selection_info()
+
+    def _reset_character_selection(self) -> None:
+        self._loading_controls = True
+        try:
+            self.character_combo.clear()
+            self.character_combo.addItem("Pilih tokoh", None)
+            self.character_combo.setEnabled(False)
+        finally:
+            self._loading_controls = False
+        self._reset_episode_selection()
 
     def _reset_episode_selection(self) -> None:
         self._loading_controls = True
@@ -321,7 +399,8 @@ class DialogPage(PageShell):
     def _clear_episode_content(self) -> None:
         self._source_file_path = ""
         self.open_source_button.setEnabled(False)
-        self.cast_list.clear()
+        self.cast_table.setRowCount(0)
+        self._checkboxes.clear()
 
         self._updating_checks = True
         try:
@@ -330,39 +409,58 @@ class DialogPage(PageShell):
             self._updating_checks = False
 
     # ------------------------------------------------------------------
-    # TABLE / RECORDING STATUS
+    # CAST / TABLE / RECORDING STATUS
     # ------------------------------------------------------------------
+
+    def _populate_cast(self, cast) -> None:
+        self.cast_table.setUpdatesEnabled(False)
+        try:
+            self.cast_table.clearContents()
+            self.cast_table.setRowCount(len(cast))
+            for row_index, member in enumerate(cast):
+                character_item = QTableWidgetItem(member.character_name)
+                talent_text = (
+                    member.talent_name
+                    if member.is_resolved
+                    else "⚠ Unresolved"
+                )
+                talent_item = QTableWidgetItem(talent_text)
+                self.cast_table.setItem(row_index, 0, character_item)
+                self.cast_table.setItem(row_index, 1, talent_item)
+        finally:
+            self.cast_table.setUpdatesEnabled(True)
 
     def _populate_dialogues(self, rows: list[RecordingDialogueRow]) -> None:
         self._updating_checks = True
         self.table.setUpdatesEnabled(False)
+        self._checkboxes.clear()
 
         try:
             self.table.clearContents()
             self.table.setRowCount(len(rows))
 
             for row_index, row in enumerate(rows):
-                checkbox_item = QTableWidgetItem()
-                checkbox_item.setFlags(
-                    Qt.ItemFlag.ItemIsEnabled
-                    | Qt.ItemFlag.ItemIsSelectable
-                    | Qt.ItemFlag.ItemIsUserCheckable
+                checkbox = QCheckBox()
+                checkbox.setChecked(row.is_recorded)
+                checkbox.setProperty("dialogue_id", row.dialogue_id)
+                checkbox.stateChanged.connect(
+                    lambda state, dialogue_id=row.dialogue_id:
+                        self._recording_checkbox_changed(dialogue_id, state)
                 )
-                checkbox_item.setData(
-                    Qt.ItemDataRole.UserRole,
-                    row.dialogue_id,
-                )
-                checkbox_item.setCheckState(
-                    Qt.CheckState.Checked
-                    if row.is_recorded
-                    else Qt.CheckState.Unchecked
-                )
+
+                holder = QWidget()
+                holder_layout = QHBoxLayout(holder)
+                holder_layout.setContentsMargins(0, 0, 0, 0)
+                holder_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                holder_layout.addWidget(checkbox)
+
+                self._checkboxes[row.dialogue_id] = checkbox
 
                 in_item = QTableWidgetItem(row.time_in)
                 out_item = QTableWidgetItem(row.time_out)
                 dialogue_item = QTableWidgetItem(row.dialogue)
 
-                self.table.setItem(row_index, 0, checkbox_item)
+                self.table.setCellWidget(row_index, 0, holder)
                 self.table.setItem(row_index, 1, in_item)
                 self.table.setItem(row_index, 2, out_item)
                 self.table.setItem(row_index, 3, dialogue_item)
@@ -370,31 +468,22 @@ class DialogPage(PageShell):
             self.table.setUpdatesEnabled(True)
             self._updating_checks = False
 
-    def _recording_item_changed(self, item: QTableWidgetItem) -> None:
-        if self._updating_checks or item.column() != 0:
+    def _recording_checkbox_changed(self, dialogue_id: int, state: int) -> None:
+        if self._updating_checks or self._service is None:
             return
 
-        if self._service is None:
-            return
-
-        dialogue_id = item.data(Qt.ItemDataRole.UserRole)
-        if dialogue_id is None:
-            return
-
-        recorded = item.checkState() == Qt.CheckState.Checked
+        recorded = state == int(Qt.CheckState.Checked.value)
+        checkbox = self._checkboxes.get(int(dialogue_id))
 
         try:
             self._service.set_recorded(int(dialogue_id), recorded)
         except Exception as exc:
-            self._updating_checks = True
-            try:
-                item.setCheckState(
-                    Qt.CheckState.Unchecked
-                    if recorded
-                    else Qt.CheckState.Checked
-                )
-            finally:
-                self._updating_checks = False
+            if checkbox is not None:
+                checkbox.blockSignals(True)
+                try:
+                    checkbox.setChecked(not recorded)
+                finally:
+                    checkbox.blockSignals(False)
 
             QMessageBox.warning(
                 self,
@@ -406,22 +495,10 @@ class DialogPage(PageShell):
         self._update_selection_info()
 
     def set_all_checked(self, checked: bool) -> None:
-        if self._service is None or self.table.rowCount() == 0:
+        if self._service is None or not self._checkboxes:
             return
 
-        dialogue_ids: list[int] = []
-
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, 0)
-            if item is None:
-                continue
-
-            dialogue_id = item.data(Qt.ItemDataRole.UserRole)
-            if dialogue_id is not None:
-                dialogue_ids.append(int(dialogue_id))
-
-        if not dialogue_ids:
-            return
+        dialogue_ids = sorted(self._checkboxes)
 
         try:
             self._service.set_recorded_bulk(dialogue_ids, checked)
@@ -433,43 +510,35 @@ class DialogPage(PageShell):
             )
             return
 
-        state = (
-            Qt.CheckState.Checked
-            if checked
-            else Qt.CheckState.Unchecked
-        )
-
         self._updating_checks = True
         try:
-            for row in range(self.table.rowCount()):
-                item = self.table.item(row, 0)
-                if item is not None:
-                    item.setCheckState(state)
+            for checkbox in self._checkboxes.values():
+                checkbox.blockSignals(True)
+                try:
+                    checkbox.setChecked(checked)
+                finally:
+                    checkbox.blockSignals(False)
         finally:
             self._updating_checks = False
 
         self._update_selection_info()
 
     def _update_selection_info(self) -> None:
+        talent_name = self.talent_combo.currentText()
         character_name = self.character_combo.currentText()
         episode_number = self.episode_combo.currentData()
 
         if episode_number is None:
             return
 
-        total = self.table.rowCount()
-        recorded = 0
-
-        for row in range(total):
-            item = self.table.item(row, 0)
-            if (
-                item is not None
-                and item.checkState() == Qt.CheckState.Checked
-            ):
-                recorded += 1
+        total = len(self._checkboxes)
+        recorded = sum(
+            1 for checkbox in self._checkboxes.values()
+            if checkbox.isChecked()
+        )
 
         self.selection_info.setText(
-            f"{character_name} • Episode {episode_number} • "
+            f"{talent_name} • {character_name} • Episode {episode_number} • "
             f"{recorded}/{total} recorded"
         )
 
