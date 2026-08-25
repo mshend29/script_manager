@@ -37,12 +37,13 @@ class EpisodeChipButton(QPushButton):
         super().__init__(parent)
         self.chip = chip
 
-        self.setText(f"EP {chip.episode_number}")
+        self.setText(str(chip.episode_number))
         self.setToolTip(
             f"{chip.character_name} • Episode {chip.episode_number}\n"
-            "Klik untuk melihat detail tracking."
+            f"Status: {chip.status_label}\n"
+            "Klik untuk menampilkan detail di ribbon."
         )
-        self.setFixedSize(72, 38)
+        self.setFixedSize(46, 34)
         self.clicked.connect(self._request_detail)
         self._apply_status_style()
 
@@ -60,7 +61,7 @@ class EpisodeChipButton(QPushButton):
             f"color: {foreground};"
             f"border: 1px solid {border};"
             "border-radius: 9px;"
-            "padding: 4px 8px;"
+            "padding: 3px 6px;"
             "font-weight: 700;"
             "text-align: center;"
             "}"

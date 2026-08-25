@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -20,7 +21,6 @@ from PySide6.QtWidgets import (
 )
 
 from core.database import Database
-from dialogs.tracking_episode_dialog import TrackingEpisodeDialog
 from services.tracking_service import (
     DELIVERED,
     IN_PROGRESS,
@@ -36,6 +36,7 @@ from services.tracking_service import (
 )
 from widgets.context_panel import ContextPanel
 from widgets.episode_chip import EpisodeChipButton, status_palette
+from widgets.flow_layout import FlowLayout
 from widgets.page_shell import PageShell
 
 
@@ -51,10 +52,15 @@ STATUS_ORDER = (
 
 
 class TrackingPage(PageShell):
+    tracking_detail_changed = Signal(object)
+
     def __init__(self, parent=None):
         self._database: Database | None = None
         self._service: TrackingService | None = None
         self._loading = False
+        self._workspace_rows: list[TrackingCharacterRow] = []
+        self._selected_chip_key: tuple[int, int, int] | None = None
+        self._connected_ribbon = None
 
         context = ContextPanel("TRACKING")
 
@@ -75,6 +81,18 @@ class TrackingPage(PageShell):
         self.episode_combo = QComboBox()
         self.episode_combo.addItem("Pilih episode", None)
         context.add_widget(self.episode_combo)
+
+        episode_nav = QWidget()
+        episode_nav_layout = QHBoxLayout(episode_nav)
+        episode_nav_layout.setContentsMargins(0, 0, 0, 0)
+        episode_nav_layout.setSpacing(6)
+        self.prev_episode_button = QPushButton("‹ Prev")
+        self.prev_episode_button.setProperty("secondary", True)
+        self.next_episode_button = QPushButton("Next ›")
+        self.next_episode_button.setProperty("secondary", True)
+        episode_nav_layout.addWidget(self.prev_episode_button)
+        episode_nav_layout.addWidget(self.next_episode_button)
+        context.add_widget(episode_nav)
 
         context.add_section_title("CHARACTER TO STEM")
         self.character_table = QTableWidget(0, 2)
@@ -111,7 +129,7 @@ class TrackingPage(PageShell):
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
         self.rows_container = QWidget()
@@ -129,6 +147,13 @@ class TrackingPage(PageShell):
 
         self.talent_combo.currentIndexChanged.connect(self._talent_changed)
         self.episode_combo.currentIndexChanged.connect(self._episode_changed)
+        self.prev_episode_button.clicked.connect(
+            lambda: self._select_adjacent_episode(-1)
+        )
+        self.next_episode_button.clicked.connect(
+            lambda: self._select_adjacent_episode(1)
+        )
+        self._update_episode_navigation()
 
     @staticmethod
     def _status_legend_label(status: str) -> QLabel:
@@ -146,11 +171,13 @@ class TrackingPage(PageShell):
     # ------------------------------------------------------------------
 
     def set_database(self, database: Database | None) -> None:
+        self._ensure_ribbon_connection()
         current_talent = self.talent_combo.currentData()
         current_episode = self.episode_combo.currentData()
 
         self._database = database
         self._service = TrackingService(database) if database is not None else None
+        self._clear_tracking_detail()
 
         if self._service is None:
             self.clear_data()
@@ -164,6 +191,8 @@ class TrackingPage(PageShell):
     def clear_data(self) -> None:
         self._service = None
         self._database = None
+        self._workspace_rows = []
+        self._clear_tracking_detail()
         self._loading = True
         try:
             self.talent_combo.clear()
@@ -173,6 +202,7 @@ class TrackingPage(PageShell):
         finally:
             self._loading = False
 
+        self._update_episode_navigation()
         self.character_table.setRowCount(0)
         self._reset_tracking_grid()
         self._show_empty_state("No project open")
@@ -213,13 +243,14 @@ class TrackingPage(PageShell):
         self._refresh_character_queue()
 
     # ------------------------------------------------------------------
-    # FILTER CHANGES
+    # FILTER CHANGES / EPISODE NAVIGATION
     # ------------------------------------------------------------------
 
     def _talent_changed(self) -> None:
         if self._loading:
             return
 
+        self._clear_tracking_detail()
         self._reload_episodes()
         self._refresh_workspace()
         self._refresh_character_queue()
@@ -227,10 +258,12 @@ class TrackingPage(PageShell):
     def _episode_changed(self) -> None:
         if self._loading:
             return
+        self._update_episode_navigation()
         self._refresh_character_queue()
 
     def _reload_episodes(self, *, preferred_episode: int | None = None) -> None:
         talent_id = self.talent_combo.currentData()
+        episodes: list[int] = []
 
         self._loading = True
         try:
@@ -240,14 +273,42 @@ class TrackingPage(PageShell):
             if self._service is None or talent_id is None:
                 return
 
+            # TrackingService scopes this list to active dialogues belonging
+            # to the selected talent only.
             episodes = self._service.get_episodes_for_talent(int(talent_id))
             for episode in episodes:
                 self.episode_combo.addItem(f"Episode {episode}", episode)
 
             index = self.episode_combo.findData(preferred_episode)
+            if index < 0 and episodes:
+                index = 1
             self.episode_combo.setCurrentIndex(index if index >= 0 else 0)
         finally:
             self._loading = False
+            self._update_episode_navigation()
+
+    def _select_adjacent_episode(self, offset: int) -> None:
+        if self.episode_combo.count() <= 1:
+            return
+
+        current = self.episode_combo.currentIndex()
+        if current <= 0:
+            target = 1
+        else:
+            target = current + offset
+
+        target = min(max(target, 1), self.episode_combo.count() - 1)
+        if target != current:
+            self.episode_combo.setCurrentIndex(target)
+
+    def _update_episode_navigation(self) -> None:
+        count = self.episode_combo.count()
+        current = self.episode_combo.currentIndex()
+        has_episodes = count > 1
+        self.prev_episode_button.setEnabled(has_episodes and current > 1)
+        self.next_episode_button.setEnabled(
+            has_episodes and 0 < current < count - 1
+        )
 
     # ------------------------------------------------------------------
     # WORKSPACE
@@ -269,6 +330,7 @@ class TrackingPage(PageShell):
 
     def _refresh_workspace(self) -> None:
         self._reset_tracking_grid()
+        self._workspace_rows = []
 
         if self._service is None:
             self._show_empty_state("No project open")
@@ -289,14 +351,14 @@ class TrackingPage(PageShell):
             self._show_error(f"Failed to load Tracking data: {exc}")
             return
 
+        self._workspace_rows = rows
+
         if not rows:
             self._show_empty_state("Talent ini belum memiliki dialog aktif.")
             self.summary_label.setText(f"Talent: {talent_name}")
             return
 
         self.summary_label.setText(f"Talent: {talent_name}")
-        max_chips = max((len(row.chips) for row in rows), default=1)
-        self.rows_container.setMinimumWidth(250 + max_chips * 80)
 
         for row_number, row in enumerate(rows, start=1):
             self._add_character_row(row_number, row)
@@ -307,8 +369,8 @@ class TrackingPage(PageShell):
         row: TrackingCharacterRow,
     ) -> None:
         character = QLabel(row.character_name)
-        character.setMinimumWidth(210)
-        character.setMaximumWidth(240)
+        character.setMinimumWidth(190)
+        character.setMaximumWidth(230)
         character.setMinimumHeight(40)
         character.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
@@ -319,16 +381,16 @@ class TrackingPage(PageShell):
         )
 
         episode_holder = QWidget()
-        episode_layout = QHBoxLayout(episode_holder)
-        episode_layout.setContentsMargins(0, 1, 0, 1)
-        episode_layout.setSpacing(6)
+        episode_holder.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
+        episode_layout = FlowLayout(episode_holder, margin=1, spacing=6)
 
         for chip in row.chips:
             button = EpisodeChipButton(chip)
-            button.detail_requested.connect(self._open_episode_detail)
+            button.detail_requested.connect(self._select_episode_detail)
             episode_layout.addWidget(button)
-
-        episode_layout.addStretch(1)
 
         self.rows_layout.addWidget(character, row_number, 0)
         self.rows_layout.addWidget(episode_holder, row_number, 1)
@@ -382,31 +444,43 @@ class TrackingPage(PageShell):
         self.character_table.setItem(0, 0, item)
 
     # ------------------------------------------------------------------
-    # EPISODE DETAIL / DOWNSTREAM STATUS
+    # RIBBON EPISODE DETAIL / DOWNSTREAM STATUS
     # ------------------------------------------------------------------
 
-    def _open_episode_detail(self, chip: TrackingChip) -> None:
-        dialog = TrackingEpisodeDialog(chip, self)
-        if not dialog.exec():
+    def _ensure_ribbon_connection(self) -> None:
+        window = self.window()
+        ribbon = getattr(window, "ribbon", None)
+        if ribbon is None or ribbon is self._connected_ribbon:
             return
 
-        self._change_status(
-            episode_id=chip.episode_id,
-            talent_id=chip.talent_id,
-            character_id=chip.character_id,
-            status=dialog.selected_status,
+        self.tracking_detail_changed.connect(ribbon.set_tracking_detail)
+        ribbon.tracking_status_change_requested.connect(
+            self.apply_selected_status
         )
+        self._connected_ribbon = ribbon
 
-    def _change_status(
-        self,
-        episode_id: int,
-        talent_id: int,
-        character_id: int,
-        status: str,
-    ) -> None:
-        if self._service is None:
+    def _select_episode_detail(self, chip: TrackingChip) -> None:
+        self._ensure_ribbon_connection()
+        self._selected_chip_key = (
+            chip.episode_id,
+            chip.talent_id,
+            chip.character_id,
+        )
+        self.tracking_detail_changed.emit(chip)
+
+    def _clear_tracking_detail(self) -> None:
+        self._selected_chip_key = None
+        try:
+            self.tracking_detail_changed.emit(None)
+        except RuntimeError:
+            # Can only happen during very early/late QObject lifecycle.
+            pass
+
+    def apply_selected_status(self, status: str) -> None:
+        if self._service is None or self._selected_chip_key is None:
             return
 
+        episode_id, talent_id, character_id = self._selected_chip_key
         try:
             self._service.set_downstream_status(
                 episode_id=episode_id,
@@ -420,12 +494,33 @@ class TrackingPage(PageShell):
                 "Tracking Status",
                 str(exc),
             )
+            self._refresh_selected_detail()
             return
 
         self._refresh_workspace()
         self._refresh_character_queue()
+        self._refresh_selected_detail()
+
+    def _refresh_selected_detail(self) -> None:
+        if self._selected_chip_key is None:
+            self.tracking_detail_changed.emit(None)
+            return
+
+        episode_id, talent_id, character_id = self._selected_chip_key
+        for row in self._workspace_rows:
+            for chip in row.chips:
+                if (
+                    chip.episode_id == episode_id
+                    and chip.talent_id == talent_id
+                    and chip.character_id == character_id
+                ):
+                    self.tracking_detail_changed.emit(chip)
+                    return
+
+        self._clear_tracking_detail()
 
     def _show_error(self, message: str) -> None:
+        self._workspace_rows = []
         self._reset_tracking_grid()
         self._show_empty_state(message)
         self.summary_label.setText(message)
