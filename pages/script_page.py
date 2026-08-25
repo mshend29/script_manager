@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QHeaderView,
     QLabel,
     QLineEdit,
-    QTableWidget,
-    QTableWidgetItem,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -19,18 +18,89 @@ from widgets.context_panel import ContextPanel
 from widgets.page_shell import PageShell
 
 
-class NumericTableWidgetItem(QTableWidgetItem):
-    def __lt__(self, other: QTableWidgetItem) -> bool:
-        left = self.data(Qt.ItemDataRole.UserRole)
-        right = other.data(Qt.ItemDataRole.UserRole)
+class ScriptTableModel(QAbstractTableModel):
+    HEADERS = ("EPS", "IN", "OUT", "DIALOG", "CHARACTER", "TALENT")
 
-        if left is not None and right is not None:
-            try:
-                return int(left) < int(right)
-            except (TypeError, ValueError):
-                pass
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._rows: list[ScriptRow] = []
 
-        return super().__lt__(other)
+    def set_rows(self, rows: list[ScriptRow]) -> None:
+        self.beginResetModel()
+        self._rows = list(rows)
+        self.endResetModel()
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self._rows)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self.HEADERS)
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
+            return None
+
+        row = self._rows[index.row()]
+        column = index.column()
+
+        if role == Qt.ItemDataRole.DisplayRole:
+            if column == 0:
+                return str(row.episode_number)
+            if column == 1:
+                return row.time_in
+            if column == 2:
+                return row.time_out
+            if column == 3:
+                return row.dialogue
+            if column == 4:
+                return " / ".join(row.characters) if row.characters else "⚠ Unresolved"
+            if column == 5:
+                if not row.characters:
+                    return "⚠ Unresolved"
+                return " / ".join(
+                    talent if talent else "⚠ Unresolved"
+                    for talent in row.talents
+                )
+
+        if role == Qt.ItemDataRole.ToolTipRole:
+            if column == 3 and row.source_file_name:
+                return f"Source: {row.source_file_name}"
+            if column in {4, 5} and row.has_unresolved_cast:
+                return "Character/talent mapping belum sepenuhnya resolved."
+
+        if role == Qt.ItemDataRole.TextAlignmentRole and column in {0, 1, 2}:
+            return int(
+                Qt.AlignmentFlag.AlignHCenter
+                | Qt.AlignmentFlag.AlignVCenter
+            )
+
+        return None
+
+    def headerData(
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ):
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+            and 0 <= section < len(self.HEADERS)
+        ):
+            return self.HEADERS[section]
+        return super().headerData(section, orientation, role)
+
+
+class ScriptTableView(QTableView):
+    """QTableView with a small compatibility helper for QA/UI callers."""
+
+    def rowCount(self) -> int:
+        model = self.model()
+        return model.rowCount() if model is not None else 0
 
 
 class ScriptPage(PageShell):
@@ -46,19 +116,9 @@ class ScriptPage(PageShell):
         self.episode_combo.addItem("All", None)
         context.add_widget(self.episode_combo)
 
-        context.add_widget(QLabel("Character"))
-        self.character_combo = QComboBox()
-        self.character_combo.addItem("All", None)
-        context.add_widget(self.character_combo)
-
-        context.add_widget(QLabel("Talent"))
-        self.talent_combo = QComboBox()
-        self.talent_combo.addItem("All", None)
-        context.add_widget(self.talent_combo)
-
         context.add_widget(QLabel("Search"))
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("Search dialog, character, talent...")
+        self.search_edit.setPlaceholderText("Search script...")
         self.search_edit.setClearButtonEnabled(True)
         context.add_widget(self.search_edit)
         context.add_stretch()
@@ -76,13 +136,12 @@ class ScriptPage(PageShell):
         self.result_label.setObjectName("MutedLabel")
         layout.addWidget(self.result_label)
 
-        self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(
-            ["EPS", "IN", "OUT", "DIALOG", "CHARACTER", "TALENT"]
-        )
+        self.table_model = ScriptTableModel(self)
+        self.table = ScriptTableView()
+        self.table.setModel(self.table_model)
         self.table.setAlternatingRowColors(True)
-        self.table.setSortingEnabled(True)
         self.table.setWordWrap(True)
+        self.table.setSortingEnabled(False)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -109,8 +168,6 @@ class ScriptPage(PageShell):
         self.search_timer.timeout.connect(self.refresh_rows)
 
         self.episode_combo.currentIndexChanged.connect(self._filter_changed)
-        self.character_combo.currentIndexChanged.connect(self._filter_changed)
-        self.talent_combo.currentIndexChanged.connect(self._filter_changed)
         self.search_edit.textChanged.connect(self._search_changed)
 
     # ------------------------------------------------------------------
@@ -118,6 +175,10 @@ class ScriptPage(PageShell):
     # ------------------------------------------------------------------
 
     def set_database(self, database: Database | None) -> None:
+        if database is self._database and self._service is not None:
+            self.refresh_rows()
+            return
+
         self._database = database
         self._service = DialogueService(database) if database is not None else None
 
@@ -135,15 +196,13 @@ class ScriptPage(PageShell):
         self._loading_filters = True
         try:
             self._reset_combo(self.episode_combo)
-            self._reset_combo(self.character_combo)
-            self._reset_combo(self.talent_combo)
             self.search_edit.blockSignals(True)
             self.search_edit.clear()
             self.search_edit.blockSignals(False)
         finally:
             self._loading_filters = False
 
-        self.table.setRowCount(0)
+        self.table_model.set_rows([])
         self.result_label.setText("No project open")
 
     def reload(self) -> None:
@@ -152,13 +211,11 @@ class ScriptPage(PageShell):
             return
 
         selected_episode = self.episode_combo.currentData()
-        selected_character = self.character_combo.currentData()
-        selected_talent = self.talent_combo.currentData()
 
         try:
             options = self._service.get_script_filter_options()
         except Exception as exc:
-            self.table.setRowCount(0)
+            self.table_model.set_rows([])
             self.result_label.setText(f"Failed to load Script filters: {exc}")
             return
 
@@ -168,16 +225,6 @@ class ScriptPage(PageShell):
             for episode in options.episodes:
                 self.episode_combo.addItem(f"Episode {episode}", episode)
             self._restore_combo(self.episode_combo, selected_episode)
-
-            self._reset_combo(self.character_combo)
-            for option in options.characters:
-                self.character_combo.addItem(option.label, option.id)
-            self._restore_combo(self.character_combo, selected_character)
-
-            self._reset_combo(self.talent_combo)
-            for option in options.talents:
-                self.talent_combo.addItem(option.label, option.id)
-            self._restore_combo(self.talent_combo, selected_talent)
         finally:
             self._loading_filters = False
 
@@ -217,82 +264,29 @@ class ScriptPage(PageShell):
 
     def refresh_rows(self) -> None:
         if self._service is None:
-            self.table.setRowCount(0)
+            self.table_model.set_rows([])
             self.result_label.setText("No project open")
             return
 
         try:
             rows = self._service.get_script_rows(
                 episode_number=self.episode_combo.currentData(),
-                character_id=self.character_combo.currentData(),
-                talent_id=self.talent_combo.currentData(),
                 search=self.search_edit.text(),
             )
         except Exception as exc:
-            self.table.setRowCount(0)
+            self.table_model.set_rows([])
             self.result_label.setText(f"Failed to load Script data: {exc}")
             return
 
-        self._populate_table(rows)
+        # DialogueService returns episode/time/source order.  The view does not
+        # enable interactive sorting, so EP1 stays before EP2 ... EP110.
+        self.table_model.set_rows(rows)
 
         unresolved = sum(1 for row in rows if row.has_unresolved_cast)
         result_text = f"{self._format_count(len(rows))} dialogues"
         if unresolved:
             result_text += f" • {self._format_count(unresolved)} unresolved"
         self.result_label.setText(result_text)
-
-    def _populate_table(self, rows: list[ScriptRow]) -> None:
-        self.table.setUpdatesEnabled(False)
-        self.table.setSortingEnabled(False)
-
-        try:
-            self.table.clearContents()
-            self.table.setRowCount(len(rows))
-
-            for row_index, row in enumerate(rows):
-                episode_item = NumericTableWidgetItem(str(row.episode_number))
-                episode_item.setData(Qt.ItemDataRole.UserRole, row.episode_number)
-
-                in_item = QTableWidgetItem(row.time_in)
-                out_item = QTableWidgetItem(row.time_out)
-                dialogue_item = QTableWidgetItem(row.dialogue)
-
-                if row.source_file_name:
-                    dialogue_item.setToolTip(f"Source: {row.source_file_name}")
-
-                character_text = " / ".join(row.characters) if row.characters else "⚠ Unresolved"
-                character_item = QTableWidgetItem(character_text)
-
-                if row.characters:
-                    talent_values = [
-                        talent if talent else "⚠ Unresolved"
-                        for talent in row.talents
-                    ]
-                    talent_text = " / ".join(talent_values)
-                else:
-                    talent_text = "⚠ Unresolved"
-
-                talent_item = QTableWidgetItem(talent_text)
-
-                if row.has_unresolved_cast:
-                    warning = "Character/talent mapping belum sepenuhnya resolved."
-                    character_item.setToolTip(warning)
-                    talent_item.setToolTip(warning)
-
-                items = (
-                    episode_item,
-                    in_item,
-                    out_item,
-                    dialogue_item,
-                    character_item,
-                    talent_item,
-                )
-
-                for column, item in enumerate(items):
-                    self.table.setItem(row_index, column, item)
-        finally:
-            self.table.setSortingEnabled(True)
-            self.table.setUpdatesEnabled(True)
 
     @staticmethod
     def _format_count(value: int) -> str:
