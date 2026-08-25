@@ -6,6 +6,7 @@ from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QHeaderView,
@@ -33,6 +34,7 @@ class DialogPage(PageShell):
         self._updating_checks = False
         self._source_file_path = ""
         self._checkboxes: dict[int, QCheckBox] = {}
+        self._dialogue_rows: list[RecordingDialogueRow] = []
 
         context = ContextPanel("DIALOG")
 
@@ -52,6 +54,18 @@ class DialogPage(PageShell):
         self.episode_combo.addItem("Pilih episode", None)
         self.episode_combo.setEnabled(False)
         context.add_widget(self.episode_combo)
+
+        episode_nav = QWidget()
+        episode_nav_layout = QHBoxLayout(episode_nav)
+        episode_nav_layout.setContentsMargins(0, 0, 0, 0)
+        episode_nav_layout.setSpacing(6)
+        self.prev_episode_button = QPushButton("‹ Prev")
+        self.prev_episode_button.setProperty("secondary", True)
+        self.next_episode_button = QPushButton("Next ›")
+        self.next_episode_button.setProperty("secondary", True)
+        episode_nav_layout.addWidget(self.prev_episode_button)
+        episode_nav_layout.addWidget(self.next_episode_button)
+        context.add_widget(episode_nav)
 
         self.open_source_button = QPushButton("Open Source File")
         self.open_source_button.setProperty("secondary", True)
@@ -91,12 +105,13 @@ class DialogPage(PageShell):
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["✓", "IN", "OUT", "DIALOG"])
         self.table.setAlternatingRowColors(True)
-        self.table.setWordWrap(True)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(44)
+        self.table.verticalHeader().setDefaultSectionSize(34)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
@@ -114,7 +129,14 @@ class DialogPage(PageShell):
         self.talent_combo.currentIndexChanged.connect(self._talent_changed)
         self.character_combo.currentIndexChanged.connect(self._character_changed)
         self.episode_combo.currentIndexChanged.connect(self._episode_changed)
+        self.prev_episode_button.clicked.connect(
+            lambda: self._select_adjacent_episode(-1)
+        )
+        self.next_episode_button.clicked.connect(
+            lambda: self._select_adjacent_episode(1)
+        )
         self.open_source_button.clicked.connect(self._open_source_file)
+        self._update_episode_navigation()
 
     # ------------------------------------------------------------------
     # PROJECT / DATABASE BINDING
@@ -143,6 +165,7 @@ class DialogPage(PageShell):
         self._database = None
         self._source_file_path = ""
         self._checkboxes.clear()
+        self._dialogue_rows = []
 
         self._loading_controls = True
         try:
@@ -157,6 +180,7 @@ class DialogPage(PageShell):
         finally:
             self._loading_controls = False
 
+        self._update_episode_navigation()
         self.open_source_button.setEnabled(False)
         self.cast_table.setRowCount(0)
         self.table.setRowCount(0)
@@ -318,6 +342,7 @@ class DialogPage(PageShell):
             )
         finally:
             self._loading_controls = False
+            self._update_episode_navigation()
 
         self._clear_episode_content()
 
@@ -335,7 +360,31 @@ class DialogPage(PageShell):
     def _episode_changed(self) -> None:
         if self._loading_controls:
             return
+        self._update_episode_navigation()
         self._load_selected_episode()
+
+    def _select_adjacent_episode(self, offset: int) -> None:
+        if self.episode_combo.count() <= 1:
+            return
+
+        current = self.episode_combo.currentIndex()
+        if current <= 0:
+            target = 1
+        else:
+            target = current + offset
+
+        target = min(max(target, 1), self.episode_combo.count() - 1)
+        if target != current:
+            self.episode_combo.setCurrentIndex(target)
+
+    def _update_episode_navigation(self) -> None:
+        count = self.episode_combo.count()
+        current = self.episode_combo.currentIndex()
+        has_episodes = count > 1
+        self.prev_episode_button.setEnabled(has_episodes and current > 1)
+        self.next_episode_button.setEnabled(
+            has_episodes and current < count - 1
+        )
 
     def _load_selected_episode(self) -> None:
         talent_id = self.talent_combo.currentData()
@@ -394,6 +443,7 @@ class DialogPage(PageShell):
         finally:
             self._loading_controls = False
 
+        self._update_episode_navigation()
         self._clear_episode_content()
 
     def _clear_episode_content(self) -> None:
@@ -401,6 +451,7 @@ class DialogPage(PageShell):
         self.open_source_button.setEnabled(False)
         self.cast_table.setRowCount(0)
         self._checkboxes.clear()
+        self._dialogue_rows = []
 
         self._updating_checks = True
         try:
@@ -434,6 +485,7 @@ class DialogPage(PageShell):
         self._updating_checks = True
         self.table.setUpdatesEnabled(False)
         self._checkboxes.clear()
+        self._dialogue_rows = list(rows)
 
         try:
             self.table.clearContents()
@@ -458,7 +510,10 @@ class DialogPage(PageShell):
 
                 in_item = QTableWidgetItem(row.time_in)
                 out_item = QTableWidgetItem(row.time_out)
-                dialogue_item = QTableWidgetItem(row.dialogue)
+                dialogue_item = QTableWidgetItem(
+                    self._single_line_dialogue(row.dialogue)
+                )
+                dialogue_item.setToolTip(row.dialogue)
 
                 self.table.setCellWidget(row_index, 0, holder)
                 self.table.setItem(row_index, 1, in_item)
@@ -467,6 +522,22 @@ class DialogPage(PageShell):
         finally:
             self.table.setUpdatesEnabled(True)
             self._updating_checks = False
+
+    @staticmethod
+    def _single_line_dialogue(value: str) -> str:
+        return " ".join(str(value or "").splitlines()).strip()
+
+    def copy_all_dialogues(self) -> int:
+        lines = [
+            self._single_line_dialogue(row.dialogue)
+            for row in self._dialogue_rows
+        ]
+        lines = [line for line in lines if line]
+        if not lines:
+            return 0
+
+        QApplication.clipboard().setText("\n".join(lines))
+        return len(lines)
 
     def _recording_checkbox_changed(self, dialogue_id: int, state: int) -> None:
         if self._updating_checks or self._service is None:
