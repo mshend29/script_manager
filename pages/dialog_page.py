@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import QTimer, QUrl, Qt
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -99,8 +99,19 @@ class DialogPage(PageShell):
         )
         self.selection_info.setObjectName("PageSubtitle")
 
+        self.copy_all_button = QPushButton("Copy All Dialog")
+        self.copy_all_button.setProperty("secondary", True)
+        self.copy_all_button.setEnabled(False)
+        self.copy_all_button.setToolTip(
+            "Salin seluruh dialog yang sedang tampil, satu dialog per baris."
+        )
+
         layout.addWidget(title)
-        layout.addWidget(self.selection_info)
+        info_row = QHBoxLayout()
+        info_row.setSpacing(8)
+        info_row.addWidget(self.selection_info, 1)
+        info_row.addWidget(self.copy_all_button)
+        layout.addLayout(info_row)
 
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["✓", "IN", "OUT", "DIALOG"])
@@ -136,6 +147,7 @@ class DialogPage(PageShell):
             lambda: self._select_adjacent_episode(1)
         )
         self.open_source_button.clicked.connect(self._open_source_file)
+        self.copy_all_button.clicked.connect(self._copy_all_dialogues_clicked)
         self._update_episode_navigation()
 
     # ------------------------------------------------------------------
@@ -182,6 +194,7 @@ class DialogPage(PageShell):
 
         self._update_episode_navigation()
         self.open_source_button.setEnabled(False)
+        self.copy_all_button.setEnabled(False)
         self.cast_table.setRowCount(0)
         self.table.setRowCount(0)
         self.selection_info.setText("No project open")
@@ -449,6 +462,8 @@ class DialogPage(PageShell):
     def _clear_episode_content(self) -> None:
         self._source_file_path = ""
         self.open_source_button.setEnabled(False)
+        self.copy_all_button.setEnabled(False)
+        self.copy_all_button.setText("Copy All Dialog")
         self.cast_table.setRowCount(0)
         self._checkboxes.clear()
         self._dialogue_rows = []
@@ -486,6 +501,8 @@ class DialogPage(PageShell):
         self.table.setUpdatesEnabled(False)
         self._checkboxes.clear()
         self._dialogue_rows = list(rows)
+        self.copy_all_button.setEnabled(bool(rows))
+        self.copy_all_button.setText("Copy All Dialog")
 
         try:
             self.table.clearContents()
@@ -538,6 +555,17 @@ class DialogPage(PageShell):
 
         QApplication.clipboard().setText("\n".join(lines))
         return len(lines)
+
+    def _copy_all_dialogues_clicked(self) -> None:
+        count = self.copy_all_dialogues()
+        if count <= 0:
+            return
+
+        self.copy_all_button.setText(f"Copied {count} Dialog")
+        QTimer.singleShot(
+            1500,
+            lambda: self.copy_all_button.setText("Copy All Dialog"),
+        )
 
     def _recording_checkbox_changed(self, dialogue_id: int, state: int) -> None:
         if self._updating_checks or self._service is None:
