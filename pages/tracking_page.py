@@ -1,28 +1,53 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QFrame,
     QGridLayout,
+    QHeaderView,
+    QHBoxLayout,
     QLabel,
-    QListWidget,
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from core.database import Database
+from dialogs.tracking_episode_dialog import TrackingEpisodeDialog
 from services.tracking_service import (
+    DELIVERED,
+    IN_PROGRESS,
+    NOT_STARTED,
+    READY_TO_STEM,
+    RECORDED,
+    REVISION,
     STATUS_LABELS,
+    STEMMED,
     TrackingCharacterRow,
+    TrackingChip,
     TrackingService,
 )
 from widgets.context_panel import ContextPanel
-from widgets.episode_chip import EpisodeChipButton
+from widgets.episode_chip import EpisodeChipButton, status_palette
 from widgets.page_shell import PageShell
+
+
+STATUS_ORDER = (
+    NOT_STARTED,
+    IN_PROGRESS,
+    RECORDED,
+    READY_TO_STEM,
+    STEMMED,
+    DELIVERED,
+    REVISION,
+)
 
 
 class TrackingPage(PageShell):
@@ -43,16 +68,8 @@ class TrackingPage(PageShell):
         context.add_widget(self.talent_combo)
 
         context.add_section_title("STATUS")
-        for text in [
-            "■ Not Started",
-            "■ In Progress",
-            "■ Recorded",
-            "■ Ready to Stem",
-            "■ Stemmed",
-            "■ Delivered",
-            "■ Revision",
-        ]:
-            context.add_widget(QLabel(text))
+        for status in STATUS_ORDER:
+            context.add_widget(self._status_legend_label(status))
 
         context.add_section_title("EPISODE")
         self.episode_combo = QComboBox()
@@ -60,42 +77,50 @@ class TrackingPage(PageShell):
         context.add_widget(self.episode_combo)
 
         context.add_section_title("CHARACTER TO STEM")
-        self.character_list = QListWidget()
-        self.character_list.setMinimumHeight(180)
-        context.add_widget(self.character_list)
+        self.character_table = QTableWidget(0, 2)
+        self.character_table.setHorizontalHeaderLabels(["TOKOH", "STATUS"])
+        self.character_table.setMinimumHeight(180)
+        self.character_table.setAlternatingRowColors(True)
+        self.character_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.character_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.NoSelection
+        )
+        self.character_table.verticalHeader().setVisible(False)
+        character_header = self.character_table.horizontalHeader()
+        character_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        character_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        context.add_widget(self.character_table)
         context.add_stretch()
 
         workspace = QWidget()
         layout = QVBoxLayout(workspace)
         layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(10)
+        layout.setSpacing(8)
 
         title = QLabel("Tracking")
         title.setObjectName("PageTitle")
-
-        subtitle = QLabel(
-            "Recording status dihitung otomatis dari checkbox Dialog. "
-            "Klik chip episode untuk mengubah status downstream."
-        )
-        subtitle.setObjectName("PageSubtitle")
-        subtitle.setWordWrap(True)
-
         self.summary_label = QLabel("No project open")
         self.summary_label.setObjectName("MutedLabel")
 
         layout.addWidget(title)
-        layout.addWidget(subtitle)
         layout.addWidget(self.summary_label)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
 
         self.rows_container = QWidget()
-        self.rows_layout = QVBoxLayout(self.rows_container)
+        self.rows_layout = QGridLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
-        self.rows_layout.setSpacing(10)
-        self.rows_layout.addStretch(1)
+        self.rows_layout.setHorizontalSpacing(12)
+        self.rows_layout.setVerticalSpacing(6)
+        self.rows_layout.setColumnStretch(1, 1)
+        self._reset_tracking_grid()
 
         self.scroll.setWidget(self.rows_container)
         layout.addWidget(self.scroll, 1)
@@ -104,6 +129,17 @@ class TrackingPage(PageShell):
 
         self.talent_combo.currentIndexChanged.connect(self._talent_changed)
         self.episode_combo.currentIndexChanged.connect(self._episode_changed)
+
+    @staticmethod
+    def _status_legend_label(status: str) -> QLabel:
+        background, foreground, border = status_palette(status)
+        label = QLabel(f"■  {STATUS_LABELS[status]}")
+        label.setStyleSheet(
+            f"background: {background}; color: {foreground}; "
+            f"border: 1px solid {border}; border-radius: 5px; "
+            "padding: 4px 6px; font-weight: 600;"
+        )
+        return label
 
     # ------------------------------------------------------------------
     # PROJECT / DATABASE BINDING
@@ -137,8 +173,8 @@ class TrackingPage(PageShell):
         finally:
             self._loading = False
 
-        self.character_list.clear()
-        self._clear_rows()
+        self.character_table.setRowCount(0)
+        self._reset_tracking_grid()
         self._show_empty_state("No project open")
         self.summary_label.setText("No project open")
 
@@ -217,8 +253,22 @@ class TrackingPage(PageShell):
     # WORKSPACE
     # ------------------------------------------------------------------
 
+    def _reset_tracking_grid(self) -> None:
+        while self.rows_layout.count():
+            item = self.rows_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        character_header = QLabel("TOKOH")
+        character_header.setObjectName("SectionTitle")
+        episode_header = QLabel("EPISODE")
+        episode_header.setObjectName("SectionTitle")
+        self.rows_layout.addWidget(character_header, 0, 0)
+        self.rows_layout.addWidget(episode_header, 0, 1)
+
     def _refresh_workspace(self) -> None:
-        self._clear_rows()
+        self._reset_tracking_grid()
 
         if self._service is None:
             self._show_empty_state("No project open")
@@ -241,73 +291,61 @@ class TrackingPage(PageShell):
 
         if not rows:
             self._show_empty_state("Talent ini belum memiliki dialog aktif.")
-            self.summary_label.setText(f"{talent_name} • 0 character")
+            self.summary_label.setText(f"Talent: {talent_name}")
             return
 
-        total_chips = sum(len(row.chips) for row in rows)
-        self.summary_label.setText(
-            f"{talent_name} • {len(rows)} character • {total_chips} episode assignment"
+        self.summary_label.setText(f"Talent: {talent_name}")
+        max_chips = max((len(row.chips) for row in rows), default=1)
+        self.rows_container.setMinimumWidth(250 + max_chips * 80)
+
+        for row_number, row in enumerate(rows, start=1):
+            self._add_character_row(row_number, row)
+
+    def _add_character_row(
+        self,
+        row_number: int,
+        row: TrackingCharacterRow,
+    ) -> None:
+        character = QLabel(row.character_name)
+        character.setMinimumWidth(210)
+        character.setMaximumWidth(240)
+        character.setMinimumHeight(40)
+        character.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        character.setStyleSheet(
+            "background: #ffffff; border-bottom: 1px solid #ececec; "
+            "padding: 4px 8px; font-weight: 600;"
         )
 
-        for row in rows:
-            self.rows_layout.insertWidget(
-                self.rows_layout.count() - 1,
-                self._build_character_card(row),
-            )
+        episode_holder = QWidget()
+        episode_layout = QHBoxLayout(episode_holder)
+        episode_layout.setContentsMargins(0, 1, 0, 1)
+        episode_layout.setSpacing(6)
 
-    def _build_character_card(self, row: TrackingCharacterRow) -> QFrame:
-        card = QFrame()
-        card.setObjectName("DashboardCard")
-
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(14, 12, 14, 14)
-        card_layout.setSpacing(8)
-
-        name = QLabel(row.character_name)
-        name.setStyleSheet("font-size: 11pt; font-weight: 600;")
-        card_layout.addWidget(name)
-
-        grid_holder = QWidget()
-        grid = QGridLayout(grid_holder)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
-
-        columns = 7
-        for index, chip in enumerate(row.chips):
+        for chip in row.chips:
             button = EpisodeChipButton(chip)
-            button.status_change_requested.connect(self._change_status)
-            grid.addWidget(button, index // columns, index % columns)
+            button.detail_requested.connect(self._open_episode_detail)
+            episode_layout.addWidget(button)
 
-        card_layout.addWidget(grid_holder)
-        return card
+        episode_layout.addStretch(1)
+
+        self.rows_layout.addWidget(character, row_number, 0)
+        self.rows_layout.addWidget(episode_holder, row_number, 1)
 
     def _show_empty_state(self, text: str) -> None:
-        card = QFrame()
-        card.setObjectName("DashboardCard")
-
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(18, 18, 18, 18)
-
         label = QLabel(text)
         label.setWordWrap(True)
-        card_layout.addWidget(label)
-
-        self.rows_layout.insertWidget(self.rows_layout.count() - 1, card)
-
-    def _clear_rows(self) -> None:
-        while self.rows_layout.count() > 1:
-            item = self.rows_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        label.setStyleSheet("padding: 18px; color: #6b7075;")
+        self.rows_layout.addWidget(label, 1, 0, 1, 2)
 
     # ------------------------------------------------------------------
     # CHARACTER QUEUE
     # ------------------------------------------------------------------
 
     def _refresh_character_queue(self) -> None:
-        self.character_list.clear()
+        self.character_table.clearContents()
+        self.character_table.setRowCount(0)
 
         if self._service is None:
             return
@@ -316,7 +354,6 @@ class TrackingPage(PageShell):
         episode_number = self.episode_combo.currentData()
 
         if talent_id is None or episode_number is None:
-            self.character_list.addItem("Pilih talent dan episode")
             return
 
         try:
@@ -325,21 +362,40 @@ class TrackingPage(PageShell):
                 int(episode_number),
             )
         except Exception as exc:
-            self.character_list.addItem(f"Error: {exc}")
+            self._show_character_queue_error(str(exc))
             return
 
-        if not chips:
-            self.character_list.addItem("Tidak ada character yang perlu diproses")
+        self.character_table.setRowCount(len(chips))
+        for row_index, chip in enumerate(chips):
+            character_item = QTableWidgetItem(chip.character_name)
+            status_item = QTableWidgetItem(chip.status_label)
+            background, foreground, _ = status_palette(chip.display_status)
+            status_item.setBackground(QColor(background))
+            status_item.setForeground(QColor(foreground))
+            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.character_table.setItem(row_index, 0, character_item)
+            self.character_table.setItem(row_index, 1, status_item)
+
+    def _show_character_queue_error(self, message: str) -> None:
+        self.character_table.setRowCount(1)
+        item = QTableWidgetItem(f"Error: {message}")
+        self.character_table.setItem(0, 0, item)
+
+    # ------------------------------------------------------------------
+    # EPISODE DETAIL / DOWNSTREAM STATUS
+    # ------------------------------------------------------------------
+
+    def _open_episode_detail(self, chip: TrackingChip) -> None:
+        dialog = TrackingEpisodeDialog(chip, self)
+        if not dialog.exec():
             return
 
-        for chip in chips:
-            self.character_list.addItem(
-                f"{chip.character_name} — {chip.status_label} ({chip.progress_text})"
-            )
-
-    # ------------------------------------------------------------------
-    # DOWNSTREAM STATUS
-    # ------------------------------------------------------------------
+        self._change_status(
+            episode_id=chip.episode_id,
+            talent_id=chip.talent_id,
+            character_id=chip.character_id,
+            status=dialog.selected_status,
+        )
 
     def _change_status(
         self,
@@ -370,6 +426,6 @@ class TrackingPage(PageShell):
         self._refresh_character_queue()
 
     def _show_error(self, message: str) -> None:
-        self._clear_rows()
+        self._reset_tracking_grid()
         self._show_empty_state(message)
         self.summary_label.setText(message)
