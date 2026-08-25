@@ -50,7 +50,7 @@ def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_col
     assert "status_item.setForeground" in source
 
 
-def test_tracking_detail_uses_full_width_colored_style_picker_and_autosave():
+def test_tracking_detail_shares_action_row_and_remains_responsive():
     ribbon = _read("app/ribbon.py")
     tracking = _read("pages/tracking_page.py")
 
@@ -64,11 +64,19 @@ def test_tracking_detail_uses_full_width_colored_style_picker_and_autosave():
     assert "tracking_status_change_requested" in ribbon
     assert "set_tracking_detail" in ribbon
 
-    # TRACKING gets a dedicated vertical ribbon page so the detail strip spans
-    # the available application width under the normal action row.
+    # TRACKING detail must share the same horizontal ribbon row as View and
+    # Delivery. It expands into the remaining width instead of creating a
+    # second ribbon row that breaks at smaller window sizes.
     assert 'if tab_name == "TRACKING":' in ribbon
-    assert "root = QVBoxLayout(page)" in ribbon
-    assert "root.addWidget(self.tracking_detail_group)" in ribbon
+    assert "row = QHBoxLayout(page)" in ribbon
+    assert "row.addWidget(self.tracking_detail_group, 1)" in ribbon
+    assert "root = QVBoxLayout(page)" not in ribbon
+    assert "root.addWidget(self.tracking_detail_group)" not in ribbon
+
+    # Keep the detail group shrinkable inside the shared ribbon row.
+    assert "self.setMinimumWidth(0)" in ribbon
+    assert "button.setMinimumWidth(78)" in ribbon
+    assert "QSizePolicy.Policy.Expanding" in ribbon
 
     # Recording-derived statuses stay automatic; the actual recording status
     # button is the way to reset downstream state back to Auto.
