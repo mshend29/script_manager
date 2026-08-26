@@ -28,17 +28,14 @@ class ResolverReport:
 class CharacterTalentResolver:
     """Resolve parsed source names against canonical DB entities.
 
-    Stable mappings are learned only from unambiguous single-character /
-    single-talent rows. Multi-character rows may reuse those locked mappings,
-    but never create a stable mapping by themselves.
+    dialog_cast deliberately keeps the source character row. When that source
+    row is registered as an alias, locked mapping decisions are read/written on
+    the canonical character instead. This preserves source fidelity in SCRIPT
+    while DIALOG/TRACKING can aggregate the alias operationally.
     """
 
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
-
-    # =========================================================
-    # ENTITY PREPARATION
-    # =========================================================
 
     def ensure_entities(
         self,
@@ -50,7 +47,6 @@ class CharacterTalentResolver:
             for row in parse_result.rows:
                 for character in row.characters:
                     self.ensure_character(character, timestamp=timestamp)
-
                 for talent in row.talents:
                     self.ensure_talent(talent, timestamp=timestamp)
 
@@ -60,23 +56,13 @@ class CharacterTalentResolver:
             raise ValueError("Character name cannot be empty.")
 
         row = self.connection.execute(
-            """
-            SELECT id
-            FROM characters
-            WHERE normalized_name = ?
-            """,
+            "SELECT id FROM characters WHERE normalized_name = ?",
             (normalized,),
         ).fetchone()
-
         if row:
             character_id = int(row["id"])
             self.connection.execute(
-                """
-                UPDATE characters
-                SET is_active = 1,
-                    updated_at = ?
-                WHERE id = ?
-                """,
+                "UPDATE characters SET is_active = 1, updated_at = ? WHERE id = ?",
                 (timestamp, character_id),
             )
             return character_id
@@ -84,13 +70,8 @@ class CharacterTalentResolver:
         cursor = self.connection.execute(
             """
             INSERT INTO characters(
-                name,
-                normalized_name,
-                is_active,
-                created_at,
-                updated_at
-            )
-            VALUES(?, ?, 1, ?, ?)
+                name, normalized_name, is_active, created_at, updated_at
+            ) VALUES(?, ?, 1, ?, ?)
             """,
             (name.strip(), normalized, timestamp, timestamp),
         )
@@ -102,23 +83,13 @@ class CharacterTalentResolver:
             raise ValueError("Talent name cannot be empty.")
 
         row = self.connection.execute(
-            """
-            SELECT id
-            FROM talents
-            WHERE normalized_name = ?
-            """,
+            "SELECT id FROM talents WHERE normalized_name = ?",
             (normalized,),
         ).fetchone()
-
         if row:
             talent_id = int(row["id"])
             self.connection.execute(
-                """
-                UPDATE talents
-                SET is_active = 1,
-                    updated_at = ?
-                WHERE id = ?
-                """,
+                "UPDATE talents SET is_active = 1, updated_at = ? WHERE id = ?",
                 (timestamp, talent_id),
             )
             return talent_id
@@ -126,21 +97,12 @@ class CharacterTalentResolver:
         cursor = self.connection.execute(
             """
             INSERT INTO talents(
-                name,
-                normalized_name,
-                is_active,
-                created_at,
-                updated_at
-            )
-            VALUES(?, ?, 1, ?, ?)
+                name, normalized_name, is_active, created_at, updated_at
+            ) VALUES(?, ?, 1, ?, ?)
             """,
             (name.strip(), normalized, timestamp, timestamp),
         )
         return int(cursor.lastrowid)
-
-    # =========================================================
-    # AUTO-LEARN LOCKED CHARACTER/TALENT MAPPING
-    # =========================================================
 
     def learn_from_single_rows(
         self,
@@ -149,39 +111,31 @@ class CharacterTalentResolver:
         timestamp: str,
     ) -> ResolverReport:
         report = ResolverReport()
-
         evidence: dict[str, dict[str, tuple[str, str]]] = defaultdict(dict)
 
         for parse_result in parse_results:
             for row in parse_result.rows:
                 if len(row.characters) != 1 or len(row.talents) != 1:
                     continue
-
                 character_name = row.characters[0]
                 talent_name = row.talents[0]
                 character_key = normalize_key(character_name)
                 talent_key = normalize_key(talent_name)
-
                 if not character_key or not talent_key:
                     continue
+                evidence[character_key][talent_key] = (character_name, talent_name)
 
-                evidence[character_key][talent_key] = (
-                    character_name,
-                    talent_name,
-                )
-
-        for character_key, talent_variants in sorted(evidence.items()):
+        for _character_key, talent_variants in sorted(evidence.items()):
             sample_character = next(iter(talent_variants.values()))[0]
-            character_id = self.ensure_character(
+            source_character_id = self.ensure_character(
                 sample_character,
                 timestamp=timestamp,
             )
-
+            character_id = self._canonical_character_id(source_character_id)
             locked = self._get_locked_mapping(character_id)
 
             if locked is not None:
                 locked_talent_key = str(locked["normalized_name"])
-
                 if locked_talent_key not in talent_variants:
                     source_talents = ", ".join(
                         sorted(value[1] for value in talent_variants.values())
@@ -202,13 +156,11 @@ class CharacterTalentResolver:
                 )
                 continue
 
-            character_name, talent_name = next(iter(talent_variants.values()))
+            _character_name, talent_name = next(iter(talent_variants.values()))
             talent_id = self.ensure_talent(talent_name, timestamp=timestamp)
-
             existing_pair = self.connection.execute(
                 """
-                SELECT id
-                FROM character_talent
+                SELECT id FROM character_talent
                 WHERE character_id = ? AND talent_id = ?
                 """,
                 (character_id, talent_id),
@@ -218,9 +170,7 @@ class CharacterTalentResolver:
                 self.connection.execute(
                     """
                     UPDATE character_talent
-                    SET is_locked = 1,
-                        source = 'auto-single',
-                        updated_at = ?
+                    SET is_locked = 1, source = 'auto-single', updated_at = ?
                     WHERE id = ?
                     """,
                     (timestamp, int(existing_pair["id"])),
@@ -229,25 +179,15 @@ class CharacterTalentResolver:
                 self.connection.execute(
                     """
                     INSERT INTO character_talent(
-                        character_id,
-                        talent_id,
-                        is_locked,
-                        source,
-                        created_at,
-                        updated_at
-                    )
-                    VALUES(?, ?, 1, 'auto-single', ?, ?)
+                        character_id, talent_id, is_locked,
+                        source, created_at, updated_at
+                    ) VALUES(?, ?, 1, 'auto-single', ?, ?)
                     """,
                     (character_id, talent_id, timestamp, timestamp),
                 )
-
             report.auto_locked += 1
 
         return report
-
-    # =========================================================
-    # RESOLVE ONE DIALOGUE ROW
-    # =========================================================
 
     def resolve_row(
         self,
@@ -264,7 +204,6 @@ class CharacterTalentResolver:
             talent_key = normalize_key(pair.talent)
             if not character_key or not talent_key:
                 continue
-
             existing_keys = {
                 normalize_key(name)
                 for name in provided_by_character[character_key]
@@ -273,19 +212,18 @@ class CharacterTalentResolver:
                 provided_by_character[character_key].append(pair.talent)
 
         processed_characters: set[str] = set()
-
         for character_name in row.characters:
             character_key = normalize_key(character_name)
             if not character_key or character_key in processed_characters:
                 continue
             processed_characters.add(character_key)
 
-            character_id = self.ensure_character(
+            source_character_id = self.ensure_character(
                 character_name,
                 timestamp=timestamp,
             )
-
-            locked = self._get_locked_mapping(character_id)
+            canonical_character_id = self._canonical_character_id(source_character_id)
+            locked = self._get_locked_mapping(canonical_character_id)
             provided_talents = provided_by_character.get(character_key, [])
 
             if locked is not None:
@@ -295,17 +233,15 @@ class CharacterTalentResolver:
                 provided_keys = {
                     normalize_key(name) for name in provided_talents
                 }
-
                 if provided_keys and locked_talent_key not in provided_keys:
                     warnings.append(
                         f"Tokoh '{character_name}' menggunakan talent terkunci "
                         f"'{talent_name}', bukan "
                         f"'{', '.join(provided_talents)}' dari source."
                     )
-
                 result.append(
                     ResolvedCastMember(
-                        character_id=character_id,
+                        character_id=source_character_id,
                         character_name=character_name,
                         talent_id=talent_id,
                         talent_name=talent_name,
@@ -318,7 +254,6 @@ class CharacterTalentResolver:
                 source_label = (
                     "source-multi" if len(provided_talents) > 1 else "source-pair"
                 )
-
                 for provided_talent in provided_talents:
                     talent_id = self.ensure_talent(
                         provided_talent,
@@ -326,7 +261,7 @@ class CharacterTalentResolver:
                     )
                     result.append(
                         ResolvedCastMember(
-                            character_id=character_id,
+                            character_id=source_character_id,
                             character_name=character_name,
                             talent_id=talent_id,
                             talent_name=provided_talent,
@@ -337,7 +272,7 @@ class CharacterTalentResolver:
 
             result.append(
                 ResolvedCastMember(
-                    character_id=character_id,
+                    character_id=source_character_id,
                     character_name=character_name,
                     talent_id=None,
                     talent_name="",
@@ -350,20 +285,27 @@ class CharacterTalentResolver:
 
         return result, warnings
 
+    def _canonical_character_id(self, character_id: int) -> int:
+        row = self.connection.execute(
+            """
+            SELECT canonical_character_id
+            FROM character_alias
+            WHERE source_character_id = ?
+            """,
+            (int(character_id),),
+        ).fetchone()
+        return int(row["canonical_character_id"]) if row else int(character_id)
+
     def _get_locked_mapping(self, character_id: int):
         return self.connection.execute(
             """
-            SELECT
-                ct.talent_id,
-                t.name,
-                t.normalized_name
+            SELECT ct.talent_id, t.name, t.normalized_name
             FROM character_talent AS ct
-            JOIN talents AS t
-              ON t.id = ct.talent_id
+            JOIN talents AS t ON t.id = ct.talent_id
             WHERE ct.character_id = ?
               AND ct.is_locked = 1
             ORDER BY ct.id
             LIMIT 1
             """,
-            (character_id,),
+            (int(character_id),),
         ).fetchone()
