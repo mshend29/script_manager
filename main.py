@@ -1,7 +1,18 @@
 import sys
+
 from PySide6.QtWidgets import QApplication
-from app.main_window import MainWindow
+
+from app import main_window as main_window_module
 from app.theme import APP_STYLESHEET
+from pages.data_alias_page import AliasDataPage
+from pages.tracking_compact_page import CompactTrackingPage
+
+# Keep MainWindow's existing routing/actions intact while replacing only the
+# concrete page implementations with the enhanced variants.
+main_window_module.DataPage = AliasDataPage
+main_window_module.TrackingPage = CompactTrackingPage
+MainWindow = main_window_module.MainWindow
+
 
 def main():
     app = QApplication(sys.argv)
@@ -10,6 +21,7 @@ def main():
     window = MainWindow()
     window.show()
     return app.exec()
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

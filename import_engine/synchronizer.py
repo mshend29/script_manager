@@ -369,6 +369,12 @@ class DialogueSynchronizer:
                         (dialogue_id, synced_at),
                     )
 
+                    # Rebuild current cast and alias provenance together. This
+                    # keeps Remove Alias reversible even after later refreshes.
+                    connection.execute(
+                        "DELETE FROM character_alias_dialogue WHERE dialogue_id = ?",
+                        (dialogue_id,),
+                    )
                     connection.execute(
                         """
                         DELETE FROM dialog_cast
@@ -405,6 +411,26 @@ class DialogueSynchronizer:
                                 position,
                             ),
                         )
+
+                        for alias_id in cast_member.alias_ids:
+                            connection.execute(
+                                """
+                                INSERT INTO character_alias_dialogue(
+                                    alias_id,
+                                    dialogue_id,
+                                    talent_id,
+                                    position,
+                                    created_canonical
+                                ) VALUES(?, ?, ?, ?, 1)
+                                """,
+                                (
+                                    int(alias_id),
+                                    dialogue_id,
+                                    cast_member.talent_id,
+                                    position,
+                                ),
+                            )
+
                         report.cast_links += 1
                         if cast_member.talent_id is None:
                             report.unresolved_cast += 1

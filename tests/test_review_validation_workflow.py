@@ -49,7 +49,7 @@ def _seed_review_case(database: Database) -> dict[str, int]:
     }
 
 
-def test_schema_v4_creates_dialogue_review_table(tmp_path):
+def test_current_schema_preserves_dialogue_review_table(tmp_path):
     database = Database(tmp_path / "project.db")
     database.initialize()
 
@@ -66,7 +66,6 @@ def test_schema_v4_creates_dialogue_review_table(tmp_path):
 
     assert schema == str(SCHEMA_VERSION)
     assert table is not None
-    assert SCHEMA_VERSION == 4
 
 
 def test_v3_database_is_upgraded_to_review_schema_without_losing_data(tmp_path):
