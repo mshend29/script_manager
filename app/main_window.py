@@ -91,6 +91,9 @@ class MainWindow(QMainWindow):
         tracking_page = self.pages["TRACKING"]
         tracking_page.drive_button.clicked.connect(self.open_client_drive)
 
+        data_page = self.pages["DATA"]
+        data_page.tracking_navigation_requested.connect(self.open_tracking_scope)
+
         self._init_source_sync_progress_ui()
         self.statusBar().showMessage("Ready")
         self.set_page("PROJECT")
@@ -643,6 +646,33 @@ class MainWindow(QMainWindow):
             return
 
         page.open_source_button.click()
+
+    def open_tracking_scope(
+        self,
+        talent_id: int,
+        character_id: int,
+        episode_number: int,
+    ) -> None:
+        project = self.project_manager.current
+        if project is None:
+            return
+
+        self.ribbon.select_tab("TRACKING")
+        page = self.pages["TRACKING"]
+        page.reload(
+            preferred_talent=int(talent_id),
+            preferred_episode=int(episode_number),
+        )
+
+        for row in page._workspace_rows:
+            for chip in row.chips:
+                if (
+                    chip.talent_id == int(talent_id)
+                    and chip.character_id == int(character_id)
+                    and chip.episode_number == int(episode_number)
+                ):
+                    page._select_episode_detail(chip)
+                    return
 
     # ------------------------------------------------------------------
     # DATA ADMIN
