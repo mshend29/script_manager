@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -66,6 +66,23 @@ class Database:
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT,
                     updated_at TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS character_alias (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_character_id INTEGER NOT NULL UNIQUE,
+                    canonical_character_id INTEGER NOT NULL,
+                    alias_name TEXT NOT NULL,
+                    normalized_alias TEXT NOT NULL UNIQUE,
+                    created_at TEXT,
+                    updated_at TEXT,
+                    CHECK(source_character_id != canonical_character_id),
+                    FOREIGN KEY (source_character_id)
+                        REFERENCES characters(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (canonical_character_id)
+                        REFERENCES characters(id)
+                        ON DELETE CASCADE
                 );
 
                 CREATE TABLE IF NOT EXISTS talents (
@@ -191,6 +208,9 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_dialogue_review_classification
                     ON dialogue_review(classification);
 
+                CREATE INDEX IF NOT EXISTS idx_character_alias_canonical
+                    ON character_alias(canonical_character_id);
+
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
                     ON character_talent(character_id)
                     WHERE is_locked = 1;
@@ -296,9 +316,6 @@ class Database:
             """
         )
 
-        # Old status rows were scoped only to Episode + Talent. Preserve them
-        # only when that pair maps to exactly one character, otherwise there is
-        # no safe way to decide which character owned the old downstream state.
         connection.execute(
             """
             INSERT INTO stem_status(
