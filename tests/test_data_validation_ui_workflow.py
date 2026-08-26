@@ -34,6 +34,20 @@ def test_validation_is_detailed_filterable_and_actionable():
     assert "self._refresh_validation()" in source
 
 
+def test_validation_tracking_action_is_wired_to_main_window():
+    page = _read("pages/data_page.py")
+    window = _read("app/main_window.py")
+
+    assert "tracking_navigation_requested = Signal(int, int, int)" in page
+    assert "self.tracking_navigation_requested.emit(" in page
+    assert "data_page.tracking_navigation_requested.connect(self.open_tracking_scope)" in window
+    assert "def open_tracking_scope(" in window
+    assert 'self.ribbon.select_tab("TRACKING")' in window
+    assert "preferred_talent=int(talent_id)" in window
+    assert "preferred_episode=int(episode_number)" in window
+    assert "page._select_episode_detail(chip)" in window
+
+
 def test_overview_distinguishes_review_system_and_workflow_health():
     source = _read("pages/data_page.py")
 
