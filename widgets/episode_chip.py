@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtWidgets import QMenu, QPushButton
 
 from services.tracking_service import (
     DELIVERED,
@@ -41,14 +41,43 @@ class EpisodeChipButton(QPushButton):
         self.setToolTip(
             f"{chip.character_name} • Episode {chip.episode_number}\n"
             f"Status: {chip.status_label}\n"
-            "Klik untuk menampilkan detail di ribbon."
+            "Klik untuk menampilkan detail dan menu aksi."
         )
         self.setFixedSize(46, 34)
+
+        self._action_menu = QMenu(self)
+        go_to_dialog = self._action_menu.addAction("Go to Dialog")
+        go_to_dialog.triggered.connect(self._go_to_dialog)
+
         self.clicked.connect(self._request_detail)
         self._apply_status_style()
 
     def _request_detail(self) -> None:
         self.detail_requested.emit(self.chip)
+        self._action_menu.popup(
+            self.mapToGlobal(self.rect().bottomLeft())
+        )
+
+    def _go_to_dialog(self) -> None:
+        window = self.window()
+        ribbon = getattr(window, "ribbon", None)
+        pages = getattr(window, "pages", None)
+        if ribbon is None or not isinstance(pages, dict):
+            return
+
+        dialog_page = pages.get("DIALOG")
+        if dialog_page is None or not hasattr(dialog_page, "reload"):
+            return
+
+        # Selecting the ribbon tab first lets MainWindow bind the active
+        # project database to DIALOG. Then reuse the existing chained filter
+        # loader so Talent -> Tokoh -> Episode opens exactly this Tracking chip.
+        ribbon.select_tab("DIALOG")
+        dialog_page.reload(
+            preferred_talent_id=self.chip.talent_id,
+            preferred_character_id=self.chip.character_id,
+            preferred_episode=self.chip.episode_number,
+        )
 
     def _apply_status_style(self) -> None:
         background, foreground, border = status_palette(

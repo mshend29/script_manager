@@ -18,7 +18,21 @@ def test_episode_chip_only_shows_number_and_uses_compact_fixed_size():
     assert "self.setFixedSize(46, 34)" in source
     assert "border-radius: 9px" in source
     assert "detail_requested" in source
-    assert "detail di ribbon" in source
+    assert "Status: {chip.status_label}" in source
+    assert "detail dan menu aksi" in source
+
+
+def test_episode_chip_has_go_to_dialog_menu_with_exact_cast_filters():
+    source = _read("widgets/episode_chip.py")
+
+    assert "QMenu" in source
+    assert 'addAction("Go to Dialog")' in source
+    assert "self._action_menu.popup(" in source
+    assert 'ribbon.select_tab("DIALOG")' in source
+    assert "dialog_page.reload(" in source
+    assert "preferred_talent_id=self.chip.talent_id" in source
+    assert "preferred_character_id=self.chip.character_id" in source
+    assert "preferred_episode=self.chip.episode_number" in source
 
 
 def test_tracking_workspace_wraps_episode_chips_without_horizontal_scroll():

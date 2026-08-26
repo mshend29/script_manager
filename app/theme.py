@@ -27,10 +27,24 @@ QPushButton[ribbonAction="true"]:hover {
     background: #edf5f0; border-color: #c4ddcd;
 }
 #ContextPanel { background: #ffffff; border-right: 1px solid #dadce0; }
+#ContextPanel QLabel {
+    padding-left: 7px;
+    padding-right: 4px;
+}
 #Workspace { background: #ffffff; }
-#SectionTitle { font-size: 9pt; font-weight: 700; color: #5f6368; }
-#PageTitle { font-size: 18pt; font-weight: 600; color: #202124; }
-#PageSubtitle { color: #6b7075; }
+#SectionTitle {
+    font-size: 9pt; font-weight: 700; color: #5f6368;
+    padding-left: 7px; padding-right: 5px;
+    padding-top: 2px; padding-bottom: 2px;
+}
+#PageTitle {
+    font-size: 18pt; font-weight: 600; color: #202124;
+    padding-left: 7px; padding-right: 5px;
+}
+#PageSubtitle {
+    color: #6b7075;
+    padding-left: 7px; padding-right: 5px;
+}
 #DashboardCard { background: #ffffff; border: 1px solid #dadce0; border-radius: 7px; }
 #CardValue { font-size: 23pt; font-weight: 600; color: #217346; }
 #CardLabel { color: #5f6368; }
@@ -46,6 +60,24 @@ QPushButton[primary="true"] {
 QPushButton[secondary="true"] {
     background: #ffffff; border: 1px solid #c8cdd1;
     border-radius: 4px; padding: 7px 12px;
+}
+QCheckBox {
+    min-width: 34px;
+    min-height: 30px;
+    spacing: 0px;
+}
+QCheckBox::indicator {
+    width: 19px;
+    height: 19px;
+}
+QCheckBox::indicator:unchecked {
+    background: #ffffff;
+    border: 1px solid #9aa0a6;
+    border-radius: 3px;
+}
+QCheckBox::indicator:unchecked:hover {
+    background: #f2f8f4;
+    border: 2px solid #217346;
 }
 QTableWidget, QTableView {
     background: #ffffff; alternate-background-color: #fafafa;
