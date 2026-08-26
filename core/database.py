@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -143,6 +143,46 @@ class Database:
                         ON DELETE CASCADE
                 );
 
+                CREATE TABLE IF NOT EXISTS character_alias (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    alias_name TEXT NOT NULL,
+                    normalized_alias TEXT NOT NULL UNIQUE,
+                    canonical_character_id INTEGER NOT NULL,
+                    source_character_id INTEGER UNIQUE,
+                    source_locked_talent_id INTEGER,
+                    created_at TEXT,
+                    updated_at TEXT,
+                    CHECK(source_character_id IS NULL OR source_character_id != canonical_character_id),
+                    FOREIGN KEY (canonical_character_id)
+                        REFERENCES characters(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (source_character_id)
+                        REFERENCES characters(id)
+                        ON DELETE SET NULL,
+                    FOREIGN KEY (source_locked_talent_id)
+                        REFERENCES talents(id)
+                        ON DELETE SET NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS character_alias_dialogue (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    alias_id INTEGER NOT NULL,
+                    dialogue_id INTEGER NOT NULL,
+                    talent_id INTEGER,
+                    position INTEGER NOT NULL DEFAULT 0,
+                    created_canonical INTEGER NOT NULL DEFAULT 1,
+                    UNIQUE(alias_id, dialogue_id, position),
+                    FOREIGN KEY (alias_id)
+                        REFERENCES character_alias(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (dialogue_id)
+                        REFERENCES dialogues(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (talent_id)
+                        REFERENCES talents(id)
+                        ON DELETE SET NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS recording_status (
                     dialogue_id INTEGER PRIMARY KEY,
                     is_recorded INTEGER NOT NULL DEFAULT 0,
@@ -190,6 +230,18 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_dialogue_review_classification
                     ON dialogue_review(classification);
+
+                CREATE INDEX IF NOT EXISTS idx_character_alias_canonical
+                    ON character_alias(canonical_character_id);
+
+                CREATE INDEX IF NOT EXISTS idx_character_alias_source
+                    ON character_alias(source_character_id);
+
+                CREATE INDEX IF NOT EXISTS idx_character_alias_dialogue_alias
+                    ON character_alias_dialogue(alias_id);
+
+                CREATE INDEX IF NOT EXISTS idx_character_alias_dialogue_dialogue
+                    ON character_alias_dialogue(dialogue_id);
 
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
                     ON character_talent(character_id)
