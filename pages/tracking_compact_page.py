@@ -2,15 +2,50 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QGridLayout, QLabel, QWidget
 
+from core.database import Database
 from pages.tracking_page import STATUS_ORDER, TrackingPage
+from services.tracking_summary_service import TrackingSummaryService
 
 
 class CompactTrackingPage(TrackingPage):
-    """Tracking page with a compact two-column status legend."""
+    """Tracking page with compact status legend and talent summary."""
 
     def __init__(self, parent=None):
+        self._summary_service: TrackingSummaryService | None = None
         super().__init__(parent)
+        self.summary_label.setContentsMargins(8, 2, 8, 2)
         self._compact_status_legend()
+
+    def set_database(self, database: Database | None) -> None:
+        self._summary_service = (
+            TrackingSummaryService(database) if database is not None else None
+        )
+        super().set_database(database)
+
+    def _refresh_workspace(self) -> None:
+        super()._refresh_workspace()
+
+        talent_id = self.talent_combo.currentData()
+        if self._summary_service is None or talent_id is None:
+            return
+
+        try:
+            summary = self._summary_service.get_talent_summary(int(talent_id))
+        except Exception:
+            # Keep the base Tracking message if the compact summary query fails.
+            return
+
+        talent_name = self.talent_combo.currentText().strip()
+        self.summary_label.setText(
+            f"Talent: {talent_name}   •   "
+            f"Tokoh: {self._format_count(summary.character_count)}   •   "
+            f"Episode: {self._format_count(summary.episode_count)}   •   "
+            f"Dialog: {self._format_count(summary.dialogue_count)}"
+        )
+
+    @staticmethod
+    def _format_count(value: int) -> str:
+        return f"{int(value):,}".replace(",", ".")
 
     def _compact_status_legend(self) -> None:
         shell_layout = self.layout()
