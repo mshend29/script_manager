@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QUrl, Qt
+from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QInputDialog,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QTabWidget,
@@ -21,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.database import Database
-from services.data_service import DataService, ValidationIssue
+from services.data_service import DataService, UnresolvedCastRow, ValidationIssue
 from widgets.context_panel import ContextPanel
 from widgets.page_shell import PageShell
 
@@ -36,10 +38,14 @@ class DataPage(PageShell):
         "validation": 5,
     }
 
+    UNRESOLVED_CHARACTER_COLOR = QColor("#FDE7E9")
+    UNRESOLVED_TALENT_COLOR = QColor("#FFF4CE")
+
     def __init__(self, parent=None):
         self._database: Database | None = None
         self._service: DataService | None = None
         self._loading = False
+        self._unresolved_rows: list[UnresolvedCastRow] = []
 
         context = ContextPanel("DATA")
 
@@ -48,7 +54,7 @@ class DataPage(PageShell):
         self.health_label.setWordWrap(True)
         context.add_widget(self.health_label)
 
-        context.add_section_title("CAST MAPPING")
+        self.cast_mapping_title = context.add_section_title("CAST MAPPING")
         self.mapping_character_label = QLabel("Pilih character dari tabel.")
         self.mapping_character_label.setWordWrap(True)
         context.add_widget(self.mapping_character_label)
@@ -65,10 +71,6 @@ class DataPage(PageShell):
         self.unlock_mapping_button.setProperty("secondary", True)
         context.add_widget(self.unlock_mapping_button)
 
-        self.add_talent_button = QPushButton("Add Talent")
-        self.add_talent_button.setProperty("secondary", True)
-        context.add_widget(self.add_talent_button)
-
         self.mapping_note = QLabel(
             "Manual lock menjadi mapping authoritative untuk cast aktif. "
             "Unlock hanya melepas kunci; re-resolve berikutnya terjadi saat Refresh Data."
@@ -76,6 +78,15 @@ class DataPage(PageShell):
         self.mapping_note.setWordWrap(True)
         self.mapping_note.setObjectName("MutedLabel")
         context.add_widget(self.mapping_note)
+
+        self._cast_mapping_widgets = [
+            self.cast_mapping_title,
+            self.mapping_character_label,
+            self.mapping_talent_combo,
+            self.lock_mapping_button,
+            self.unlock_mapping_button,
+            self.mapping_note,
+        ]
         context.add_stretch()
 
         workspace = QWidget()
@@ -109,11 +120,15 @@ class DataPage(PageShell):
         self.characters_table.currentCellChanged.connect(
             self._character_selection_changed
         )
+        self.unresolved_table.cellClicked.connect(
+            self._unresolved_cell_clicked
+        )
+        self.tabs.currentChanged.connect(self._data_tab_changed)
         self.lock_mapping_button.clicked.connect(self._lock_selected_mapping)
         self.unlock_mapping_button.clicked.connect(self._unlock_selected_mapping)
-        self.add_talent_button.clicked.connect(self._add_talent)
 
         self._set_mapping_enabled(False)
+        self._update_cast_mapping_visibility()
 
     # ------------------------------------------------------------------
     # BUILD UI
@@ -198,10 +213,14 @@ class DataPage(PageShell):
         layout.setContentsMargins(8, 8, 8, 8)
 
         self.unresolved_table = self._new_table(
-            ["EPS", "CHARACTER", "DIALOG", "SOURCE"]
+            ["EPS", "CHARACTER", "TALENT", "DIALOG", "SOURCE"]
         )
         self.unresolved_table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
+            3, QHeaderView.ResizeMode.Stretch
+        )
+        self.unresolved_table.setToolTip(
+            "Klik CHARACTER untuk Add Character, TALENT untuk Add Talent, "
+            "atau SOURCE untuk membuka file source."
         )
         layout.addWidget(self.unresolved_table)
         self.tabs.addTab(tab, "Unresolved")
@@ -271,6 +290,7 @@ class DataPage(PageShell):
     def clear_data(self) -> None:
         self._database = None
         self._service = None
+        self._unresolved_rows = []
         self._loading = True
         try:
             for table in (
@@ -290,6 +310,7 @@ class DataPage(PageShell):
         finally:
             self._loading = False
         self._set_mapping_enabled(False)
+        self._update_cast_mapping_visibility()
 
     def reload(self) -> None:
         if self._service is None:
@@ -310,6 +331,7 @@ class DataPage(PageShell):
             self._loading = False
 
         self._character_selection_changed()
+        self._update_cast_mapping_visibility()
 
     def _load_overview(self) -> None:
         if self._service is None:
@@ -343,17 +365,51 @@ class DataPage(PageShell):
         for row_index, row in enumerate(rows):
             character_item = QTableWidgetItem(row.name)
             character_item.setData(Qt.ItemDataRole.UserRole, row.id)
-            locked_item = QTableWidgetItem(row.locked_talent_name or "—")
+
+            if row.locked_talent_name:
+                locked_text = row.locked_talent_name
+            elif row.unresolved_dialogues:
+                locked_text = "⚠ Talent Unknown"
+            else:
+                locked_text = "—"
+
+            locked_item = QTableWidgetItem(locked_text)
             locked_item.setData(Qt.ItemDataRole.UserRole, row.locked_talent_id)
             source_item = QTableWidgetItem(row.mapping_source or "—")
             dialogue_item = QTableWidgetItem(str(row.active_dialogues))
             unresolved_item = QTableWidgetItem(str(row.unresolved_dialogues))
-            if row.unresolved_dialogues:
-                unresolved_item.setToolTip("Ada dialog aktif tanpa talent untuk character ini.")
-            for column, item in enumerate(
-                (character_item, locked_item, source_item, dialogue_item, unresolved_item)
-            ):
+
+            items = (
+                character_item,
+                locked_item,
+                source_item,
+                dialogue_item,
+                unresolved_item,
+            )
+            for column, item in enumerate(items):
                 self.characters_table.setItem(row_index, column, item)
+
+            if row.missing_character:
+                self._set_table_row_color(
+                    self.characters_table,
+                    row_index,
+                    self.UNRESOLVED_CHARACTER_COLOR,
+                )
+                character_item.setToolTip(
+                    "Dialog aktif tanpa character. Putuskan manual dari tab Unresolved."
+                )
+                locked_item.setToolTip(
+                    "Talent belum dapat ditentukan sebelum character ditetapkan."
+                )
+            elif row.unresolved_dialogues:
+                self._set_table_row_color(
+                    self.characters_table,
+                    row_index,
+                    self.UNRESOLVED_TALENT_COLOR,
+                )
+                unresolved_item.setToolTip(
+                    "Ada dialog aktif dengan character ini tetapi talent belum ditentukan."
+                )
 
     def _load_talents(self) -> None:
         if self._service is None:
@@ -364,23 +420,53 @@ class DataPage(PageShell):
             talent_item = QTableWidgetItem(row.name)
             talent_item.setData(Qt.ItemDataRole.UserRole, row.id)
             self.talents_table.setItem(row_index, 0, talent_item)
-            self.talents_table.setItem(row_index, 1, QTableWidgetItem(str(row.character_count)))
-            self.talents_table.setItem(row_index, 2, QTableWidgetItem(str(row.active_dialogues)))
+            self.talents_table.setItem(
+                row_index, 1, QTableWidgetItem(str(row.character_count))
+            )
+            self.talents_table.setItem(
+                row_index, 2, QTableWidgetItem(str(row.active_dialogues))
+            )
 
     def _load_unresolved(self) -> None:
         if self._service is None:
             return
         rows = self._service.get_unresolved_cast()
+        self._unresolved_rows = rows
         self.unresolved_table.setRowCount(len(rows))
+
         for row_index, row in enumerate(rows):
             episode_item = QTableWidgetItem(str(row.episode_number))
             episode_item.setData(Qt.ItemDataRole.UserRole, row.dialogue_id)
+
             character_item = QTableWidgetItem(row.character_name)
             character_item.setData(Qt.ItemDataRole.UserRole, row.character_id)
-            self.unresolved_table.setItem(row_index, 0, episode_item)
-            self.unresolved_table.setItem(row_index, 1, character_item)
-            self.unresolved_table.setItem(row_index, 2, QTableWidgetItem(row.dialogue))
-            self.unresolved_table.setItem(row_index, 3, QTableWidgetItem(row.source_file_name))
+            character_item.setToolTip(
+                "Klik untuk menambahkan character secara manual."
+                if row.character_id is None
+                else "Character sudah tersedia; unresolved ini memerlukan talent."
+            )
+
+            talent_item = QTableWidgetItem(row.talent_name)
+            talent_item.setData(Qt.ItemDataRole.UserRole, row.talent_id)
+            talent_item.setToolTip(
+                "Klik untuk menambahkan/memilih talent secara manual."
+            )
+
+            dialogue_item = QTableWidgetItem(row.dialogue)
+            source_item = QTableWidgetItem(row.source_file_name)
+            source_item.setToolTip(row.source_file_path or row.source_file_name)
+
+            for column, item in enumerate(
+                (episode_item, character_item, talent_item, dialogue_item, source_item)
+            ):
+                self.unresolved_table.setItem(row_index, column, item)
+
+            color = (
+                self.UNRESOLVED_CHARACTER_COLOR
+                if row.character_id is None
+                else self.UNRESOLVED_TALENT_COLOR
+            )
+            self._set_table_row_color(self.unresolved_table, row_index, color)
 
     def _load_sources(self) -> None:
         if self._service is None:
@@ -388,7 +474,9 @@ class DataPage(PageShell):
         rows = self._service.get_sources()
         self.sources_table.setRowCount(len(rows))
         for row_index, row in enumerate(rows):
-            episode_text = str(row.episode_number) if row.episode_number is not None else "—"
+            episode_text = (
+                str(row.episode_number) if row.episode_number is not None else "—"
+            )
             episode_item = QTableWidgetItem(episode_text)
             file_item = QTableWidgetItem(row.file_name)
             file_item.setToolTip(row.file_path)
@@ -410,6 +498,137 @@ class DataPage(PageShell):
             self.mapping_talent_combo.addItem(name, talent_id)
         index = self.mapping_talent_combo.findData(current)
         self.mapping_talent_combo.setCurrentIndex(index if index >= 0 else 0)
+
+    @staticmethod
+    def _set_table_row_color(
+        table: QTableWidget,
+        row: int,
+        color: QColor,
+    ) -> None:
+        for column in range(table.columnCount()):
+            item = table.item(row, column)
+            if item is not None:
+                item.setBackground(color)
+
+    # ------------------------------------------------------------------
+    # UNRESOLVED MANUAL ACTIONS
+    # ------------------------------------------------------------------
+
+    def _unresolved_cell_clicked(self, row_index: int, column: int) -> None:
+        if (
+            self._service is None
+            or row_index < 0
+            or row_index >= len(self._unresolved_rows)
+        ):
+            return
+
+        row = self._unresolved_rows[row_index]
+        item = self.unresolved_table.item(row_index, column)
+        if item is None:
+            return
+
+        menu = QMenu(self)
+        chosen = None
+
+        if column == 1:
+            add_character = menu.addAction("Add Character…")
+            add_character.setEnabled(row.character_id is None)
+            if row.character_id is not None:
+                existing = menu.addAction(f"Character: {row.character_name}")
+                existing.setEnabled(False)
+            chosen = self._exec_cell_menu(menu, item)
+            if chosen is add_character:
+                self._add_character_to_unresolved(row)
+
+        elif column == 2:
+            add_talent = menu.addAction("Add Talent…")
+            add_talent.setEnabled(row.character_id is not None)
+            if row.character_id is None:
+                hint = menu.addAction("Add Character terlebih dahulu")
+                hint.setEnabled(False)
+            chosen = self._exec_cell_menu(menu, item)
+            if chosen is add_talent:
+                self._add_talent_to_unresolved(row)
+
+        elif column == 4:
+            open_source = menu.addAction("Open Source")
+            open_source.setEnabled(bool(row.source_file_path))
+            chosen = self._exec_cell_menu(menu, item)
+            if chosen is open_source:
+                self._open_unresolved_source(row)
+
+    def _exec_cell_menu(self, menu: QMenu, item: QTableWidgetItem):
+        rect = self.unresolved_table.visualItemRect(item)
+        position = self.unresolved_table.viewport().mapToGlobal(rect.bottomLeft())
+        return menu.exec(position)
+
+    def _add_character_to_unresolved(self, row: UnresolvedCastRow) -> None:
+        if self._service is None or row.character_id is not None:
+            return
+
+        name, accepted = QInputDialog.getText(
+            self,
+            "Add Character",
+            f"Character untuk Episode {row.episode_number}:\n{row.dialogue}",
+        )
+        if not accepted or not name.strip():
+            return
+
+        try:
+            character_id = self._service.ensure_character(name)
+            self._service.assign_missing_character(row.dialogue_id, character_id)
+        except Exception as exc:
+            QMessageBox.critical(self, "Add Character", str(exc))
+            return
+
+        self.reload()
+        self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
+
+    def _add_talent_to_unresolved(self, row: UnresolvedCastRow) -> None:
+        if self._service is None:
+            return
+        if row.character_id is None:
+            QMessageBox.information(
+                self,
+                "Add Talent",
+                "Tambahkan character terlebih dahulu sebelum menentukan talent.",
+            )
+            return
+
+        name, accepted = QInputDialog.getText(
+            self,
+            "Add Talent",
+            f"Talent untuk {row.character_name}:",
+        )
+        if not accepted or not name.strip():
+            return
+
+        try:
+            talent_id = self._service.ensure_talent(name)
+            self._service.set_locked_mapping(row.character_id, talent_id)
+        except Exception as exc:
+            QMessageBox.critical(self, "Add Talent", str(exc))
+            return
+
+        self.reload()
+        self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
+
+    def _open_unresolved_source(self, row: UnresolvedCastRow) -> None:
+        path = Path(row.source_file_path)
+        if not path.is_file():
+            QMessageBox.warning(
+                self,
+                "Open Source",
+                f"Source file tidak ditemukan.\n\n{path}",
+            )
+            return
+
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            QMessageBox.warning(
+                self,
+                "Open Source",
+                f"Source file tidak dapat dibuka.\n\n{path}",
+            )
 
     # ------------------------------------------------------------------
     # CHARACTER MAPPING EDITOR
@@ -438,6 +657,10 @@ class DataPage(PageShell):
     def _character_selection_changed(self, *args) -> None:
         if self._loading:
             return
+        if self.tabs.currentIndex() != self.TAB_INDEX["characters"]:
+            self._set_mapping_enabled(False)
+            return
+
         row = self.characters_table.currentRow()
         if row < 0:
             self.mapping_character_label.setText("Pilih character dari tabel.")
@@ -448,6 +671,15 @@ class DataPage(PageShell):
         character_item = self.characters_table.item(row, 0)
         talent_item = self.characters_table.item(row, 1)
         if character_item is None:
+            return
+
+        character_id = character_item.data(Qt.ItemDataRole.UserRole)
+        if character_id is None:
+            self.mapping_character_label.setText(
+                "Character Unknown — selesaikan manual dari tab Unresolved."
+            )
+            self.mapping_talent_combo.setCurrentIndex(0)
+            self._set_mapping_enabled(False)
             return
 
         self.mapping_character_label.setText(
@@ -463,10 +695,26 @@ class DataPage(PageShell):
         self._set_mapping_enabled(True)
 
     def _set_mapping_enabled(self, enabled: bool) -> None:
-        self.mapping_talent_combo.setEnabled(enabled)
-        self.lock_mapping_button.setEnabled(enabled)
-        self.unlock_mapping_button.setEnabled(enabled)
-        self.add_talent_button.setEnabled(self._service is not None)
+        active = (
+            enabled
+            and self._service is not None
+            and self.tabs.currentIndex() == self.TAB_INDEX["characters"]
+        )
+        self.mapping_talent_combo.setEnabled(active)
+        self.lock_mapping_button.setEnabled(active)
+        self.unlock_mapping_button.setEnabled(active)
+
+    def _data_tab_changed(self, *args) -> None:
+        self._update_cast_mapping_visibility()
+        if self.tabs.currentIndex() == self.TAB_INDEX["characters"]:
+            self._character_selection_changed()
+
+    def _update_cast_mapping_visibility(self) -> None:
+        visible = self.tabs.currentIndex() == self.TAB_INDEX["characters"]
+        for widget in self._cast_mapping_widgets:
+            widget.setVisible(visible)
+        if not visible:
+            self._set_mapping_enabled(False)
 
     def _lock_selected_mapping(self) -> None:
         if self._service is None:
@@ -520,28 +768,6 @@ class DataPage(PageShell):
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])
 
-    def _add_talent(self) -> None:
-        if self._service is None:
-            return
-        name, accepted = QInputDialog.getText(
-            self,
-            "Add Talent",
-            "Talent name:",
-        )
-        if not accepted or not name.strip():
-            return
-
-        try:
-            talent_id = self._service.ensure_talent(name)
-        except Exception as exc:
-            QMessageBox.critical(self, "Add Talent", str(exc))
-            return
-
-        self.reload()
-        index = self.mapping_talent_combo.findData(talent_id)
-        if index >= 0:
-            self.mapping_talent_combo.setCurrentIndex(index)
-
     # ------------------------------------------------------------------
     # RIBBON-FACING ACTIONS
     # ------------------------------------------------------------------
@@ -560,9 +786,15 @@ class DataPage(PageShell):
         issues = self._service.validate()
         self.validation_table.setRowCount(len(issues))
         for row_index, issue in enumerate(issues):
-            self.validation_table.setItem(row_index, 0, QTableWidgetItem(issue.severity))
-            self.validation_table.setItem(row_index, 1, QTableWidgetItem(issue.code))
-            self.validation_table.setItem(row_index, 2, QTableWidgetItem(issue.message))
+            self.validation_table.setItem(
+                row_index, 0, QTableWidgetItem(issue.severity)
+            )
+            self.validation_table.setItem(
+                row_index, 1, QTableWidgetItem(issue.code)
+            )
+            self.validation_table.setItem(
+                row_index, 2, QTableWidgetItem(issue.message)
+            )
 
         errors = sum(1 for issue in issues if issue.severity == "ERROR")
         warnings = sum(1 for issue in issues if issue.severity == "WARNING")

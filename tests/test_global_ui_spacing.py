@@ -21,13 +21,16 @@ def test_context_and_workspace_titles_have_global_horizontal_padding():
     assert "padding-right: 5px" in theme
 
 
-def test_recording_checkbox_has_larger_click_target_and_visible_empty_box():
+def test_recording_checkbox_has_visible_centered_empty_box():
     theme = _read("app/theme.py")
     dialog = _read("pages/dialog_page.py")
 
     assert "QCheckBox {" in theme
-    assert "min-width: 34px" in theme
+    assert "min-width: 31px" in theme
+    assert "max-width: 31px" in theme
     assert "min-height: 30px" in theme
+    assert "max-height: 30px" in theme
+    assert "padding-left: 6px" in theme
     assert "QCheckBox::indicator" in theme
     assert "width: 19px" in theme
     assert "height: 19px" in theme

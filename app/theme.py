@@ -62,9 +62,12 @@ QPushButton[secondary="true"] {
     border-radius: 4px; padding: 7px 12px;
 }
 QCheckBox {
-    min-width: 34px;
+    min-width: 31px;
+    max-width: 31px;
     min-height: 30px;
+    max-height: 30px;
     spacing: 0px;
+    padding-left: 6px;
 }
 QCheckBox::indicator {
     width: 19px;

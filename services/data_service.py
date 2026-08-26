@@ -22,13 +22,14 @@ class DataOverview:
 
 @dataclass(frozen=True)
 class CharacterAdminRow:
-    id: int
+    id: int | None
     name: str
     locked_talent_id: int | None
     locked_talent_name: str
     mapping_source: str
     active_dialogues: int
     unresolved_dialogues: int
+    missing_character: bool = False
 
 
 @dataclass(frozen=True)
@@ -45,8 +46,11 @@ class UnresolvedCastRow:
     episode_number: int
     character_id: int | None
     character_name: str
+    talent_id: int | None
+    talent_name: str
     dialogue: str
     source_file_name: str
+    source_file_path: str
 
 
 @dataclass(frozen=True)
@@ -140,11 +144,26 @@ class DataService:
                 GROUP BY
                     c.id, c.name,
                     lm.talent_id, t.name, lm.source
-                ORDER BY c.name COLLATE NOCASE
+                ORDER BY unresolved_dialogues DESC, c.name COLLATE NOCASE
                 """
             ).fetchall()
 
-        return [
+            missing_character_row = connection.execute(
+                """
+                SELECT COUNT(DISTINCT d.id) AS total
+                FROM dialogues AS d
+                JOIN episodes AS e ON e.id = d.episode_id
+                WHERE d.is_active = 1
+                  AND e.is_active = 1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM dialog_cast AS dc
+                      WHERE dc.dialogue_id = d.id
+                  )
+                """
+            ).fetchone()
+
+        result = [
             CharacterAdminRow(
                 id=int(row["id"]),
                 name=str(row["name"]),
@@ -157,9 +176,30 @@ class DataService:
                 mapping_source=str(row["mapping_source"] or ""),
                 active_dialogues=int(row["active_dialogues"] or 0),
                 unresolved_dialogues=int(row["unresolved_dialogues"] or 0),
+                missing_character=False,
             )
             for row in rows
         ]
+
+        missing_character_count = int(
+            missing_character_row["total"] if missing_character_row else 0
+        )
+        if missing_character_count:
+            result.insert(
+                0,
+                CharacterAdminRow(
+                    id=None,
+                    name="⚠ Character Unknown",
+                    locked_talent_id=None,
+                    locked_talent_name="⚠ Talent Unknown",
+                    mapping_source="Unresolved",
+                    active_dialogues=missing_character_count,
+                    unresolved_dialogues=missing_character_count,
+                    missing_character=True,
+                ),
+            )
+
+        return result
 
     def get_talents(self) -> list[TalentAdminRow]:
         with self.database.connect() as connection:
@@ -208,12 +248,20 @@ class DataService:
                         WHEN dc.id IS NULL THEN '⚠ Missing Character'
                         ELSE c.name
                     END AS character_name,
+                    dc.talent_id,
+                    CASE
+                        WHEN dc.id IS NULL OR dc.talent_id IS NULL
+                        THEN '⚠ Missing Talent'
+                        ELSE t.name
+                    END AS talent_name,
                     d.dialog_text,
-                    COALESCE(sf.file_name, '') AS source_file_name
+                    COALESCE(sf.file_name, '') AS source_file_name,
+                    COALESCE(sf.file_path, '') AS source_file_path
                 FROM dialogues AS d
                 JOIN episodes AS e ON e.id = d.episode_id
                 LEFT JOIN dialog_cast AS dc ON dc.dialogue_id = d.id
                 LEFT JOIN characters AS c ON c.id = dc.character_id
+                LEFT JOIN talents AS t ON t.id = dc.talent_id
                 LEFT JOIN source_files AS sf ON sf.id = d.source_file_id
                 WHERE d.is_active = 1
                   AND e.is_active = 1
@@ -225,6 +273,7 @@ class DataService:
                       )
                   )
                 ORDER BY
+                    CASE WHEN dc.id IS NULL THEN 0 ELSE 1 END,
                     e.episode_number,
                     d.source_row,
                     d.id,
@@ -242,8 +291,15 @@ class DataService:
                     else None
                 ),
                 character_name=str(row["character_name"]),
+                talent_id=(
+                    int(row["talent_id"])
+                    if row["talent_id"] is not None
+                    else None
+                ),
+                talent_name=str(row["talent_name"]),
                 dialogue=str(row["dialog_text"]),
                 source_file_name=str(row["source_file_name"] or ""),
+                source_file_path=str(row["source_file_path"] or ""),
             )
             for row in rows
         ]
@@ -283,6 +339,73 @@ class DataService:
     # ------------------------------------------------------------------
     # CHARACTER / TALENT ADMIN
     # ------------------------------------------------------------------
+
+    def ensure_character(self, name: str) -> int:
+        clean_name = name.strip()
+        normalized = normalize_key(clean_name)
+        if not normalized:
+            raise ValueError("Nama character tidak boleh kosong.")
+
+        now = datetime.now().isoformat(timespec="seconds")
+        with self.database.connect() as connection:
+            existing = connection.execute(
+                "SELECT id FROM characters WHERE normalized_name = ?",
+                (normalized,),
+            ).fetchone()
+            if existing:
+                character_id = int(existing["id"])
+                connection.execute(
+                    """
+                    UPDATE characters
+                    SET name = ?, is_active = 1, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (clean_name, now, character_id),
+                )
+                return character_id
+
+            cursor = connection.execute(
+                """
+                INSERT INTO characters(
+                    name, normalized_name, is_active, created_at, updated_at
+                ) VALUES(?, ?, 1, ?, ?)
+                """,
+                (clean_name, normalized, now, now),
+            )
+            return int(cursor.lastrowid)
+
+    def assign_missing_character(self, dialogue_id: int, character_id: int) -> None:
+        with self.database.connect() as connection:
+            dialogue = connection.execute(
+                "SELECT id FROM dialogues WHERE id = ? AND is_active = 1",
+                (dialogue_id,),
+            ).fetchone()
+            character = connection.execute(
+                "SELECT id FROM characters WHERE id = ? AND is_active = 1",
+                (character_id,),
+            ).fetchone()
+            if dialogue is None:
+                raise ValueError("Dialog tidak ditemukan atau sudah inactive.")
+            if character is None:
+                raise ValueError("Character tidak ditemukan atau sudah inactive.")
+
+            existing_cast = connection.execute(
+                "SELECT 1 FROM dialog_cast WHERE dialogue_id = ? LIMIT 1",
+                (dialogue_id,),
+            ).fetchone()
+            if existing_cast is not None:
+                raise ValueError(
+                    "Dialog ini sudah memiliki character/cast. Gunakan Character Mapping untuk perubahan mapping."
+                )
+
+            connection.execute(
+                """
+                INSERT INTO dialog_cast(
+                    dialogue_id, character_id, talent_id, position
+                ) VALUES(?, ?, NULL, 0)
+                """,
+                (dialogue_id, character_id),
+            )
 
     def ensure_talent(self, name: str) -> int:
         clean_name = name.strip()
@@ -391,10 +514,6 @@ class DataService:
                     (character_id, talent_id, now, now),
                 )
 
-            # A manual lock is authoritative. Some crowd/group source rows can
-            # legitimately contain multiple talent links for one character.
-            # Rebuild those links per dialogue instead of UPDATE-ing them into
-            # duplicate UNIQUE(dialogue_id, character_id, talent_id) keys.
             connection.execute(
                 """
                 DELETE FROM dialog_cast
@@ -523,7 +642,7 @@ class DataService:
                     ValidationIssue(
                         "WARNING",
                         "ACTIVE_DIALOGUE_NO_CAST",
-                        f"{missing_cast_count} dialog aktif tidak memiliki character/cast.",
+                        f"{missing_cast_count} dialog aktif tidak memiliki character/cast dan memerlukan keputusan manual.",
                     )
                 )
 
