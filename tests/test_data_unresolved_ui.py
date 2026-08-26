@@ -13,11 +13,13 @@ def _read(path: str) -> str:
 def test_unresolved_table_has_talent_column_and_manual_cell_actions():
     source = _read("pages/data_page.py")
 
-    assert '["EPS", "CHARACTER", "TALENT", "DIALOG", "SOURCE"]' in source
+    assert '["EPS", "ISSUE", "CHARACTER", "TALENT", "DIALOG", "SOURCE"]' in source
     assert "self.unresolved_table.cellClicked.connect" in source
     assert 'menu.addAction("Add Character…")' in source
     assert 'menu.addAction("Add Talent…")' in source
     assert 'menu.addAction("Open Source")' in source
+    assert 'menu.addAction("Mark as Narration / Non-Dialogue")' in source
+    assert 'menu.addAction("Restore to Needs Review")' in source
     assert "self._service.ensure_character(name)" in source
     assert "self._service.assign_missing_character" in source
     assert "self._service.ensure_talent(name)" in source
