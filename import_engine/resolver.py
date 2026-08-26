@@ -111,27 +111,35 @@ class CharacterTalentResolver:
         timestamp: str,
     ) -> ResolverReport:
         report = ResolverReport()
-        evidence: dict[str, dict[str, tuple[str, str]]] = defaultdict(dict)
+
+        # Evidence is grouped by canonical identity, not raw source label. This
+        # prevents Andi and "Bapak jas navy" from independently auto-locking a
+        # conflicting talent after the latter has been declared an alias.
+        evidence: dict[int, dict[str, tuple[str, str]]] = defaultdict(dict)
+        canonical_names: dict[int, str] = {}
 
         for parse_result in parse_results:
             for row in parse_result.rows:
                 if len(row.characters) != 1 or len(row.talents) != 1:
                     continue
-                character_name = row.characters[0]
+                source_name = row.characters[0]
                 talent_name = row.talents[0]
-                character_key = normalize_key(character_name)
+                source_key = normalize_key(source_name)
                 talent_key = normalize_key(talent_name)
-                if not character_key or not talent_key:
+                if not source_key or not talent_key:
                     continue
-                evidence[character_key][talent_key] = (character_name, talent_name)
 
-        for _character_key, talent_variants in sorted(evidence.items()):
-            sample_character = next(iter(talent_variants.values()))[0]
-            source_character_id = self.ensure_character(
-                sample_character,
-                timestamp=timestamp,
-            )
-            character_id = self._canonical_character_id(source_character_id)
+                source_id = self.ensure_character(source_name, timestamp=timestamp)
+                canonical_id = self._canonical_character_id(source_id)
+                canonical_names.setdefault(
+                    canonical_id,
+                    self._character_name(canonical_id) or source_name,
+                )
+                evidence[canonical_id][talent_key] = (source_name, talent_name)
+
+        for character_id in sorted(evidence):
+            talent_variants = evidence[character_id]
+            canonical_name = canonical_names.get(character_id, str(character_id))
             locked = self._get_locked_mapping(character_id)
 
             if locked is not None:
@@ -141,7 +149,7 @@ class CharacterTalentResolver:
                         sorted(value[1] for value in talent_variants.values())
                     )
                     report.warnings.append(
-                        f"Tokoh '{sample_character}' sudah terkunci ke talent "
+                        f"Tokoh '{canonical_name}' sudah terkunci ke talent "
                         f"'{locked['name']}', tetapi source menemukan: {source_talents}."
                     )
                 continue
@@ -151,12 +159,12 @@ class CharacterTalentResolver:
                     sorted(value[1] for value in talent_variants.values())
                 )
                 report.warnings.append(
-                    f"Tokoh '{sample_character}' memiliki lebih dari satu talent "
+                    f"Tokoh '{canonical_name}' memiliki lebih dari satu talent "
                     f"pada baris single: {source_talents}. Mapping tidak dikunci otomatis."
                 )
                 continue
 
-            _character_name, talent_name = next(iter(talent_variants.values()))
+            _source_name, talent_name = next(iter(talent_variants.values()))
             talent_id = self.ensure_talent(talent_name, timestamp=timestamp)
             existing_pair = self.connection.execute(
                 """
@@ -295,6 +303,13 @@ class CharacterTalentResolver:
             (int(character_id),),
         ).fetchone()
         return int(row["canonical_character_id"]) if row else int(character_id)
+
+    def _character_name(self, character_id: int) -> str:
+        row = self.connection.execute(
+            "SELECT name FROM characters WHERE id = ?",
+            (int(character_id),),
+        ).fetchone()
+        return str(row["name"]) if row else ""
 
     def _get_locked_mapping(self, character_id: int):
         return self.connection.execute(
