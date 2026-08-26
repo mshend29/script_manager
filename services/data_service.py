@@ -114,11 +114,20 @@ class DataService:
                     SELECT COUNT(*)
                     FROM dialogues AS d
                     WHERE d.is_active = 1
+                      AND NOT EXISTS (
+                          SELECT 1 FROM dialogue_review AS dr
+                          WHERE dr.dialogue_id = d.id
+                            AND dr.classification = 'NON_DIALOGUE'
+                      )
                       AND (
-                          NOT EXISTS (SELECT 1 FROM dialog_cast AS dc WHERE dc.dialogue_id = d.id)
+                          NOT EXISTS (
+                              SELECT 1 FROM dialog_cast AS dc
+                              WHERE dc.dialogue_id = d.id
+                          )
                           OR EXISTS (
                               SELECT 1 FROM dialog_cast AS dc
-                              WHERE dc.dialogue_id = d.id AND dc.talent_id IS NULL
+                              WHERE dc.dialogue_id = d.id
+                                AND dc.talent_id IS NULL
                           )
                       )
                     """
@@ -190,7 +199,7 @@ class DataService:
                 """
             ).fetchone()
 
-        result = []
+        result: list[CharacterAdminRow] = []
         for row in rows:
             alias_text = str(row["aliases"] or "")
             result.append(
@@ -205,7 +214,11 @@ class DataService:
                     mapping_source=str(row["mapping_source"] or ""),
                     active_dialogues=int(row["active_dialogues"] or 0),
                     unresolved_dialogues=int(row["unresolved_dialogues"] or 0),
-                    aliases=tuple(value.strip() for value in alias_text.split(" / ") if value.strip()),
+                    aliases=tuple(
+                        value.strip()
+                        for value in alias_text.split(" / ")
+                        if value.strip()
+                    ),
                 )
             )
 
@@ -251,11 +264,12 @@ class DataService:
             ).fetchall()
         return [
             TalentAdminRow(
-                id=int(r["id"]), name=str(r["name"]),
-                character_count=int(r["character_count"] or 0),
-                active_dialogues=int(r["active_dialogues"] or 0),
+                id=int(row["id"]),
+                name=str(row["name"]),
+                character_count=int(row["character_count"] or 0),
+                active_dialogues=int(row["active_dialogues"] or 0),
             )
-            for r in rows
+            for row in rows
         ]
 
     def get_talent_options(self) -> list[tuple[int, str]]:
@@ -294,6 +308,10 @@ class DataService:
                 LEFT JOIN talents AS t ON t.id = dc.talent_id
                 LEFT JOIN source_files AS sf ON sf.id = d.source_file_id
                 WHERE d.is_active = 1 AND e.is_active = 1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dialogue_review AS dr
+                      WHERE dr.dialogue_id = d.id AND dr.classification = 'NON_DIALOGUE'
+                  )
                   AND (
                       dc.id IS NULL
                       OR (dc.talent_id IS NULL AND canonical.is_active = 1)
@@ -305,17 +323,21 @@ class DataService:
             ).fetchall()
         return [
             UnresolvedCastRow(
-                dialogue_id=int(r["dialogue_id"]),
-                episode_number=int(r["episode_number"]),
-                character_id=int(r["character_id"]) if r["character_id"] is not None else None,
-                character_name=str(r["character_name"]),
-                talent_id=int(r["talent_id"]) if r["talent_id"] is not None else None,
-                talent_name=str(r["talent_name"]),
-                dialogue=str(r["dialog_text"]),
-                source_file_name=str(r["source_file_name"] or ""),
-                source_file_path=str(r["source_file_path"] or ""),
+                dialogue_id=int(row["dialogue_id"]),
+                episode_number=int(row["episode_number"]),
+                character_id=(
+                    int(row["character_id"]) if row["character_id"] is not None else None
+                ),
+                character_name=str(row["character_name"]),
+                talent_id=(
+                    int(row["talent_id"]) if row["talent_id"] is not None else None
+                ),
+                talent_name=str(row["talent_name"]),
+                dialogue=str(row["dialog_text"]),
+                source_file_name=str(row["source_file_name"] or ""),
+                source_file_path=str(row["source_file_path"] or ""),
             )
-            for r in rows
+            for row in rows
         ]
 
     def get_sources(self) -> list[SourceAdminRow]:
@@ -330,17 +352,20 @@ class DataService:
             ).fetchall()
         return [
             SourceAdminRow(
-                id=int(r["id"]),
-                episode_number=int(r["episode_number"]) if r["episode_number"] is not None else None,
-                file_name=str(r["file_name"]),
-                file_path=str(r["file_path"]),
-                fingerprint=str(r["fingerprint"] or ""),
-                modified_at=str(r["modified_at"] or ""),
-                imported_at=str(r["imported_at"] or ""),
-                last_seen_at=str(r["last_seen_at"] or ""),
-                is_active=bool(r["is_active"]),
+                id=int(row["id"]),
+                episode_number=(
+                    int(row["episode_number"])
+                    if row["episode_number"] is not None else None
+                ),
+                file_name=str(row["file_name"]),
+                file_path=str(row["file_path"]),
+                fingerprint=str(row["fingerprint"] or ""),
+                modified_at=str(row["modified_at"] or ""),
+                imported_at=str(row["imported_at"] or ""),
+                last_seen_at=str(row["last_seen_at"] or ""),
+                is_active=bool(row["is_active"]),
             )
-            for r in rows
+            for row in rows
         ]
 
     def ensure_character(self, name: str) -> int:
@@ -363,7 +388,11 @@ class DataService:
             if existing:
                 character_id = int(existing["id"])
                 connection.execute(
-                    "UPDATE characters SET name = ?, is_active = 1, updated_at = ? WHERE id = ?",
+                    """
+                    UPDATE characters
+                    SET name = ?, is_active = 1, updated_at = ?
+                    WHERE id = ?
+                    """,
                     (clean_name, now, character_id),
                 )
                 return character_id
@@ -395,10 +424,14 @@ class DataService:
                 (int(dialogue_id),),
             ).fetchone():
                 raise ValueError(
-                    "Dialog ini sudah memiliki character/cast. Gunakan Character Mapping untuk perubahan mapping."
+                    "Dialog ini sudah memiliki character/cast. "
+                    "Gunakan Character Mapping untuk perubahan mapping."
                 )
             connection.execute(
-                "INSERT INTO dialog_cast(dialogue_id, character_id, talent_id, position) VALUES(?, ?, NULL, 0)",
+                """
+                INSERT INTO dialog_cast(dialogue_id, character_id, talent_id, position)
+                VALUES(?, ?, NULL, 0)
+                """,
                 (int(dialogue_id), int(character_id)),
             )
 
@@ -416,7 +449,11 @@ class DataService:
             if existing:
                 talent_id = int(existing["id"])
                 connection.execute(
-                    "UPDATE talents SET name = ?, is_active = 1, updated_at = ? WHERE id = ?",
+                    """
+                    UPDATE talents
+                    SET name = ?, is_active = 1, updated_at = ?
+                    WHERE id = ?
+                    """,
                     (clean_name, now, talent_id),
                 )
                 return talent_id
@@ -459,23 +496,35 @@ class DataService:
             ).fetchall()
 
             connection.execute(
-                "UPDATE character_talent SET is_locked = 0, updated_at = ? WHERE character_id = ? AND is_locked = 1",
+                """
+                UPDATE character_talent
+                SET is_locked = 0, updated_at = ?
+                WHERE character_id = ? AND is_locked = 1
+                """,
                 (now, character_id),
             )
             existing = connection.execute(
-                "SELECT id FROM character_talent WHERE character_id = ? AND talent_id = ?",
+                """
+                SELECT id FROM character_talent
+                WHERE character_id = ? AND talent_id = ?
+                """,
                 (character_id, talent_id),
             ).fetchone()
             if existing:
                 connection.execute(
-                    "UPDATE character_talent SET is_locked = 1, source = 'manual', updated_at = ? WHERE id = ?",
+                    """
+                    UPDATE character_talent
+                    SET is_locked = 1, source = 'manual', updated_at = ?
+                    WHERE id = ?
+                    """,
                     (now, int(existing["id"])),
                 )
             else:
                 connection.execute(
                     """
                     INSERT INTO character_talent(
-                        character_id, talent_id, is_locked, source, created_at, updated_at
+                        character_id, talent_id, is_locked,
+                        source, created_at, updated_at
                     ) VALUES(?, ?, 1, 'manual', ?, ?)
                     """,
                     (character_id, talent_id, now, now),
@@ -488,7 +537,9 @@ class DataService:
                     f"""
                     DELETE FROM dialog_cast
                     WHERE character_id IN ({placeholders})
-                      AND dialogue_id IN (SELECT id FROM dialogues WHERE is_active = 1)
+                      AND dialogue_id IN (
+                          SELECT id FROM dialogues WHERE is_active = 1
+                      )
                     """,
                     source_ids,
                 )
@@ -515,7 +566,8 @@ class DataService:
                 connection.execute(
                     f"""
                     DELETE FROM stem_status
-                    WHERE character_id = ? AND episode_id IN ({placeholders})
+                    WHERE character_id = ?
+                      AND episode_id IN ({placeholders})
                     """,
                     (character_id, *episode_ids),
                 )
@@ -527,24 +579,47 @@ class DataService:
                 """
                 UPDATE character_talent
                 SET is_locked = 0,
-                    source = CASE WHEN source = 'manual' THEN 'manual-unlocked' ELSE source END,
+                    source = CASE
+                        WHEN source = 'manual' THEN 'manual-unlocked'
+                        ELSE source
+                    END,
                     updated_at = ?
                 WHERE character_id = ? AND is_locked = 1
                 """,
                 (now, int(character_id)),
             )
 
+    # ------------------------------------------------------------------
+    # VALIDATION / MAINTENANCE
+    # ------------------------------------------------------------------
+
     def validate(self) -> list[ValidationIssue]:
         issues: list[ValidationIssue] = []
+
         with self.database.connect() as connection:
             schema_row = connection.execute(
                 "SELECT value FROM app_meta WHERE key = 'schema_version'"
             ).fetchone()
             schema_value = str(schema_row["value"] if schema_row else "")
             if schema_value != str(SCHEMA_VERSION):
-                issues.append(ValidationIssue("ERROR", "SCHEMA_VERSION", f"Database schema {schema_value or '?'} != aplikasi {SCHEMA_VERSION}."))
-            for row in connection.execute("PRAGMA foreign_key_check").fetchall():
-                issues.append(ValidationIssue("ERROR", "FOREIGN_KEY", f"Foreign key invalid pada tabel {row[0]}, rowid {row[1]}."))
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "SCHEMA_VERSION",
+                        f"Database schema {schema_value or '?'} != aplikasi {SCHEMA_VERSION}.",
+                    )
+                )
+
+            foreign_rows = connection.execute("PRAGMA foreign_key_check").fetchall()
+            for row in foreign_rows:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "FOREIGN_KEY",
+                        f"Foreign key invalid pada tabel {row[0]}, rowid {row[1]}.",
+                    )
+                )
+
             unresolved = connection.execute(
                 """
                 SELECT COUNT(*) AS total
@@ -553,8 +628,162 @@ class DataService:
                 WHERE d.is_active = 1 AND dc.talent_id IS NULL
                 """
             ).fetchone()
-            if int(unresolved["total"] or 0):
-                issues.append(ValidationIssue("WARNING", "UNRESOLVED_CAST", f"{int(unresolved['total'])} cast dialog aktif belum memiliki talent."))
+            unresolved_count = int(unresolved["total"] or 0)
+            if unresolved_count:
+                issues.append(
+                    ValidationIssue(
+                        "WARNING",
+                        "UNRESOLVED_CAST",
+                        f"{unresolved_count} cast dialog aktif belum memiliki talent.",
+                    )
+                )
+
+            missing_cast = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM dialogues AS d
+                WHERE d.is_active = 1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dialog_cast AS dc
+                      WHERE dc.dialogue_id = d.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dialogue_review AS dr
+                      WHERE dr.dialogue_id = d.id
+                        AND dr.classification = 'NON_DIALOGUE'
+                  )
+                """
+            ).fetchone()
+            missing_cast_count = int(missing_cast["total"] or 0)
+            if missing_cast_count:
+                issues.append(
+                    ValidationIssue(
+                        "WARNING",
+                        "ACTIVE_DIALOGUE_NO_CAST",
+                        f"{missing_cast_count} dialog aktif tidak memiliki character/cast dan memerlukan keputusan manual.",
+                    )
+                )
+
+            duplicate_sources = connection.execute(
+                """
+                SELECT episode_number, COUNT(*) AS total
+                FROM source_files
+                WHERE is_active = 1 AND episode_number IS NOT NULL
+                GROUP BY episode_number
+                HAVING COUNT(*) > 1
+                ORDER BY episode_number
+                """
+            ).fetchall()
+            for row in duplicate_sources:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "DUPLICATE_SOURCE_EPISODE",
+                        f"Episode {row['episode_number']} memiliki {row['total']} source aktif.",
+                    )
+                )
+
+            invalid_dialogues = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM dialogues AS d
+                JOIN episodes AS e ON e.id = d.episode_id
+                WHERE d.is_active = 1 AND e.is_active = 0
+                """
+            ).fetchone()
+            invalid_dialogue_count = int(invalid_dialogues["total"] or 0)
+            if invalid_dialogue_count:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "ACTIVE_DIALOGUE_INACTIVE_EPISODE",
+                        f"{invalid_dialogue_count} dialog aktif berada pada episode inactive.",
+                    )
+                )
+
+            empty_active_episodes = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM episodes AS e
+                JOIN source_files AS sf ON sf.id = e.source_file_id
+                WHERE e.is_active = 1
+                  AND sf.is_active = 1
+                  AND EXISTS (
+                      SELECT 1 FROM dialogues AS history
+                      WHERE history.episode_id = e.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dialogues AS active_dialogue
+                      WHERE active_dialogue.episode_id = e.id
+                        AND active_dialogue.is_active = 1
+                  )
+                """
+            ).fetchone()
+            empty_active_episode_count = int(empty_active_episodes["total"] or 0)
+            if empty_active_episode_count:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "ACTIVE_EPISODE_WITHOUT_ACTIVE_DIALOGUES",
+                        f"{empty_active_episode_count} episode/source aktif hanya memiliki dialog inactive.",
+                    )
+                )
+
+            inactive_entity_cast = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM dialog_cast AS dc
+                JOIN dialogues AS d ON d.id = dc.dialogue_id
+                JOIN characters AS c ON c.id = dc.character_id
+                LEFT JOIN talents AS t ON t.id = dc.talent_id
+                WHERE d.is_active = 1
+                  AND (
+                      c.is_active = 0
+                      OR (dc.talent_id IS NOT NULL AND t.is_active = 0)
+                  )
+                """
+            ).fetchone()
+            inactive_entity_count = int(inactive_entity_cast["total"] or 0)
+            if inactive_entity_count:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "INACTIVE_CAST_ENTITY",
+                        f"{inactive_entity_count} cast aktif menunjuk character/talent inactive.",
+                    )
+                )
+
+            invalid_downstream = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM stem_status AS ss
+                WHERE ss.status IN ('READY_TO_STEM', 'STEMMED', 'DELIVERED')
+                  AND EXISTS (
+                      SELECT 1
+                      FROM dialogues AS d
+                      JOIN dialog_cast AS dc ON dc.dialogue_id = d.id
+                      LEFT JOIN character_alias AS ca
+                        ON ca.source_character_id = dc.character_id
+                      LEFT JOIN recording_status AS rs ON rs.dialogue_id = d.id
+                      WHERE d.episode_id = ss.episode_id
+                        AND dc.talent_id = ss.talent_id
+                        AND COALESCE(ca.canonical_character_id, dc.character_id)
+                            = ss.character_id
+                        AND d.is_active = 1
+                        AND COALESCE(rs.is_recorded, 0) = 0
+                  )
+                """
+            ).fetchone()
+            invalid_downstream_count = int(invalid_downstream["total"] or 0)
+            if invalid_downstream_count:
+                issues.append(
+                    ValidationIssue(
+                        "WARNING",
+                        "DOWNSTREAM_BEFORE_RECORDED",
+                        f"{invalid_downstream_count} tracking downstream belum memiliki recording lengkap.",
+                    )
+                )
+
         return issues
 
     def rebuild_indexes(self) -> None:
@@ -571,10 +800,12 @@ class DataService:
         while target.exists():
             target = backup_dir / f"project_{stamp}_{suffix}.db"
             suffix += 1
+
         with self.database.connect() as source:
             destination = sqlite3.connect(target)
             try:
                 source.backup(destination)
             finally:
                 destination.close()
+
         return target
