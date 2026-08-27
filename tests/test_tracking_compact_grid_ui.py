@@ -170,7 +170,7 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
     assert '"CURRENT", "EXPECTED", "STATUS"' in dialog
     assert "Tidak ada file yang akan" in dialog
     assert "ditimpa" in dialog
-    assert "rename_button.setEnabled(plan.matched > 0)" in dialog
+    assert "self.rename_button.setEnabled(count > 0)" in dialog
 
     assert "RENAME_COLLISION" in service
     assert "RENAME_AMBIGUOUS" in service
