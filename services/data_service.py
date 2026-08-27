@@ -878,20 +878,12 @@ class DataService:
             connection.execute("ANALYZE")
 
     def backup_database(self) -> Path:
-        backup_dir = self.database.path.parent / "backups"
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        target = backup_dir / f"project_{stamp}.db"
-        suffix = 1
-        while target.exists():
-            target = backup_dir / f"project_{stamp}_{suffix}.db"
-            suffix += 1
-
-        with self.database.connect() as source:
-            destination = sqlite3.connect(target)
-            try:
-                source.backup(destination)
-            finally:
-                destination.close()
-
+        target = BackupService(self.database).create("manual")
+        AuditService(self.database).record(
+            event_type="DATABASE",
+            action="MANUAL_BACKUP",
+            entity_type="project",
+            summary="Manual database backup created.",
+            details={"backup_path": str(target)},
+        )
         return target
