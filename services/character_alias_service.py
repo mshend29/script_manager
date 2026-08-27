@@ -5,6 +5,8 @@ from datetime import datetime
 
 from core.database import Database
 from import_engine.normalizer import normalize_key
+from services.audit_service import AuditService
+from services.backup_service import BackupService
 from services.validation_service import ERROR, SYSTEM, ValidationIssue
 
 
@@ -141,7 +143,19 @@ class CharacterAliasService:
                 """,
                 (clean, normalized, int(canonical["id"]), now, now),
             )
-            return int(cursor.lastrowid)
+            alias_id = int(cursor.lastrowid)
+            canonical_name = str(canonical["name"])
+
+        AuditService(self.database).record(
+            event_type="ALIAS",
+            action="ADD_ALIAS_NAME",
+            entity_type="character",
+            entity_id=canonical_character_id,
+            summary=f"Alias '{clean}' added to {canonical_name}.",
+            details={"alias_id": alias_id},
+            created_at=now,
+        )
+        return alias_id
 
     def set_character_alias(self, source_character_id: int, canonical_character_id: int) -> int:
         source_id = int(source_character_id)
@@ -150,6 +164,7 @@ class CharacterAliasService:
             raise ValueError("Character tidak dapat menjadi alias dirinya sendiri.")
 
         now = datetime.now().isoformat(timespec="seconds")
+        backup = BackupService(self.database).create("before-alias-merge")
         with self.database.connect() as connection:
             source = self._require_active_character(connection, source_id)
             canonical = self._require_canonical(connection, canonical_id)
@@ -318,11 +333,29 @@ class CharacterAliasService:
                 source_id=source_id,
                 canonical_id=canonical_id,
             )
-            return alias_id
+            source_name = str(source["name"])
+            canonical_name = str(canonical["name"])
+
+        AuditService(self.database).record(
+            event_type="ALIAS",
+            action="SET_CHARACTER_ALIAS",
+            entity_type="character",
+            entity_id=source_id,
+            summary=f"{source_name} set as alias of {canonical_name}.",
+            details={
+                "alias_id": alias_id,
+                "canonical_character_id": canonical_id,
+                "affected_episodes": sorted(affected_episodes),
+                "backup_path": str(backup),
+            },
+            created_at=now,
+        )
+        return alias_id
 
     def remove_alias(self, alias_id: int) -> None:
         alias_id = int(alias_id)
         now = datetime.now().isoformat(timespec="seconds")
+        backup = BackupService(self.database).create("before-alias-restore")
         with self.database.connect() as connection:
             alias = connection.execute(
                 "SELECT * FROM character_alias WHERE id = ?",
@@ -538,6 +571,7 @@ class CharacterAliasService:
                         (now, int(copied["id"])),
                     )
 
+            alias_name = str(alias["alias_name"])
             connection.execute("DELETE FROM character_alias WHERE id = ?", (alias_id,))
             self._reset_tracking_scopes(
                 connection,
@@ -545,6 +579,21 @@ class CharacterAliasService:
                 source_id=source_id,
                 canonical_id=canonical_id,
             )
+
+        AuditService(self.database).record(
+            event_type="ALIAS",
+            action="REMOVE_ALIAS",
+            entity_type="character",
+            entity_id=source_id,
+            summary=f"Alias '{alias_name}' restored as character.",
+            details={
+                "alias_id": alias_id,
+                "canonical_character_id": canonical_id,
+                "affected_episodes": sorted(affected_episodes),
+                "backup_path": str(backup),
+            },
+            created_at=now,
+        )
 
     def validation_issues(self) -> list[ValidationIssue]:
         issues: list[ValidationIssue] = []

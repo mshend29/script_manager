@@ -23,6 +23,12 @@ from import_engine.scanner import (
     SourceScanResult,
 )
 from import_engine.synchronizer import DialogueSynchronizer
+from services.audit_service import AuditService
+from services.backup_service import BackupService
+from services.source_change_service import (
+    SourceChangePreview,
+    SourceChangeService,
+)
 
 
 class SourceSyncError(RuntimeError):
@@ -76,8 +82,11 @@ class SourceSyncReport:
 
     inspections: dict[str, WorkbookInspection] = field(default_factory=dict)
     parse_results: dict[str, ScriptParseResult] = field(default_factory=dict)
+    scan: SourceScanResult | None = None
+    preview: SourceChangePreview | None = None
 
     synced_at: str = ""
+    backup_path: str = ""
 
     @property
     def has_errors(self) -> bool:
@@ -131,6 +140,26 @@ class SourceSyncEngine:
         *,
         progress_callback: ProgressCallback | None = None,
     ) -> SourceSyncReport:
+        """Backward-compatible one-shot sync used by engine/tests."""
+        report = self.prepare(
+            project,
+            progress_callback=progress_callback,
+        )
+        if report.has_errors:
+            return report
+        return self.apply(
+            project,
+            report,
+            progress_callback=progress_callback,
+        )
+
+    def prepare(
+        self,
+        project: Project,
+        *,
+        progress_callback: ProgressCallback | None = None,
+    ) -> SourceSyncReport:
+        """Scan/inspect/parse and build a diff without changing the database."""
         settings = project.settings
         source_folder = settings.source_folder.strip()
 
@@ -151,6 +180,7 @@ class SourceSyncEngine:
 
         report = SourceSyncReport(
             scanned=len(scan.files),
+            scan=scan,
             problems=[
                 f"{Path(problem.file_path).name}: {problem.message}"
                 for problem in scan.problems
@@ -188,10 +218,60 @@ class SourceSyncEngine:
         if report.has_errors:
             return report
 
+        for parse_result in report.parse_results.values():
+            report.warnings.extend(
+                f"{parse_result.file_name}: {warning}"
+                for warning in parse_result.warnings
+            )
+
+        self._emit_progress(
+            progress_callback,
+            stage="diffing",
+            message="Building source change preview...",
+        )
+        report.preview = SourceChangeService(project.database).build(
+            scan=scan,
+            parse_results=report.parse_results,
+        )
+
+        self._emit_progress(
+            progress_callback,
+            stage="preview_ready",
+            current=1,
+            total=1,
+            message="Source refresh preview ready",
+        )
+        return report
+
+    def apply(
+        self,
+        project: Project,
+        report: SourceSyncReport,
+        *,
+        progress_callback: ProgressCallback | None = None,
+    ) -> SourceSyncReport:
+        """Apply a previously prepared report after a safety backup."""
+        if report.has_errors:
+            return report
+        if report.scan is None:
+            raise SourceSyncError(
+                "Source refresh plan tidak memiliki scan context."
+            )
+
+        self._emit_progress(
+            progress_callback,
+            stage="backup",
+            message="Creating safety backup...",
+        )
+        backup = BackupService(project.database).create(
+            "before-source-refresh"
+        )
+        report.backup_path = str(backup)
+
         self._emit_progress(
             progress_callback,
             stage="synchronizing",
-            message="Synchronizing database...",
+            message="Applying source changes...",
         )
 
         now = datetime.now().isoformat(timespec="seconds")  # noqa: DTZ005
@@ -199,7 +279,7 @@ class SourceSyncEngine:
 
         sync_report = self.synchronizer.synchronize(
             database=project.database,
-            scan=scan,
+            scan=report.scan,
             parse_results=report.parse_results,
             synced_at=now,
         )
@@ -212,11 +292,32 @@ class SourceSyncEngine:
         report.unresolved_cast = sync_report.unresolved_cast
         report.warnings.extend(sync_report.warnings)
 
-        for parse_result in report.parse_results.values():
-            report.warnings.extend(
-                f"{parse_result.file_name}: {warning}"
-                for warning in parse_result.warnings
-            )
+        preview = report.preview or SourceChangePreview()
+        AuditService(project.database).record(
+            event_type="SOURCE",
+            action="REFRESH_APPLIED",
+            summary=(
+                f"Source refresh applied: {preview.changed_episodes} episode, "
+                f"{preview.dialogues_added} dialog added, "
+                f"{preview.dialogues_removed} removed, "
+                f"{preview.text_changed + preview.cast_changed} changed."
+            ),
+            entity_type="project",
+            details={
+                "source_added": preview.source_added,
+                "source_changed": preview.source_changed,
+                "source_restored": preview.source_restored,
+                "source_missing": preview.source_missing,
+                "dialogues_added": preview.dialogues_added,
+                "dialogues_removed": preview.dialogues_removed,
+                "text_changed": preview.text_changed,
+                "cast_changed": preview.cast_changed,
+                "recording_affected": preview.recording_affected,
+                "tracking_affected": preview.tracking_affected,
+                "backup_path": report.backup_path,
+            },
+            created_at=now,
+        )
 
         self._emit_progress(
             progress_callback,

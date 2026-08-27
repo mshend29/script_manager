@@ -7,6 +7,8 @@ from pathlib import Path
 
 from core.database import Database, SCHEMA_VERSION
 from import_engine.normalizer import normalize_key
+from services.audit_service import AuditService
+from services.backup_service import BackupService
 
 
 @dataclass(frozen=True)
@@ -458,6 +460,18 @@ class DataService:
                 (dialogue_id, character_id),
             )
 
+        AuditService(self.database).record(
+            event_type="DATA",
+            action="ASSIGN_MISSING_CHARACTER",
+            entity_type="dialogue",
+            entity_id=dialogue_id,
+            summary=(
+                f"Dialogue {dialogue_id} assigned to character "
+                f"{character_id}."
+            ),
+            details={"character_id": int(character_id)},
+        )
+
     def ensure_talent(self, name: str) -> int:
         clean_name = name.strip()
         normalized = normalize_key(clean_name)
@@ -494,6 +508,9 @@ class DataService:
 
     def set_locked_mapping(self, character_id: int, talent_id: int) -> None:
         now = datetime.now().isoformat(timespec="seconds")
+        backup = BackupService(self.database).create(
+            "before-character-mapping"
+        )
 
         with self.database.connect() as connection:
             character = connection.execute(
@@ -609,6 +626,37 @@ class DataService:
                     (int(character_id), *episode_ids),
                 )
 
+        with self.database.connect() as connection:
+            names = connection.execute(
+                """
+                SELECT c.name AS character_name, t.name AS talent_name
+                FROM characters AS c
+                JOIN talents AS t ON t.id = ?
+                WHERE c.id = ?
+                """,
+                (int(talent_id), int(character_id)),
+            ).fetchone()
+
+        character_name = (
+            str(names["character_name"]) if names else f"#{character_id}"
+        )
+        talent_name = (
+            str(names["talent_name"]) if names else f"#{talent_id}"
+        )
+        AuditService(self.database).record(
+            event_type="MAPPING",
+            action="LOCK_TALENT",
+            entity_type="character",
+            entity_id=character_id,
+            summary=f"{character_name} mapped manually to {talent_name}.",
+            details={
+                "talent_id": int(talent_id),
+                "affected_dialogues": len(affected_cast),
+                "backup_path": str(backup),
+            },
+            created_at=now,
+        )
+
     def unlock_mapping(self, character_id: int) -> None:
         now = datetime.now().isoformat(timespec="seconds")
         with self.database.connect() as connection:
@@ -625,6 +673,15 @@ class DataService:
                 """,
                 (now, character_id),
             )
+
+        AuditService(self.database).record(
+            event_type="MAPPING",
+            action="UNLOCK_TALENT",
+            entity_type="character",
+            entity_id=character_id,
+            summary=f"Character {character_id} mapping unlocked.",
+            created_at=now,
+        )
 
     # ------------------------------------------------------------------
     # VALIDATION / MAINTENANCE
@@ -821,20 +878,12 @@ class DataService:
             connection.execute("ANALYZE")
 
     def backup_database(self) -> Path:
-        backup_dir = self.database.path.parent / "backups"
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        target = backup_dir / f"project_{stamp}.db"
-        suffix = 1
-        while target.exists():
-            target = backup_dir / f"project_{stamp}_{suffix}.db"
-            suffix += 1
-
-        with self.database.connect() as source:
-            destination = sqlite3.connect(target)
-            try:
-                source.backup(destination)
-            finally:
-                destination.close()
-
+        target = BackupService(self.database).create("manual")
+        AuditService(self.database).record(
+            event_type="DATABASE",
+            action="MANUAL_BACKUP",
+            entity_type="project",
+            summary="Manual database backup created.",
+            details={"backup_path": str(target)},
+        )
         return target

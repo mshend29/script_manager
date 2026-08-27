@@ -1,7 +1,7 @@
 from datetime import datetime as real_datetime
 
 from core.database import Database
-from services import data_service as data_service_module
+from services import backup_service as backup_service_module
 from services.data_service import DataService
 
 
@@ -111,7 +111,7 @@ def test_two_backups_with_identical_timestamp_do_not_overwrite(tmp_path, monkeyp
         def now(cls):
             return fixed
 
-    monkeypatch.setattr(data_service_module, "datetime", FixedDateTime)
+    monkeypatch.setattr(backup_service_module, "datetime", FixedDateTime)
 
     first = service.backup_database()
     second = service.backup_database()
@@ -119,5 +119,5 @@ def test_two_backups_with_identical_timestamp_do_not_overwrite(tmp_path, monkeyp
     assert first != second
     assert first.exists()
     assert second.exists()
-    assert first.name == "project_20260824_162938_123456.db"
-    assert second.name == "project_20260824_162938_123456_1.db"
+    assert first.name == "project_manual_20260824_162938_123456.db"
+    assert second.name == "project_manual_20260824_162938_123456_1.db"

@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -22,8 +22,14 @@ class Database:
         return connection
 
     def initialize(self) -> None:
+        existing_version = None
         if self.path.exists():
-            self._validate_existing_schema_version()
+            existing_version = self._validate_existing_schema_version()
+            if (
+                existing_version is not None
+                and existing_version < SCHEMA_VERSION
+            ):
+                self._backup_before_migration(existing_version)
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -218,6 +224,17 @@ class Database:
                         ON DELETE CASCADE
                 );
 
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_type TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    entity_type TEXT,
+                    entity_id TEXT,
+                    summary TEXT NOT NULL,
+                    details_json TEXT,
+                    created_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_source_files_episode
                     ON source_files(episode_number);
 
@@ -251,6 +268,12 @@ class Database:
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
                     ON character_talent(character_id)
                     WHERE is_locked = 1;
+
+                CREATE INDEX IF NOT EXISTS idx_audit_log_created
+                    ON audit_log(created_at DESC);
+
+                CREATE INDEX IF NOT EXISTS idx_audit_log_event
+                    ON audit_log(event_type);
                 """
             )
 
@@ -279,7 +302,7 @@ class Database:
                 (str(SCHEMA_VERSION),),
             )
 
-    def _validate_existing_schema_version(self) -> None:
+    def _validate_existing_schema_version(self) -> int | None:
         connection = sqlite3.connect(self.path)
         connection.row_factory = sqlite3.Row
         try:
@@ -291,13 +314,13 @@ class Database:
                 """
             ).fetchone()
             if app_meta_exists is None:
-                return
+                return None
 
             row = connection.execute(
                 "SELECT value FROM app_meta WHERE key = 'schema_version'"
             ).fetchone()
             if row is None:
-                return
+                return None
 
             raw_value = str(row["value"] or "").strip()
             try:
@@ -313,8 +336,30 @@ class Database:
                     f"(schema {version}); aplikasi ini hanya mendukung sampai "
                     f"schema {SCHEMA_VERSION}."
                 )
+            return version
         finally:
             connection.close()
+
+    def _backup_before_migration(self, from_version: int) -> Path:
+        backup_dir = self.path.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        stamp = __import__("datetime").datetime.now().strftime(
+            "%Y%m%d_%H%M%S_%f"
+        )
+        target = backup_dir / (
+            f"project_before_schema_v{from_version}_to_v"
+            f"{SCHEMA_VERSION}_{stamp}.db"
+        )
+
+        source = sqlite3.connect(self.path)
+        destination = sqlite3.connect(target)
+        try:
+            source.backup(destination)
+        finally:
+            destination.close()
+            source.close()
+
+        return target
 
     @staticmethod
     def _migrate_character_identity_v6(
