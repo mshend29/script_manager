@@ -64,43 +64,41 @@ def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_col
     assert "status_item.setForeground" in source
 
 
-def test_tracking_detail_shares_action_row_and_remains_responsive():
+def test_tracking_detail_shares_action_row_and_revision_is_only_manual_control():
     ribbon = _read("app/ribbon.py")
     tracking = _read("pages/tracking_page.py")
+    compact = _read("pages/tracking_compact_page.py")
 
     assert "class TrackingDetailGroup" in ribbon
-    assert 'picker_title = QLabel("Ubah\\nStatus")' in ribbon
-    assert "QGridLayout()" in ribbon
-    assert "QComboBox" not in ribbon
-    assert "status_palette(status)" in ribbon
+    assert 'QPushButton("Mark Revision")' in ribbon
+    assert '"Clear Revision"' in ribbon
+    assert "status_palette(REVISION)" in ribbon
     assert "self._set_status_card(chip.display_status)" in ribbon
-    assert "self.status_change_requested.emit(str(requested))" in ribbon
+    assert "self.status_change_requested.emit(requested)" in ribbon
     assert "tracking_status_change_requested" in ribbon
     assert "set_tracking_detail" in ribbon
 
-    # TRACKING detail must share the same horizontal ribbon row as View and
-    # Delivery. It expands into the remaining width instead of creating a
-    # second ribbon row that breaks at smaller window sizes.
+    # Automatic statuses are no longer exposed as manual ribbon buttons.
+    assert 'QPushButton(STATUS_LABELS[status])' not in ribbon
+    assert "READY_TO_STEM" not in ribbon
+    assert "STEMMED" not in ribbon
+    assert "DELIVERED" not in ribbon
+
+    # TRACKING detail remains on the same horizontal ribbon row.
     assert 'if tab_name == "TRACKING":' in ribbon
     assert "row = QHBoxLayout(page)" in ribbon
     assert "row.addWidget(self.tracking_detail_group, 1)" in ribbon
-    assert "root = QVBoxLayout(page)" not in ribbon
-    assert "root.addWidget(self.tracking_detail_group)" not in ribbon
-
-    # Keep the detail group shrinkable inside the shared ribbon row.
-    assert "self.setMinimumWidth(0)" in ribbon
-    assert "button.setMinimumWidth(78)" in ribbon
-    assert "QSizePolicy.Policy.Expanding" in ribbon
-
-    # Recording-derived statuses stay automatic; the actual recording status
-    # button is the way to reset downstream state back to Auto.
-    assert "if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:" in ribbon
-    assert "requested = NOT_READY" in ribbon
-    assert "status == chip.recording_status" in ribbon
 
     assert "TrackingEpisodeDialog" not in tracking
-    assert "dialog.exec()" not in tracking
     assert "tracking_detail_changed.connect(ribbon.set_tracking_detail)" in tracking
     assert "ribbon.tracking_status_change_requested.connect" in tracking
     assert "self._service.set_downstream_status(" in tracking
-    assert "self._refresh_selected_detail()" in tracking
+
+    # Talent summary shares the workspace header and file inventory sits below
+    # the character/episode grid.
+    assert "header_row.addWidget(self.title_label)" in tracking
+    assert "header_row.addWidget(self.summary_label, 1)" in tracking
+    assert 'QLabel("TRACK FILES")' in compact
+    assert '["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]' in compact
+    assert 'QLabel("OUTPUT HEALTH")' in compact
+
