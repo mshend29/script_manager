@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
+    QComboBox,
     QDateEdit,
     QDialog,
     QDialogButtonBox,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QScrollArea,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -179,6 +181,59 @@ class ProjectSettingsDialog(QDialog):
 
         content_layout.addWidget(source_group)
 
+        track_group = QGroupBox("Track Output & Delivery")
+        track_form = QFormLayout(track_group)
+        track_form.setLabelAlignment(Qt.AlignLeft)
+
+        self.stem_output_folder = FolderField(
+            settings.stem_output_folder,
+            browse_caption="Select Stem / Mixdown / Export Folder",
+        )
+        self.delivery_folder = FolderField(
+            settings.delivery_folder,
+            browse_caption="Select Setoran Folder (Google Drive Desktop)",
+        )
+
+        self.audio_format = QComboBox()
+        self.audio_format.addItem("WAV", "WAV")
+        format_index = self.audio_format.findData(
+            str(settings.audio_format or "WAV").upper()
+        )
+        self.audio_format.setCurrentIndex(format_index if format_index >= 0 else 0)
+
+        self.audio_sample_rate = QSpinBox()
+        self.audio_sample_rate.setRange(8000, 384000)
+        self.audio_sample_rate.setSingleStep(1000)
+        self.audio_sample_rate.setSuffix(" Hz")
+        self.audio_sample_rate.setValue(int(settings.audio_sample_rate or 48000))
+
+        self.audio_bit_depth = QSpinBox()
+        self.audio_bit_depth.setRange(8, 64)
+        self.audio_bit_depth.setValue(int(settings.audio_bit_depth or 24))
+
+        self.audio_channels = QComboBox()
+        self.audio_channels.addItem("Mono", 1)
+        self.audio_channels.addItem("Stereo", 2)
+        channel_index = self.audio_channels.findData(int(settings.audio_channels or 1))
+        self.audio_channels.setCurrentIndex(channel_index if channel_index >= 0 else 0)
+
+        track_form.addRow("Stem / Mixdown / Export", self.stem_output_folder)
+        track_form.addRow("Setoran Folder", self.delivery_folder)
+        track_form.addRow("Audio Format", self.audio_format)
+        track_form.addRow("Sample Rate", self.audio_sample_rate)
+        track_form.addRow("Bit Depth", self.audio_bit_depth)
+        track_form.addRow("Channels", self.audio_channels)
+
+        track_help = QLabel(
+            "Setoran Folder adalah path filesystem Google Drive Desktop, bukan salinan lokal. "
+            "Tracking akan mencocokkan expected track dengan file di kedua folder."
+        )
+        track_help.setWordWrap(True)
+        track_help.setObjectName("PageSubtitle")
+        track_form.addRow("", track_help)
+
+        content_layout.addWidget(track_group)
+
         drive_group = QGroupBox("Client Drive Links")
         drive_form = QFormLayout(drive_group)
         drive_form.setLabelAlignment(Qt.AlignLeft)
@@ -268,6 +323,12 @@ class ProjectSettingsDialog(QDialog):
             start_date=self.start_date.date().toString("yyyy-MM-dd"),
             project_folder=self.project_folder.text(),
             source_folder=self.source_folder.text(),
+            stem_output_folder=self.stem_output_folder.text(),
+            delivery_folder=self.delivery_folder.text(),
+            audio_format=str(self.audio_format.currentData() or "WAV"),
+            audio_sample_rate=int(self.audio_sample_rate.value()),
+            audio_bit_depth=int(self.audio_bit_depth.value()),
+            audio_channels=int(self.audio_channels.currentData() or 1),
             episode_before=self.episode_before.text(),
             episode_after=self.episode_after.text(),
             main_drive_url=self.main_drive_url.text(),
