@@ -483,6 +483,7 @@ class CharacterTalentResolver:
         row: ParsedDialogueRow,
         *,
         timestamp: str,
+        apply_manual_overrides: bool = True,
     ) -> tuple[list[ResolvedCastMember], list[str]]:
         warnings: list[str] = []
         candidates: list[ResolvedCastMember] = []
@@ -517,7 +518,11 @@ class CharacterTalentResolver:
                         source_talent_name=provided_talent,
                     )
                 )
-                locked = self._get_locked_mapping(character_id)
+                locked = (
+                    self._get_locked_mapping(character_id)
+                    if apply_manual_overrides
+                    else None
+                )
 
                 if locked is not None:
                     talent_id = int(locked["talent_id"])
@@ -567,7 +572,11 @@ class CharacterTalentResolver:
                     prefer_locked_variant=True,
                 )
             )
-            locked = self._get_locked_mapping(character_id)
+            locked = (
+                self._get_locked_mapping(character_id)
+                if apply_manual_overrides
+                else self._get_source_mapping(character_id)
+            )
 
             if locked is not None:
                 candidates.append(
@@ -683,6 +692,42 @@ class CharacterTalentResolver:
             )
 
         return [grouped[key] for key in order]
+
+    def _get_source_mapping(self, character_id: int):
+        """Return non-manual source evidence for ambiguous/multi-cast rows.
+
+        Manual Character Mapping is an effective override only. Auto-single or
+        alias-derived source evidence may still be used to correct ambiguous
+        multi-character ordering when rebuilding source provenance.
+        """
+        return self.connection.execute(
+            """
+            SELECT
+                ct.talent_id,
+                ct.source,
+                t.name,
+                t.normalized_name
+            FROM character_talent AS ct
+            JOIN talents AS t
+              ON t.id = ct.talent_id
+            WHERE ct.character_id = ?
+              AND COALESCE(ct.source, '') NOT IN (
+                  'manual',
+                  'manual-unlocked'
+              )
+            ORDER BY
+                CASE
+                    WHEN ct.source = 'auto-single' THEN 0
+                    WHEN ct.source LIKE 'alias:%' THEN 1
+                    WHEN ct.source = 'alias-restored' THEN 2
+                    ELSE 3
+                END,
+                ct.is_locked DESC,
+                ct.id
+            LIMIT 1
+            """,
+            (character_id,),
+        ).fetchone()
 
     def _get_locked_mapping(self, character_id: int):
         return self.connection.execute(
