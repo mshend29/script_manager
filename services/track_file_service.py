@@ -40,6 +40,13 @@ class TrackAudioSpec:
 
 
 @dataclass(frozen=True)
+class ParsedTrackFilename:
+    episode_number: int
+    character_block: str
+    talent_name: str
+
+
+@dataclass(frozen=True)
 class AudioFileInfo:
     path: str
     sample_rate: int
@@ -175,8 +182,8 @@ class TrackFileService:
         )
 
         rows: list[TrackFileRow] = []
-        matched_output: set[str] = set()
-        matched_delivery: set[str] = set()
+        matched_output: set[Path] = set()
+        matched_delivery: set[Path] = set()
 
         for item in expectations:
             key = (
@@ -192,18 +199,57 @@ class TrackFileService:
                 item["talent_name"],
             )
             expected_filename = suggestion + ".wav"
-            filename_key = expected_filename.casefold()
 
-            output_path = output_files.get(filename_key)
-            delivery_path = delivery_files.get(filename_key)
-            if output_path is not None:
-                matched_output.add(filename_key)
-            if delivery_path is not None:
-                matched_delivery.add(filename_key)
+            output_matches = self._matching_files(
+                output_files,
+                episode_number=int(item["episode_number"]),
+                canonical_character=str(item["character_name"]),
+                aliases=alias_names,
+                talent_name=str(item["talent_name"]),
+            )
+            delivery_matches = self._matching_files(
+                delivery_files,
+                episode_number=int(item["episode_number"]),
+                canonical_character=str(item["character_name"]),
+                aliases=alias_names,
+                talent_name=str(item["talent_name"]),
+            )
+
+            output_path = output_matches[0] if output_matches else None
+            delivery_path = delivery_matches[0] if delivery_matches else None
+            matched_output.update(output_matches)
+            matched_delivery.update(delivery_matches)
 
             output_check = self._check_audio(output_path)
             delivery_check = self._check_audio(delivery_path)
             row_warnings: list[TrackFileWarning] = []
+
+            if len(output_matches) > 1:
+                row_warnings.append(
+                    TrackFileWarning(
+                        code="DUPLICATE_OUTPUT_TRACK_IDENTITY",
+                        message=(
+                            "Lebih dari satu file Stem / Export cocok dengan track yang sama: "
+                            + ", ".join(path.name for path in output_matches)
+                        ),
+                        path=str(output_matches[0]),
+                        talent_id=item["talent_id"],
+                        episode_number=item["episode_number"],
+                    )
+                )
+            if len(delivery_matches) > 1:
+                row_warnings.append(
+                    TrackFileWarning(
+                        code="DUPLICATE_DELIVERY_TRACK_IDENTITY",
+                        message=(
+                            "Lebih dari satu file SETORAN cocok dengan track yang sama: "
+                            + ", ".join(path.name for path in delivery_matches)
+                        ),
+                        path=str(delivery_matches[0]),
+                        talent_id=item["talent_id"],
+                        episode_number=item["episode_number"],
+                    )
+                )
 
             row_warnings.extend(
                 self._audio_warnings(
@@ -427,9 +473,9 @@ class TrackFileService:
         *,
         folder_code: str,
         expectations: list[dict[str, int | str]],
-    ) -> tuple[dict[str, Path], list[TrackFileWarning]]:
+    ) -> tuple[list[Path], list[TrackFileWarning]]:
         if not raw_folder:
-            return {}, [
+            return [], [
                 TrackFileWarning(
                     code=f"{folder_code}_FOLDER_NOT_CONFIGURED",
                     message=f"{folder_code.title()} folder belum diatur di Project Settings.",
@@ -438,7 +484,7 @@ class TrackFileService:
 
         folder = Path(raw_folder)
         if not folder.is_dir():
-            return {}, [
+            return [], [
                 TrackFileWarning(
                     code=f"{folder_code}_FOLDER_MISSING",
                     message=f"Folder tidak ditemukan: {folder}",
@@ -452,9 +498,10 @@ class TrackFileService:
             for item in expectations
         }
 
-        files: dict[str, Path] = {}
+        files: list[Path] = []
+        seen_names: set[str] = set()
         warnings: list[TrackFileWarning] = []
-        for child in folder.iterdir():
+        for child in sorted(folder.iterdir(), key=lambda path: path.name.casefold()):
             if not child.is_file() or child.name.startswith("~$"):
                 continue
             suffix = child.suffix.casefold()
@@ -462,7 +509,7 @@ class TrackFileService:
 
             if suffix == ".wav":
                 key = child.name.casefold()
-                if key in files:
+                if key in seen_names:
                     warnings.append(
                         TrackFileWarning(
                             code=f"DUPLICATE_{folder_code}_FILE",
@@ -472,7 +519,8 @@ class TrackFileService:
                         )
                     )
                 else:
-                    files[key] = child
+                    seen_names.add(key)
+                    files.append(child)
             elif suffix in _AUDIO_LIKE_SUFFIXES:
                 warnings.append(
                     TrackFileWarning(
@@ -484,6 +532,27 @@ class TrackFileService:
                 )
 
         return files, warnings
+
+    @staticmethod
+    def _matching_files(
+        files: list[Path],
+        *,
+        episode_number: int,
+        canonical_character: str,
+        aliases: tuple[str, ...] | list[str],
+        talent_name: str,
+    ) -> list[Path]:
+        return [
+            path
+            for path in files
+            if track_filename_matches(
+                path.name,
+                episode_number=episode_number,
+                canonical_character=canonical_character,
+                aliases=aliases,
+                talent_name=talent_name,
+            )
+        ]
 
     def _check_audio(self, path: Path | None) -> AudioFileCheck:
         if path is None:
@@ -516,8 +585,16 @@ class TrackFileService:
                 else f"{self.audio_spec.channels} channels"
             )
             problems.append(f"{channel_label}, expected {expected}")
-        if info.format_tag not in {1, 0xFFFE}:
-            problems.append(f"WAV compression format {info.format_tag} bukan PCM")
+        allowed_format_tags = {1, 0xFFFE}
+        if int(self.audio_spec.bit_depth) == 32:
+            # 32-bit WAV is commonly exported either as integer PCM or IEEE
+            # float by DAWs. Both are accepted for a 32-bit project spec.
+            allowed_format_tags.add(3)
+        if info.format_tag not in allowed_format_tags:
+            problems.append(
+                f"WAV encoding tag {info.format_tag} tidak sesuai untuk "
+                f"{self.audio_spec.bit_depth}-bit"
+            )
 
         return AudioFileCheck(
             path=str(path),
@@ -550,8 +627,8 @@ class TrackFileService:
 
     @staticmethod
     def _unexpected_file_warnings(
-        files: dict[str, Path],
-        matched: set[str],
+        files: list[Path],
+        matched: set[Path],
         expectations: list[dict[str, int | str]],
         *,
         folder_label: str,
@@ -562,8 +639,8 @@ class TrackFileService:
             for item in expectations
         }
         warnings: list[TrackFileWarning] = []
-        for key, path in files.items():
-            if key in matched:
+        for path in files:
+            if path in matched:
                 continue
             warnings.append(
                 TrackFileWarning(
@@ -667,10 +744,118 @@ def build_track_suggestion(
         seen.add(clean.casefold())
         alias_parts.append(clean)
 
-    character_part = " ".join([canonical, *alias_parts])
+    # Suggestion mirrors the script reader's view: source aliases first, then
+    # the stable canonical name. Matching itself is order-independent.
+    character_part = " ".join([*alias_parts, canonical])
     talent_part = sanitize_filename_component(talent_name)
     return f"{int(episode_number)}_{character_part}_{talent_part}"
 
+
+
+def parse_track_filename(filename: str) -> ParsedTrackFilename | None:
+    path = Path(str(filename))
+    if path.suffix.casefold() != ".wav":
+        return None
+
+    stem = path.stem
+    first = stem.find("_")
+    last = stem.rfind("_")
+    if first <= 0 or last <= first:
+        return None
+
+    episode_text = stem[:first].strip()
+    if not episode_text.isdigit():
+        return None
+
+    character_block = sanitize_filename_component(
+        stem[first + 1:last],
+        uppercase=True,
+    )
+    talent_name = sanitize_filename_component(stem[last + 1:])
+    if not character_block or not talent_name:
+        return None
+
+    return ParsedTrackFilename(
+        episode_number=int(episode_text),
+        character_block=character_block,
+        talent_name=talent_name,
+    )
+
+
+def track_filename_matches(
+    filename: str,
+    *,
+    episode_number: int,
+    canonical_character: str,
+    aliases: tuple[str, ...] | list[str],
+    talent_name: str,
+) -> bool:
+    parsed = parse_track_filename(filename)
+    if parsed is None or parsed.episode_number != int(episode_number):
+        return False
+
+    expected_talent = sanitize_filename_component(talent_name).casefold()
+    if parsed.talent_name.casefold() != expected_talent:
+        return False
+
+    components: list[str] = []
+    seen: set[str] = set()
+    for value in [canonical_character, *aliases]:
+        clean = sanitize_filename_component(value, uppercase=True).casefold()
+        if clean in seen:
+            continue
+        seen.add(clean)
+        components.append(clean)
+
+    actual = sanitize_filename_component(
+        parsed.character_block,
+        uppercase=True,
+    ).casefold()
+    return _character_components_match(actual, tuple(components))
+
+
+def _character_components_match(
+    actual: str,
+    components: tuple[str, ...],
+) -> bool:
+    if not components:
+        return False
+
+    memo: dict[tuple[str, tuple[str, ...]], bool] = {}
+
+    def solve(
+        remaining_text: str,
+        remaining_components: tuple[str, ...],
+    ) -> bool:
+        key = (remaining_text, remaining_components)
+        if key in memo:
+            return memo[key]
+
+        if not remaining_components:
+            result = remaining_text == ""
+            memo[key] = result
+            return result
+
+        for index, component in enumerate(remaining_components):
+            if remaining_text == component:
+                next_text = ""
+            elif remaining_text.startswith(component + " "):
+                next_text = remaining_text[len(component) + 1:]
+            else:
+                continue
+
+            next_components = (
+                remaining_components[:index]
+                + remaining_components[index + 1:]
+            )
+            if solve(next_text, next_components):
+                memo[key] = True
+                return True
+
+        memo[key] = False
+        return False
+
+    return solve(actual, components)
 
 def inspect_wav(path: str | Path) -> AudioFileInfo:
     wav_path = Path(path)

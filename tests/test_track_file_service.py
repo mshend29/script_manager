@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import struct
 import wave
 
 from core.database import Database
@@ -25,6 +26,28 @@ def _write_wav(path, *, rate=48000, width=3, channels=1):
         handle.setsampwidth(width)
         handle.setframerate(rate)
         handle.writeframes(b"\x00" * width * channels * 16)
+
+
+def _write_float_wav(path, *, rate=48000, channels=1):
+    data = b"\\x00\\x00\\x00\\x00" * channels * 8
+    fmt = struct.pack(
+        "<IHHIIHH",
+        16,
+        3,
+        channels,
+        rate,
+        rate * channels * 4,
+        channels * 4,
+        32,
+    )
+    payload = b"fmt " + fmt + b"data" + struct.pack("<I", len(data)) + data
+    riff_size = 4 + len(payload)
+    path.write_bytes(
+        b"RIFF"
+        + struct.pack("<I", riff_size)
+        + b"WAVE"
+        + payload
+    )
 
 
 def _seed(database: Database) -> dict[str, int]:
@@ -155,8 +178,8 @@ def test_track_suggestion_uses_canonical_plus_episode_alias_and_uppercase_charac
 
     row = inventory.rows[0]
     assert row.aliases == ("Bapak jas navy",)
-    assert row.track_suggestion == "4_ANDI BAPAK JAS NAVY_Brama"
-    assert row.expected_filename == "4_ANDI BAPAK JAS NAVY_Brama.wav"
+    assert row.track_suggestion == "4_BAPAK JAS NAVY ANDI_Brama"
+    assert row.expected_filename == "4_BAPAK JAS NAVY ANDI_Brama.wav"
     assert "PRIA JAS NAVY" not in row.track_suggestion
 
 
@@ -167,7 +190,54 @@ def test_filename_component_uses_spaces_instead_of_windows_invalid_separators():
         ["Pria: navy"],
         "Bra_ma",
     )
-    assert suggestion == "4_ANDI BAPAK JAS PRIA NAVY_Bra ma"
+    assert suggestion == "4_PRIA NAVY ANDI BAPAK JAS_Bra ma"
+
+
+def test_canonical_first_actual_filename_matches_alias_first_suggestion_without_warning(
+    tmp_path,
+):
+    database = Database(tmp_path / "project.db")
+    _seed(database)
+    output = tmp_path / "output"
+    delivery = tmp_path / "setoran"
+    output.mkdir()
+    delivery.mkdir()
+
+    actual = "4_ANDI BAPAK JAS NAVY_Brama.wav"
+    _write_wav(output / actual)
+
+    inventory = _service(database, output, delivery).scan_and_sync()
+    row = inventory.rows[0]
+
+    assert row.track_suggestion == "4_BAPAK JAS NAVY ANDI_Brama"
+    assert row.output.valid is True
+    assert row.output.path.endswith(actual)
+    assert not row.warnings
+    assert not any(
+        warning.code == "UNEXPECTED_TRACK_FILE"
+        for warning in inventory.warnings
+    )
+
+
+def test_missing_or_extra_character_identity_does_not_match(tmp_path):
+    database = Database(tmp_path / "project.db")
+    _seed(database)
+    output = tmp_path / "output"
+    delivery = tmp_path / "setoran"
+    output.mkdir()
+    delivery.mkdir()
+
+    _write_wav(output / "4_BAPAK JAS NAVY_Brama.wav")
+    _write_wav(output / "4_BAPAK JAS NAVY ANDI ORANG ASING_Brama.wav")
+
+    inventory = _service(database, output, delivery).scan_and_sync()
+    assert inventory.rows[0].output.exists is False
+    unexpected = [
+        warning
+        for warning in inventory.warnings
+        if warning.code == "UNEXPECTED_TRACK_FILE"
+    ]
+    assert len(unexpected) == 2
 
 
 def test_valid_output_and_delivery_drive_automatic_statuses(tmp_path):
@@ -311,6 +381,33 @@ def test_delivery_without_output_is_delivered_but_warned_as_mismatch(tmp_path):
         warning.code == "DELIVERED_WITHOUT_OUTPUT"
         for warning in row.warnings
     )
+
+
+def test_32_bit_float_wav_is_valid_for_32_bit_project_spec(tmp_path):
+    database = Database(tmp_path / "project.db")
+    _seed(database)
+    output = tmp_path / "output"
+    delivery = tmp_path / "setoran"
+    output.mkdir()
+    delivery.mkdir()
+
+    actual = output / "4_BAPAK JAS NAVY ANDI_Brama.wav"
+    _write_float_wav(actual)
+
+    service = TrackFileService(
+        database,
+        output_folder=str(output),
+        delivery_folder=str(delivery),
+        audio_spec=TrackAudioSpec(
+            file_format="WAV",
+            sample_rate=48000,
+            bit_depth=32,
+            channels=1,
+        ),
+    )
+    inventory = service.scan_and_sync()
+    assert inventory.rows[0].output.valid is True
+    assert inventory.rows[0].output.info.format_tag == 3
 
 
 def test_non_wav_audio_and_unexpected_wav_are_reported(tmp_path):
