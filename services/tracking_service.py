@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from core.database import Database
+from services.audit_service import AuditService
 
 
 NOT_STARTED = "NOT_STARTED"
@@ -280,6 +281,8 @@ class TrackingService:
                 "Tracking manual hanya mendukung Revision atau kembali ke Auto."
             )
 
+        now = datetime.now().isoformat(timespec="seconds")
+
         with self.database.connect() as connection:
             total, recorded = self._get_progress(
                 connection,
@@ -292,6 +295,24 @@ class TrackingService:
                 raise ValueError(
                     "Kombinasi episode, talent, dan character tidak memiliki dialog aktif."
                 )
+
+            labels = connection.execute(
+                """
+                SELECT
+                    e.episode_number,
+                    c.name AS character_name,
+                    t.name AS talent_name
+                FROM episodes AS e
+                JOIN characters AS c ON c.id = ?
+                JOIN talents AS t ON t.id = ?
+                WHERE e.id = ?
+                """,
+                (
+                    int(character_id),
+                    int(talent_id),
+                    int(episode_id),
+                ),
+            ).fetchone()
 
             if normalized_status == NOT_READY:
                 connection.execute(
@@ -307,36 +328,80 @@ class TrackingService:
                         int(character_id),
                     ),
                 )
-                return
-
-            now = datetime.now().isoformat(timespec="seconds")
-
-            connection.execute(
-                """
-                INSERT INTO stem_status(
-                    episode_id,
-                    talent_id,
-                    character_id,
-                    status,
-                    note,
-                    updated_at
+            else:
+                connection.execute(
+                    """
+                    INSERT INTO stem_status(
+                        episode_id,
+                        talent_id,
+                        character_id,
+                        status,
+                        note,
+                        updated_at
+                    )
+                    VALUES(?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(episode_id, talent_id, character_id)
+                    DO UPDATE SET
+                        status = excluded.status,
+                        note = excluded.note,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        int(episode_id),
+                        int(talent_id),
+                        int(character_id),
+                        normalized_status,
+                        note.strip(),
+                        now,
+                    ),
                 )
-                VALUES(?, ?, ?, ?, ?, ?)
-                ON CONFLICT(episode_id, talent_id, character_id)
-                DO UPDATE SET
-                    status = excluded.status,
-                    note = excluded.note,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    int(episode_id),
-                    int(talent_id),
-                    int(character_id),
-                    normalized_status,
-                    note.strip(),
-                    now,
-                ),
+
+        episode_number = (
+            int(labels["episode_number"])
+            if labels is not None
+            else int(episode_id)
+        )
+        character_name = (
+            str(labels["character_name"])
+            if labels is not None
+            else f"Character {character_id}"
+        )
+        talent_name = (
+            str(labels["talent_name"])
+            if labels is not None
+            else f"Talent {talent_id}"
+        )
+
+        if normalized_status == REVISION:
+            action = "MARK_REVISION"
+            summary = (
+                f"Episode {episode_number}: {character_name} / "
+                f"{talent_name} marked Revision."
             )
+        else:
+            action = "CLEAR_REVISION"
+            summary = (
+                f"Episode {episode_number}: Revision cleared for "
+                f"{character_name} / {talent_name}."
+            )
+
+        AuditService(self.database).record(
+            event_type="TRACKING",
+            action=action,
+            entity_type="tracking_scope",
+            entity_id=(
+                f"{episode_id}:{talent_id}:{character_id}"
+            ),
+            summary=summary,
+            details={
+                "episode_id": int(episode_id),
+                "episode_number": episode_number,
+                "talent_id": int(talent_id),
+                "character_id": int(character_id),
+                "note": note.strip(),
+            },
+            created_at=now,
+        )
 
     @staticmethod
     def _get_progress(
