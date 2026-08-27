@@ -182,8 +182,8 @@ class TrackFileService:
         )
 
         rows: list[TrackFileRow] = []
-        matched_output: set[str] = set()
-        matched_delivery: set[str] = set()
+        matched_output: set[Path] = set()
+        matched_delivery: set[Path] = set()
 
         for item in expectations:
             key = (
