@@ -6,7 +6,10 @@ import pytest
 
 from core.database import Database, SCHEMA_VERSION
 from services.tracking_service import (
+    AUTO_FILE_STATUS_NOTE,
+    DELIVERED,
     IN_PROGRESS,
+    NOT_READY,
     READY_TO_STEM,
     RECORDED,
     REVISION,
@@ -199,33 +202,20 @@ def test_tracking_status_is_derived_per_character_episode(tmp_path):
     assert chips["Hendra"][2].display_status == RECORDED
 
 
-def test_downstream_status_is_character_scoped_and_requires_recording(tmp_path):
+def test_revision_is_the_only_manual_downstream_status(tmp_path):
     database = Database(tmp_path / "project.db")
     ids = _seed_tracking_database(database)
     service = TrackingService(database)
 
-    # Joko is fully recorded in EP1, so it can advance independently.
-    service.set_downstream_status(
-        episode_id=ids["episode_1"],
-        talent_id=ids["brama"],
-        character_id=ids["joko"],
-        status=READY_TO_STEM,
-    )
+    for automatic_status in (READY_TO_STEM, STEMMED, DELIVERED):
+        with pytest.raises(ValueError, match="otomatis dari file"):
+            service.set_downstream_status(
+                episode_id=ids["episode_1"],
+                talent_id=ids["brama"],
+                character_id=ids["joko"],
+                status=automatic_status,
+            )
 
-    chips = _chips_by_character(service, ids["brama"])
-    assert chips["Joko"][1].display_status == READY_TO_STEM
-    assert chips["Hendra"][1].display_status == IN_PROGRESS
-
-    # Hendra cannot advance to Stemmed until its second line is recorded.
-    with pytest.raises(ValueError):
-        service.set_downstream_status(
-            episode_id=ids["episode_1"],
-            talent_id=ids["brama"],
-            character_id=ids["hendra"],
-            status=STEMMED,
-        )
-
-    # Revision may be set even while recording is incomplete.
     service.set_downstream_status(
         episode_id=ids["episode_1"],
         talent_id=ids["brama"],
@@ -235,30 +225,72 @@ def test_downstream_status_is_character_scoped_and_requires_recording(tmp_path):
     chips = _chips_by_character(service, ids["brama"])
     assert chips["Hendra"][1].display_status == REVISION
 
-    # Once the line is recorded, reset and advance Hendra independently.
-    with database.connect() as connection:
-        connection.execute(
-            """
-            UPDATE recording_status
-            SET is_recorded = 1
-            WHERE dialogue_id = ?
-            """,
-            (ids["hendra_only"],),
-        )
-
     service.set_downstream_status(
         episode_id=ids["episode_1"],
         talent_id=ids["brama"],
         character_id=ids["hendra"],
-        status=STEMMED,
+        status=NOT_READY,
     )
+    chips = _chips_by_character(service, ids["brama"])
+    assert chips["Hendra"][1].display_status == IN_PROGRESS
+
+
+def test_only_automatic_file_cache_can_show_stemmed_or_delivered(tmp_path):
+    database = Database(tmp_path / "project.db")
+    ids = _seed_tracking_database(database)
+    service = TrackingService(database)
+
+    with database.connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id, talent_id, character_id, status, note
+            ) VALUES(?, ?, ?, 'STEMMED', 'legacy-manual')
+            """,
+            (ids["episode_1"], ids["brama"], ids["joko"]),
+        )
 
     chips = _chips_by_character(service, ids["brama"])
-    assert chips["Hendra"][1].display_status == STEMMED
-    assert chips["Joko"][1].display_status == READY_TO_STEM
+    assert chips["Joko"][1].display_status == RECORDED
+
+    with database.connect() as connection:
+        connection.execute(
+            """
+            UPDATE stem_status
+            SET status = 'STEMMED', note = ?
+            WHERE episode_id = ? AND talent_id = ? AND character_id = ?
+            """,
+            (
+                AUTO_FILE_STATUS_NOTE,
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+            ),
+        )
+
+    chips = _chips_by_character(service, ids["brama"])
+    assert chips["Joko"][1].display_status == STEMMED
+
+    with database.connect() as connection:
+        connection.execute(
+            """
+            UPDATE stem_status
+            SET status = 'DELIVERED', note = ?
+            WHERE episode_id = ? AND talent_id = ? AND character_id = ?
+            """,
+            (
+                AUTO_FILE_STATUS_NOTE,
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+            ),
+        )
+
+    chips = _chips_by_character(service, ids["brama"])
+    assert chips["Joko"][1].display_status == DELIVERED
 
 
-def test_character_to_stem_queue_only_shows_actionable_work(tmp_path):
+def test_character_to_stem_queue_shows_recorded_or_revision_only(tmp_path):
     database = Database(tmp_path / "project.db")
     ids = _seed_tracking_database(database)
     service = TrackingService(database)
@@ -272,11 +304,11 @@ def test_character_to_stem_queue_only_shows_actionable_work(tmp_path):
         episode_id=ids["episode_1"],
         talent_id=ids["brama"],
         character_id=ids["joko"],
-        status=READY_TO_STEM,
+        status=REVISION,
     )
     queue = service.get_characters_to_stem(ids["brama"], 1)
     assert [(chip.character_name, chip.display_status) for chip in queue] == [
-        ("Joko", READY_TO_STEM)
+        ("Joko", REVISION)
     ]
 
 
