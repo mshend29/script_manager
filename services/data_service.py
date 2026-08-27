@@ -144,8 +144,7 @@ class DataService:
                 GROUP BY
                     c.id, c.name,
                     lm.talent_id, t.name, lm.source
-                ORDER BY
-                    unresolved_dialogues DESC,
+                ORDER BY unresolved_dialogues DESC,
                     c.name COLLATE NOCASE,
                     t.name COLLATE NOCASE,
                     c.id
