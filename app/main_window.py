@@ -1158,6 +1158,11 @@ class MainWindow(QMainWindow):
             )
             return
 
+        tools_page = self.pages["TOOLS"]
+        tools_page.set_project(project, run_diagnostics=False)
+        if self.page_stack.currentWidget() is tools_page:
+            tools_page.refresh_view()
+
         QMessageBox.information(
             self,
             "Backup Database",
