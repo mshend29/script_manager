@@ -243,6 +243,27 @@ class TrackFileService:
             else:
                 file_status = None
 
+            if (
+                file_status is not None
+                and int(item["recorded_dialogues"]) < int(item["total_dialogues"])
+            ):
+                row_warnings.append(
+                    TrackFileWarning(
+                        code="FILE_BEFORE_RECORDING_COMPLETE",
+                        message=(
+                            f"{expected_filename} sudah ada tetapi recording checkbox "
+                            "belum lengkap."
+                        ),
+                        path=(
+                            delivery_check.path
+                            if delivery_check.valid
+                            else output_check.path
+                        ),
+                        talent_id=item["talent_id"],
+                        episode_number=item["episode_number"],
+                    )
+                )
+
             rows.append(
                 TrackFileRow(
                     episode_id=item["episode_id"],
