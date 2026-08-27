@@ -303,9 +303,29 @@ class Ribbon(QWidget):
                 ("data.backup", "Backup"),
             ]),
         ],
-        # TOOLS remains as a page for future utilities, but unsupported
-        # actions are intentionally not advertised as clickable commands.
-        "TOOLS": [],
+        "TOOLS": [
+            ("Diagnostics", [
+                ("tools.diagnostics", "Run Diagnostics"),
+                ("tools.audit", "Audit History"),
+            ]),
+            ("Database", [
+                ("tools.backup", "Create Backup"),
+                ("tools.restore_backup", "Restore Backup"),
+                ("tools.open_backups", "Open Backups"),
+            ]),
+            ("Folders", [
+                ("tools.open_project_folder", "Project"),
+                ("tools.open_source_folder", "Source"),
+                ("tools.open_output_folder", "Stem / Export"),
+                ("tools.open_delivery_folder", "Setoran"),
+                ("tools.open_logs", "Logs"),
+            ]),
+            ("Drive", [
+                ("tools.open_main_drive", "Main Drive"),
+                ("tools.open_material_drive", "Material Drive"),
+                ("tools.open_delivery_drive", "Delivery Drive"),
+            ]),
+        ],
     }
 
     def __init__(self, parent=None):
