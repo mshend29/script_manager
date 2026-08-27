@@ -122,7 +122,7 @@ class TrackFileInventory:
         stemmed_episodes = sum(
             1
             for group in episode_rows.values()
-            if group and all(item.output.valid or item.delivered.valid for item in group)
+            if group and all(item.output.valid for item in group)
         )
         delivered_episodes = sum(
             1
@@ -139,9 +139,7 @@ class TrackFileInventory:
 
         return TrackFileHealth(
             total_tracks=len(rows),
-            stemmed_tracks=sum(
-                1 for row in rows if row.output.valid or row.delivered.valid
-            ),
+            stemmed_tracks=sum(1 for row in rows if row.output.valid),
             delivered_tracks=sum(1 for row in rows if row.delivered.valid),
             total_episodes=len(episode_rows),
             stemmed_episodes=stemmed_episodes,
