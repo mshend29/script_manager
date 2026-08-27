@@ -32,6 +32,7 @@ from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
 from pages.tracking_page import TrackingPage
+from services.project_dashboard_service import ProjectDashboardService
 
 
 class MainWindow(QMainWindow):
@@ -91,6 +92,9 @@ class MainWindow(QMainWindow):
         project_page = self.pages["PROJECT"]
         project_page.new_button.clicked.connect(self.new_project)
         project_page.open_button.clicked.connect(self.open_project)
+        project_page.action_requested.connect(
+            self.handle_project_dashboard_action
+        )
 
         tracking_page = self.pages["TRACKING"]
         tracking_page.drive_button.clicked.connect(self.open_client_drive)
@@ -731,13 +735,71 @@ class MainWindow(QMainWindow):
 
         page.set_counts(counts)
 
+        try:
+            snapshot = ProjectDashboardService(
+                project.database,
+                settings,
+            ).build()
+        except Exception:
+            snapshot = None
+
+        if snapshot is not None:
+            page.set_dashboard(snapshot)
+
         page.info_title.setText(
             f"{settings.project_name or 'Project'} ready"
         )
-        page.info_text.setText(
-            "Project system dan SQLite sudah aktif. "
-            "Source Import / Refresh scanner sudah terhubung."
-        )
+        if snapshot is None:
+            page.info_text.setText(
+                "Project aktif. Dashboard workflow belum dapat dihitung."
+            )
+        elif snapshot.actions:
+            page.info_text.setText(
+                f"{len(snapshot.actions)} jenis pekerjaan membutuhkan perhatian. "
+                "Gunakan What Needs Attention untuk langsung membuka workflow terkait."
+            )
+        else:
+            page.info_text.setText(
+                "✓ Project data healthy dan tidak ada action penting yang tertunda."
+            )
+
+    def handle_project_dashboard_action(self, action_key: str) -> None:
+        key = str(action_key or "").strip().casefold()
+        project = self.project_manager.current
+        if project is None:
+            return
+
+        if key == "needs_review":
+            self.ribbon.select_tab("DATA")
+            page = self.pages["DATA"]
+            page.set_database(project.database)
+            page.show_section("Unresolved")
+            return
+
+        if key in {"system_errors", "workflow_warnings"}:
+            self.ribbon.select_tab("DATA")
+            page = self.pages["DATA"]
+            page.set_database(project.database)
+            page.show_section("Validation")
+            return
+
+        if key == "recording":
+            self.ribbon.select_tab("DIALOG")
+            self.pages["DIALOG"].set_database(project.database)
+            return
+
+        if key in {
+            "revision",
+            "ready_to_stem",
+            "pending_delivery",
+            "file_warnings",
+        }:
+            self.ribbon.select_tab("TRACKING")
+            page = self.pages["TRACKING"]
+            if hasattr(page, "configure_track_files"):
+                page.configure_track_files(project.settings)
+            page.set_database(project.database)
+            return
 
     # ------------------------------------------------------------------
     # VIEW ACTIONS
