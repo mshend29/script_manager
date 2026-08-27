@@ -113,7 +113,12 @@ class MainWindow(QMainWindow):
             self.pages["DIALOG"].set_database(database)
 
         elif page_name == "TRACKING":
-            self.pages["TRACKING"].set_database(database)
+            tracking_page = self.pages["TRACKING"]
+            if hasattr(tracking_page, "configure_track_files"):
+                tracking_page.configure_track_files(
+                    project.settings if project is not None else None
+                )
+            tracking_page.set_database(database)
 
         elif page_name == "DATA":
             self.pages["DATA"].set_database(database)
@@ -513,7 +518,10 @@ class MainWindow(QMainWindow):
             self.pages["DIALOG"].set_database(project.database)
 
         elif current_page is self.pages["TRACKING"]:
-            self.pages["TRACKING"].set_database(project.database)
+            tracking_page = self.pages["TRACKING"]
+            if hasattr(tracking_page, "configure_track_files"):
+                tracking_page.configure_track_files(project.settings)
+            tracking_page.set_database(project.database)
 
         elif current_page is self.pages["DATA"]:
             self.pages["DATA"].set_database(project.database)
@@ -626,6 +634,9 @@ class MainWindow(QMainWindow):
         page = self.pages.get(page_name)
         if page is None or not hasattr(page, "set_database"):
             return
+
+        if page_name == "TRACKING" and hasattr(page, "configure_track_files"):
+            page.configure_track_files(project.settings)
 
         page.set_database(project.database)
         self.statusBar().showMessage(f"{page_name.title()} view refreshed", 3000)
