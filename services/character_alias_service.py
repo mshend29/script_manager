@@ -105,7 +105,17 @@ class CharacterAliasService:
                 raise ValueError("Nama tersebut sudah terdaftar sebagai alias.")
 
             existing_character = connection.execute(
-                "SELECT id, name FROM characters WHERE normalized_name = ?",
+                """
+                SELECT id, name
+                FROM characters
+                WHERE COALESCE(
+                    NULLIF(base_normalized_name, ''),
+                    normalized_name
+                ) = ?
+                  AND is_active = 1
+                ORDER BY id
+                LIMIT 1
+                """,
                 (normalized,),
             ).fetchone()
             if existing_character is not None:
@@ -158,7 +168,10 @@ class CharacterAliasService:
                     "Character ini sudah memiliki alias. Hapus/pindahkan alias tersebut sebelum menjadikannya alias character lain."
                 )
 
-            normalized = str(source["normalized_name"])
+            normalized = str(
+                source["base_normalized_name"]
+                or source["normalized_name"]
+            )
             if connection.execute(
                 "SELECT 1 FROM character_alias WHERE normalized_alias = ?",
                 (normalized,),
@@ -338,21 +351,73 @@ class CharacterAliasService:
 
             if source_id is None:
                 existing_source = connection.execute(
-                    "SELECT id FROM characters WHERE normalized_name = ?",
-                    (str(alias["normalized_alias"]),),
+                    """
+                    SELECT id
+                    FROM characters
+                    WHERE COALESCE(
+                        NULLIF(base_normalized_name, ''),
+                        normalized_name
+                    ) = ?
+                    ORDER BY
+                        CASE
+                            WHEN identity_talent_id = ? THEN 0
+                            WHEN identity_talent_id IS NULL THEN 1
+                            ELSE 2
+                        END,
+                        id
+                    LIMIT 1
+                    """,
+                    (
+                        str(alias["normalized_alias"]),
+                        alias["source_locked_talent_id"],
+                    ),
                 ).fetchone()
                 if existing_source is not None:
                     source_id = int(existing_source["id"])
                 elif provenance:
+                    base_normalized = str(alias["normalized_alias"])
+                    storage_key = base_normalized
+                    if connection.execute(
+                        "SELECT 1 FROM characters WHERE normalized_name = ?",
+                        (storage_key,),
+                    ).fetchone():
+                        suffix = (
+                            f"talent:{int(alias['source_locked_talent_id'])}"
+                            if alias["source_locked_talent_id"] is not None
+                            else "unbound"
+                        )
+                        storage_key = f"{base_normalized}||{suffix}"
+                        serial = 2
+                        while connection.execute(
+                            "SELECT 1 FROM characters WHERE normalized_name = ?",
+                            (storage_key,),
+                        ).fetchone():
+                            storage_key = (
+                                f"{base_normalized}||{suffix}:{serial}"
+                            )
+                            serial += 1
+
                     cursor = connection.execute(
                         """
                         INSERT INTO characters(
-                            name, normalized_name, is_active, created_at, updated_at
-                        ) VALUES(?, ?, 1, ?, ?)
+                            name,
+                            normalized_name,
+                            base_normalized_name,
+                            identity_talent_id,
+                            is_active,
+                            created_at,
+                            updated_at
+                        ) VALUES(?, ?, ?, ?, 1, ?, ?)
                         """,
                         (
                             str(alias["alias_name"]),
-                            str(alias["normalized_alias"]),
+                            storage_key,
+                            base_normalized,
+                            (
+                                int(alias["source_locked_talent_id"])
+                                if alias["source_locked_talent_id"] is not None
+                                else None
+                            ),
                             now,
                             now,
                         ),
@@ -532,7 +597,16 @@ class CharacterAliasService:
     @staticmethod
     def _require_active_character(connection, character_id: int):
         row = connection.execute(
-            "SELECT id, name, normalized_name FROM characters WHERE id = ? AND is_active = 1",
+            """
+            SELECT
+                id,
+                name,
+                normalized_name,
+                base_normalized_name,
+                identity_talent_id
+            FROM characters
+            WHERE id = ? AND is_active = 1
+            """,
             (int(character_id),),
         ).fetchone()
         if row is None:

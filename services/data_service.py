@@ -144,7 +144,10 @@ class DataService:
                 GROUP BY
                     c.id, c.name,
                     lm.talent_id, t.name, lm.source
-                ORDER BY unresolved_dialogues DESC, c.name COLLATE NOCASE
+                ORDER BY unresolved_dialogues DESC,
+                    c.name COLLATE NOCASE,
+                    t.name COLLATE NOCASE,
+                    c.id
                 """
             ).fetchall()
 
@@ -349,28 +352,76 @@ class DataService:
         now = datetime.now().isoformat(timespec="seconds")
         with self.database.connect() as connection:
             existing = connection.execute(
-                "SELECT id FROM characters WHERE normalized_name = ?",
+                """
+                SELECT id
+                FROM characters
+                WHERE COALESCE(
+                    NULLIF(base_normalized_name, ''),
+                    normalized_name
+                ) = ?
+                  AND identity_talent_id IS NULL
+                ORDER BY id
+                LIMIT 1
+                """,
                 (normalized,),
             ).fetchone()
+
+            if existing is None:
+                variants = connection.execute(
+                    """
+                    SELECT id
+                    FROM characters
+                    WHERE COALESCE(
+                        NULLIF(base_normalized_name, ''),
+                        normalized_name
+                    ) = ?
+                      AND is_active = 1
+                    ORDER BY id
+                    """,
+                    (normalized,),
+                ).fetchall()
+                if len(variants) == 1:
+                    existing = variants[0]
+
             if existing:
                 character_id = int(existing["id"])
                 connection.execute(
                     """
                     UPDATE characters
-                    SET name = ?, is_active = 1, updated_at = ?
+                    SET is_active = 1, updated_at = ?
                     WHERE id = ?
                     """,
-                    (clean_name, now, character_id),
+                    (now, character_id),
                 )
                 return character_id
+
+            storage_key = normalized
+            if connection.execute(
+                "SELECT 1 FROM characters WHERE normalized_name = ?",
+                (storage_key,),
+            ).fetchone():
+                storage_key = f"{normalized}||unbound"
+                serial = 2
+                while connection.execute(
+                    "SELECT 1 FROM characters WHERE normalized_name = ?",
+                    (storage_key,),
+                ).fetchone():
+                    storage_key = f"{normalized}||unbound:{serial}"
+                    serial += 1
 
             cursor = connection.execute(
                 """
                 INSERT INTO characters(
-                    name, normalized_name, is_active, created_at, updated_at
-                ) VALUES(?, ?, 1, ?, ?)
+                    name,
+                    normalized_name,
+                    base_normalized_name,
+                    identity_talent_id,
+                    is_active,
+                    created_at,
+                    updated_at
+                ) VALUES(?, ?, ?, NULL, 1, ?, ?)
                 """,
-                (clean_name, normalized, now, now),
+                (clean_name, storage_key, normalized, now, now),
             )
             return int(cursor.lastrowid)
 
