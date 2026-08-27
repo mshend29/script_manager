@@ -78,11 +78,11 @@ def _seed_dialogue(connection, character_id: int, talent_id: int) -> tuple[int, 
     return dialogue_id, episode_id
 
 
-def test_schema_v5_contains_character_alias_tables(tmp_path):
+def test_current_schema_contains_character_alias_tables(tmp_path):
     database = Database(tmp_path / "project.db")
     database.initialize()
 
-    assert SCHEMA_VERSION == 5
+    assert SCHEMA_VERSION >= 5
     with database.connect() as connection:
         names = {
             str(row["name"])
@@ -95,7 +95,7 @@ def test_schema_v5_contains_character_alias_tables(tmp_path):
         version = connection.execute(
             "SELECT value FROM app_meta WHERE key = 'schema_version'"
         ).fetchone()
-        assert str(version["value"]) == "5"
+        assert str(version["value"]) == str(SCHEMA_VERSION)
 
 
 def test_existing_character_can_be_aliased_and_restored_without_losing_recording(tmp_path):
