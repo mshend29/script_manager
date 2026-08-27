@@ -5,7 +5,6 @@ from pathlib import Path
 
 from core.database import SCHEMA_VERSION
 from core.project import Project
-from services.audit_service import AuditService
 from services.backup_service import BackupService
 from services.track_file_service import TrackAudioSpec, TrackFileService
 from services.validation_service import ValidationService
@@ -176,10 +175,13 @@ class ProjectDiagnosticsService:
         )
 
         try:
-            audit = AuditService(database).recent(200)
+            with database.connect() as connection:
+                row = connection.execute(
+                    "SELECT COUNT(*) AS total FROM audit_log"
+                ).fetchone()
+                result.audit_count = int(row["total"] if row else 0)
         except Exception:
-            audit = []
-        result.audit_count = len(audit)
+            result.audit_count = 0
 
         return result
 
