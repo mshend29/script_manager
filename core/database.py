@@ -63,7 +63,7 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     normalized_name TEXT NOT NULL UNIQUE,
-                    base_normalized_name TEXT NOT NULL,
+                    base_normalized_name TEXT,
                     identity_talent_id INTEGER,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT,
