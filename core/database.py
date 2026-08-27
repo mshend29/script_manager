@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -63,9 +63,14 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     normalized_name TEXT NOT NULL UNIQUE,
+                    base_normalized_name TEXT NOT NULL,
+                    identity_talent_id INTEGER,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT,
-                    updated_at TEXT
+                    updated_at TEXT,
+                    FOREIGN KEY (identity_talent_id)
+                        REFERENCES talents(id)
+                        ON DELETE SET NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS talents (
@@ -243,6 +248,20 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_character_alias_dialogue_dialogue
                     ON character_alias_dialogue(dialogue_id);
 
+                CREATE INDEX IF NOT EXISTS idx_characters_base_normalized
+                    ON characters(base_normalized_name);
+
+                CREATE INDEX IF NOT EXISTS idx_characters_identity_talent
+                    ON characters(identity_talent_id);
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_source_identity
+                    ON characters(base_normalized_name, identity_talent_id)
+                    WHERE identity_talent_id IS NOT NULL;
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_unbound_identity
+                    ON characters(base_normalized_name)
+                    WHERE identity_talent_id IS NULL;
+
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
                     ON character_talent(character_id)
                     WHERE is_locked = 1;
@@ -250,6 +269,7 @@ class Database:
             )
 
             self._migrate_stem_status_v3(connection)
+            self._migrate_character_identity_v6(connection)
 
             connection.executescript(
                 """
@@ -309,6 +329,88 @@ class Database:
                 )
         finally:
             connection.close()
+
+    @staticmethod
+    def _migrate_character_identity_v6(
+        connection: sqlite3.Connection,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(characters)"
+            ).fetchall()
+        }
+
+        if "base_normalized_name" not in columns:
+            connection.execute(
+                "ALTER TABLE characters "
+                "ADD COLUMN base_normalized_name TEXT"
+            )
+
+        if "identity_talent_id" not in columns:
+            connection.execute(
+                "ALTER TABLE characters "
+                "ADD COLUMN identity_talent_id INTEGER "
+                "REFERENCES talents(id) ON DELETE SET NULL"
+            )
+
+        # Preserve the original normalized label as the source-name identity.
+        # normalized_name remains UNIQUE for backward compatibility and is used
+        # only as an internal storage key for newly split identities.
+        connection.execute(
+            """
+            UPDATE characters
+            SET base_normalized_name = normalized_name
+            WHERE base_normalized_name IS NULL
+               OR TRIM(base_normalized_name) = ''
+            """
+        )
+
+        # Existing projects had one character row per normalized name. When a
+        # character already has one authoritative locked talent, use it as the
+        # best migration hint for its source identity. Multi-talent characters
+        # intentionally remain unbound so crowd/multi-cast workflows are not
+        # split automatically.
+        connection.execute(
+            """
+            UPDATE characters AS c
+            SET identity_talent_id = (
+                SELECT ct.talent_id
+                FROM character_talent AS ct
+                WHERE ct.character_id = c.id
+                  AND ct.is_locked = 1
+                ORDER BY
+                    CASE WHEN ct.source = 'manual' THEN 0 ELSE 1 END,
+                    ct.id
+                LIMIT 1
+            )
+            WHERE c.identity_talent_id IS NULL
+              AND EXISTS (
+                  SELECT 1
+                  FROM character_talent AS ct
+                  WHERE ct.character_id = c.id
+                    AND ct.is_locked = 1
+              )
+            """
+        )
+
+        connection.executescript(
+            """
+            CREATE INDEX IF NOT EXISTS idx_characters_base_normalized
+                ON characters(base_normalized_name);
+
+            CREATE INDEX IF NOT EXISTS idx_characters_identity_talent
+                ON characters(identity_talent_id);
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_source_identity
+                ON characters(base_normalized_name, identity_talent_id)
+                WHERE identity_talent_id IS NOT NULL;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_unbound_identity
+                ON characters(base_normalized_name)
+                WHERE identity_talent_id IS NULL;
+            """
+        )
 
     @staticmethod
     def _migrate_stem_status_v3(connection: sqlite3.Connection) -> None:
