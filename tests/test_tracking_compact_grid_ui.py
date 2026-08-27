@@ -112,9 +112,9 @@ def test_tracking_has_dedicated_track_files_and_output_health_workspaces():
     assert 'WORKSPACE_TRACK_FILES = "track_files"' in compact
     assert 'WORKSPACE_OUTPUT_HEALTH = "output_health"' in compact
     assert 'QPushButton("Go to Output Health")' in compact
-    assert '("Tracking"),' in compact
-    assert '("Track Files"),' in compact
-    assert '("Output Health"),' in compact
+    assert '(WORKSPACE_TRACKING, "Tracking")' in compact
+    assert '(WORKSPACE_TRACK_FILES, "Track Files")' in compact
+    assert '(WORKSPACE_OUTPUT_HEALTH, "Output Health")' in compact
     assert "QStackedWidget" in compact
     assert "self.show_workspace(WORKSPACE_OUTPUT_HEALTH)" in compact
 
