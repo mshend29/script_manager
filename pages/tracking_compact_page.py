@@ -709,6 +709,9 @@ class CompactTrackingPage(TrackingPage):
             QAbstractItemView.SelectionBehavior.SelectRows
         )
         self.output_warning_table.verticalHeader().setVisible(False)
+        self.output_warning_table.cellDoubleClicked.connect(
+            self._output_warning_double_clicked
+        )
         warning_header = self.output_warning_table.horizontalHeader()
         warning_header.setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
@@ -742,6 +745,50 @@ class CompactTrackingPage(TrackingPage):
         talent_id = int(talent_id)
         rows = self._track_file_inventory.rows_for_talent(talent_id)
         health = self._track_file_inventory.health_for_talent(talent_id)
+        scoped_global_warnings = self._scoped_global_warnings(talent_id)
+        rename_by_source = self._rename_recommendations_by_source(talent_id)
+
+        warning_rows: list[
+            tuple[TrackFileWarning, str, TrackRenameItem | None]
+        ] = []
+        for row in rows:
+            warning_rows.extend(
+                (warning, row.character_name, None)
+                for warning in row.warnings
+            )
+
+        for warning in scoped_global_warnings:
+            rename_item = rename_by_source.get(
+                str(Path(warning.path)).casefold()
+                if warning.path
+                else ""
+            )
+            if (
+                warning.code == "UNEXPECTED_TRACK_FILE"
+                and rename_item is not None
+            ):
+                synthetic = TrackFileWarning(
+                    code="RENAME_RECOMMENDED",
+                    message=(
+                        f"{Path(rename_item.source_path).name} dapat "
+                        f"dinormalisasi menjadi "
+                        f"{Path(rename_item.target_path).name}."
+                    ),
+                    path=rename_item.source_path,
+                    talent_id=talent_id,
+                    episode_number=rename_item.episode_number,
+                )
+                warning_rows.append(
+                    (
+                        synthetic,
+                        rename_item.character_name,
+                        rename_item,
+                    )
+                )
+            else:
+                warning_rows.append((warning, "—", None))
+
+        total_warning_count = len(warning_rows)
 
         self.output_summary_values["expected"].setText(str(health.total_tracks))
         self.output_summary_values["stem"].setText(str(health.stemmed_tracks))
@@ -754,22 +801,18 @@ class CompactTrackingPage(TrackingPage):
         self.output_summary_values["delivery_ep"].setText(
             f"{health.delivered_episodes}/{health.total_episodes}"
         )
-        self.output_summary_values["warnings"].setText(str(health.warnings))
+        self.output_summary_values["warnings"].setText(
+            str(total_warning_count)
+        )
         self.output_summary_values["warnings"].setStyleSheet(
             "font-size: 14pt; font-weight: 700; color: #b3261e;"
-            if health.warnings
+            if total_warning_count
             else "font-size: 14pt; font-weight: 700; color: #176b2c;"
         )
 
         by_episode: dict[int, list[TrackFileRow]] = {}
         for row in rows:
             by_episode.setdefault(row.episode_number, []).append(row)
-
-        scoped_global_warnings = [
-            warning
-            for warning in self._track_file_inventory.warnings
-            if warning.talent_id in {None, talent_id}
-        ]
 
         self.output_episode_table.setRowCount(len(by_episode))
         for row_index, episode_number in enumerate(sorted(by_episode)):
@@ -780,8 +823,15 @@ class CompactTrackingPage(TrackingPage):
             warning_count = sum(len(item.warnings) for item in group)
             warning_count += sum(
                 1
-                for warning in scoped_global_warnings
-                if warning.episode_number == episode_number
+                for warning, _character, _rename_item in warning_rows
+                if (
+                    warning.episode_number == episode_number
+                    and warning not in [
+                        row_warning
+                        for row_item in group
+                        for row_warning in row_item.warnings
+                    ]
+                )
             )
 
             stem_text = (
@@ -807,19 +857,6 @@ class CompactTrackingPage(TrackingPage):
                     QColor("#b3261e")
                 )
 
-        warning_rows: list[
-            tuple[TrackFileWarning, str]
-        ] = []
-        for row in rows:
-            warning_rows.extend(
-                (warning, row.character_name)
-                for warning in row.warnings
-            )
-        warning_rows.extend(
-            (warning, "—")
-            for warning in scoped_global_warnings
-        )
-
         warning_rows.sort(
             key=lambda item: (
                 item[0].episode_number
@@ -831,7 +868,11 @@ class CompactTrackingPage(TrackingPage):
         )
 
         self.output_warning_table.setRowCount(len(warning_rows))
-        for row_index, (warning, character_name) in enumerate(warning_rows):
+        for row_index, (
+            warning,
+            character_name,
+            rename_item,
+        ) in enumerate(warning_rows):
             filename = (
                 Path(warning.path).name if warning.path else "—"
             )
@@ -852,11 +893,90 @@ class CompactTrackingPage(TrackingPage):
                     warning.path if column == 3 and warning.path
                     else warning.message
                 )
+                if rename_item is not None:
+                    item.setData(
+                        Qt.ItemDataRole.UserRole,
+                        rename_item.source_path,
+                    )
                 self.output_warning_table.setItem(
                     row_index,
                     column,
                     item,
                 )
+
+    def _scoped_global_warnings(
+        self,
+        talent_id: int,
+    ) -> list[TrackFileWarning]:
+        result: list[TrackFileWarning] = []
+
+        for warning in self._track_file_inventory.warnings:
+            if warning.talent_id is not None:
+                if int(warning.talent_id) == int(talent_id):
+                    result.append(warning)
+                continue
+
+            if (
+                warning.code == "UNEXPECTED_TRACK_FILE"
+                and warning.path
+            ):
+                simple = parse_simple_export_filename(
+                    Path(warning.path).name
+                )
+                if simple is not None:
+                    candidate_talents = {
+                        row.talent_id
+                        for row in self._track_file_inventory.rows
+                        if (
+                            row.episode_number == simple.episode_number
+                            and sanitize_filename_component(
+                                row.character_name,
+                                uppercase=True,
+                            ).casefold()
+                            == simple.track_name.casefold()
+                        )
+                    }
+                    if candidate_talents:
+                        if int(talent_id) in candidate_talents:
+                            result.append(warning)
+                        continue
+
+            # Truly unattributed filesystem warnings remain visible to every
+            # talent because they require project-level attention.
+            result.append(warning)
+
+        return result
+
+    def _rename_recommendations_by_source(
+        self,
+        talent_id: int,
+    ) -> dict[str, TrackRenameItem]:
+        plan = self._track_rename_plan
+        if plan.talent_id != int(talent_id):
+            plan = self._build_rename_plan(talent_id=int(talent_id))
+
+        return {
+            str(Path(item.source_path)).casefold(): item
+            for item in plan.items
+            if (
+                item.match_kind == MATCH_SIMPLE_EXPORT
+                and item.status in {RENAME_MATCHED, RENAME_COLLISION}
+                and item.source_path
+                and item.target_path
+            )
+        }
+
+    def _output_warning_double_clicked(
+        self,
+        row: int,
+        column: int,
+    ) -> None:
+        item = self.output_warning_table.item(row, column)
+        if item is None:
+            return
+        source_path = item.data(Qt.ItemDataRole.UserRole)
+        if source_path:
+            self._rename_single_source(str(source_path))
 
     # ------------------------------------------------------------------
     # TRACK FILE TABLE + SIDEBAR SUMMARY
@@ -876,17 +996,27 @@ class CompactTrackingPage(TrackingPage):
 
         self._refresh_track_files_table()
 
-        health = self._track_file_inventory.health_for_talent(int(talent_id))
+        talent_id = int(talent_id)
+        health = self._track_file_inventory.health_for_talent(talent_id)
+        scoped_warning_count = (
+            sum(
+                len(row.warnings)
+                for row in self._track_file_inventory.rows_for_talent(
+                    talent_id
+                )
+            )
+            + len(self._scoped_global_warnings(talent_id))
+        )
         self.stemmed_health_value.setText(
             f"{health.stemmed_episodes}/{health.total_episodes}"
         )
         self.delivered_health_value.setText(
             f"{health.delivered_episodes}/{health.total_episodes}"
         )
-        self.warning_health_value.setText(str(health.warnings))
+        self.warning_health_value.setText(str(scoped_warning_count))
         self.warning_health_value.setStyleSheet(
             "font-weight: 700; color: #b3261e;"
-            if health.warnings
+            if scoped_warning_count
             else "font-weight: 700; color: #176b2c;"
         )
 
