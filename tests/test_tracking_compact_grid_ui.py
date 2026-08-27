@@ -94,11 +94,60 @@ def test_tracking_detail_shares_action_row_and_revision_is_only_manual_control()
     assert "ribbon.tracking_status_change_requested.connect" in tracking
     assert "self._service.set_downstream_status(" in tracking
 
-    # Talent summary shares the workspace header and file inventory sits below
-    # the character/episode grid.
+    # Talent summary stays in the common header while production file tools
+    # live in dedicated Tracking workspaces.
     assert "header_row.addWidget(self.title_label)" in tracking
     assert "header_row.addWidget(self.summary_label, 1)" in tracking
     assert 'QLabel("TRACK FILES")' in compact
     assert '["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]' in compact
     assert 'QLabel("OUTPUT HEALTH")' in compact
 
+
+
+def test_tracking_has_dedicated_track_files_and_output_health_workspaces():
+    compact = _read("pages/tracking_compact_page.py")
+    main = _read("app/main_window.py")
+
+    assert 'WORKSPACE_TRACKING = "tracking"' in compact
+    assert 'WORKSPACE_TRACK_FILES = "track_files"' in compact
+    assert 'WORKSPACE_OUTPUT_HEALTH = "output_health"' in compact
+    assert 'QPushButton("Go to Output Health")' in compact
+    assert '("Tracking"),' in compact
+    assert '("Track Files"),' in compact
+    assert '("Output Health"),' in compact
+    assert "QStackedWidget" in compact
+    assert "self.show_workspace(WORKSPACE_OUTPUT_HEALTH)" in compact
+
+    # Dashboard output warnings navigate to the detailed health workspace,
+    # while ordinary Tracking scope navigation returns to the grid.
+    assert 'page.show_workspace("output_health")' in main
+    assert 'page.show_workspace("track_files")' in main
+    assert 'page.show_workspace("tracking")' in main
+
+
+def test_track_name_suggestion_uses_three_columns_five_rows_and_canonical_names():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert "TRACK_NAMES_PER_COLUMN = 5" in compact
+    assert "TRACK_NAME_COLUMNS = 3" in compact
+    assert "TRACK_NAMES_PER_PAGE = TRACK_NAMES_PER_COLUMN * TRACK_NAME_COLUMNS" in compact
+    assert 'QLabel("TRACK NAME SUGGESTION")' in compact
+    assert "str(row.character_name).upper()" in compact
+    assert "index % self.TRACK_NAMES_PER_COLUMN" in compact
+    assert "index // self.TRACK_NAMES_PER_COLUMN" in compact
+    assert "QApplication.clipboard().setText" in compact
+    assert "Aliases:" in compact
+
+
+def test_output_health_workspace_explains_episode_counts_and_warning_details():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert 'QLabel("OUTPUT SUMMARY")' in compact
+    assert 'QLabel("EPISODE STATUS")' in compact
+    assert 'QLabel("WARNINGS")' in compact
+    assert '["EPS", "STEM", "DELIVERY", "WARNING"]' in compact
+    assert '["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]' in compact
+    assert '"Expected Tracks"' in compact
+    assert '"Valid Stem"' in compact
+    assert '"Valid Delivery"' in compact
+    assert "warning.message" in compact
