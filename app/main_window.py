@@ -3,7 +3,8 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Qt, Slot
+from PySide6.QtCore import QThread, Qt, QUrl, Slot
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
@@ -32,6 +33,7 @@ from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
 from pages.tracking_page import TrackingPage
+from services.backup_service import BackupService
 from services.project_dashboard_service import ProjectDashboardService
 
 
@@ -102,6 +104,9 @@ class MainWindow(QMainWindow):
         data_page = self.pages["DATA"]
         data_page.tracking_navigation_requested.connect(self.open_tracking_scope)
 
+        tools_page = self.pages["TOOLS"]
+        tools_page.action_requested.connect(self.handle_ribbon_action)
+
         self._init_source_sync_progress_ui()
         self.statusBar().showMessage("Ready")
         self.set_page("PROJECT")
@@ -130,6 +135,9 @@ class MainWindow(QMainWindow):
 
         elif page_name == "DATA":
             self.pages["DATA"].set_database(database)
+
+        elif page_name == "TOOLS":
+            self.pages["TOOLS"].set_project(project)
 
         self.page_stack.setCurrentWidget(self.pages[page_name])
         self.statusBar().showMessage(f"{page_name.title()} page")
@@ -258,6 +266,7 @@ class MainWindow(QMainWindow):
         self.pages["DIALOG"].set_database(None)
         self.pages["TRACKING"].set_database(None)
         self.pages["DATA"].set_database(None)
+        self.pages["TOOLS"].set_project(None)
 
     def open_project_settings(self) -> None:
         if self._block_project_change_during_sync("Project Settings"):
@@ -328,6 +337,200 @@ class MainWindow(QMainWindow):
             return
 
         webbrowser.open(url)
+
+    # ------------------------------------------------------------------
+    # TOOLS / MAINTENANCE
+    # ------------------------------------------------------------------
+
+    def run_tools_diagnostics(self) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Project Diagnostics",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        self.ribbon.select_tab("TOOLS")
+        page = self.pages["TOOLS"]
+        page.set_project(project, run_diagnostics=False)
+        page.refresh_view()
+        self.statusBar().showMessage("Project diagnostics refreshed", 3000)
+
+    def focus_tools_audit(self) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Audit History",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        self.ribbon.select_tab("TOOLS")
+        page = self.pages["TOOLS"]
+        page.set_project(project, run_diagnostics=False)
+        page.audit_table.setFocus()
+        if page.audit_table.rowCount() > 0:
+            page.audit_table.selectRow(0)
+
+    def open_tools_path(self, kind: str) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Open Folder",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        project.ensure_structure()
+        settings = project.settings
+        paths = {
+            "project": project.root,
+            "source": Path(settings.source_folder)
+                if settings.source_folder.strip()
+                else None,
+            "output": Path(settings.stem_output_folder)
+                if settings.stem_output_folder.strip()
+                else None,
+            "delivery": Path(settings.delivery_folder)
+                if settings.delivery_folder.strip()
+                else None,
+            "backups": project.backups_folder,
+            "logs": project.logs_folder,
+        }
+        path = paths.get(str(kind).strip().casefold())
+
+        if path is None:
+            QMessageBox.information(
+                self,
+                "Open Folder",
+                "Folder belum dikonfigurasi di Project Settings.",
+            )
+            return
+
+        path = Path(path)
+        if not path.is_dir():
+            QMessageBox.warning(
+                self,
+                "Open Folder",
+                f"Folder tidak ditemukan:\n{path}",
+            )
+            return
+
+        opened = QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(path.resolve()))
+        )
+        if not opened:
+            QMessageBox.warning(
+                self,
+                "Open Folder",
+                f"Sistem tidak dapat membuka folder:\n{path}",
+            )
+
+    def open_tools_drive(self, kind: str) -> None:
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Drive Link",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        settings = project.settings
+        urls = {
+            "main": settings.main_drive_url,
+            "material": settings.material_drive_url,
+            "delivery": settings.delivery_drive_url,
+        }
+        url = str(urls.get(str(kind).strip().casefold(), "") or "").strip()
+        if not url:
+            QMessageBox.information(
+                self,
+                "Drive Link",
+                "Drive URL belum dikonfigurasi di Project Settings.",
+            )
+            return
+
+        webbrowser.open(url)
+
+    def restore_database_backup(self) -> None:
+        if self._block_project_change_during_sync("Restore Backup"):
+            return
+
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Restore Backup",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        project.ensure_structure()
+        backup_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Restore Database Backup",
+            str(project.backups_folder),
+            "SQLite Database (*.db);;All Files (*)",
+        )
+        if not backup_path:
+            return
+
+        service = BackupService(project.database)
+        valid, detail = service.validate_backup(backup_path)
+        if not valid:
+            QMessageBox.critical(
+                self,
+                "Restore Backup",
+                detail,
+            )
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Restore Backup",
+            (
+                f"{detail}\n\n"
+                f"Restore database dari:\n{backup_path}\n\n"
+                "Current database akan dibackup otomatis terlebih dahulu. "
+                "Source files dan audio files tidak diubah.\n\n"
+                "Lanjutkan restore?"
+            ),
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            safety_backup, schema = service.restore(backup_path)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Restore Backup",
+                f"Restore gagal.\n\n{exc}",
+            )
+            return
+
+        self._clear_data_pages()
+        self.refresh_project_page()
+        self.pages["TOOLS"].set_project(project)
+        self.statusBar().showMessage("Database backup restored", 5000)
+
+        QMessageBox.information(
+            self,
+            "Restore Backup",
+            (
+                "Database berhasil direstore.\n\n"
+                f"Schema aktif: v{schema}\n"
+                f"Safety backup current database:\n{safety_backup}"
+            ),
+        )
 
     def _source_sync_running(self) -> bool:
         thread = self._source_sync_thread
@@ -1023,6 +1226,37 @@ class MainWindow(QMainWindow):
             "data.cast": lambda: self.show_data_section("cast"),
             "data.validate": self.validate_data,
             "data.backup": self.backup_database,
+            "tools.diagnostics": self.run_tools_diagnostics,
+            "tools.audit": self.focus_tools_audit,
+            "tools.backup": self.backup_database,
+            "tools.restore_backup": self.restore_database_backup,
+            "tools.open_project_folder": (
+                lambda: self.open_tools_path("project")
+            ),
+            "tools.open_source_folder": (
+                lambda: self.open_tools_path("source")
+            ),
+            "tools.open_output_folder": (
+                lambda: self.open_tools_path("output")
+            ),
+            "tools.open_delivery_folder": (
+                lambda: self.open_tools_path("delivery")
+            ),
+            "tools.open_backups": (
+                lambda: self.open_tools_path("backups")
+            ),
+            "tools.open_logs": (
+                lambda: self.open_tools_path("logs")
+            ),
+            "tools.open_main_drive": (
+                lambda: self.open_tools_drive("main")
+            ),
+            "tools.open_material_drive": (
+                lambda: self.open_tools_drive("material")
+            ),
+            "tools.open_delivery_drive": (
+                lambda: self.open_tools_drive("delivery")
+            ),
         }
 
         handler = handlers.get(action_id)
