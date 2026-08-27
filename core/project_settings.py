@@ -56,4 +56,21 @@ class ProjectSettings:
             if isinstance(value, str):
                 data[key] = value.strip()
 
+        data["audio_format"] = "WAV"
+
+        sample_rate = int(data.get("audio_sample_rate", 48000) or 48000)
+        data["audio_sample_rate"] = (
+            sample_rate
+            if sample_rate in {44100, 48000, 96000, 192000}
+            else 48000
+        )
+
+        bit_depth = int(data.get("audio_bit_depth", 24) or 24)
+        data["audio_bit_depth"] = (
+            bit_depth if bit_depth in {16, 24, 32} else 24
+        )
+
+        channels = int(data.get("audio_channels", 1) or 1)
+        data["audio_channels"] = channels if channels in {1, 2} else 1
+
         return ProjectSettings.from_dict(data)
