@@ -151,3 +151,38 @@ def test_output_health_workspace_explains_episode_counts_and_warning_details():
     assert '"Valid Stem"' in compact
     assert '"Valid Delivery"' in compact
     assert "warning.message" in compact
+
+
+def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
+    compact = _read("pages/tracking_compact_page.py")
+    dialog = _read("dialogs/track_rename_preview_dialog.py")
+    service = _read("services/track_rename_service.py")
+
+    assert 'QPushButton("Match & Rename Episode")' in compact
+    assert 'QPushButton("Batch Match & Rename Talent")' in compact
+    assert '"Rename Stem / Export to Expected"' in compact
+    assert "cellDoubleClicked.connect" in compact
+    assert "TrackRenamePreviewDialog" in compact
+    assert "self._track_rename_service.execute(plan)" in compact
+
+    assert '"CURRENT", "EXPECTED", "STATUS"' in dialog
+    assert "Tidak ada file yang akan" in dialog
+    assert "ditimpa" in dialog
+    assert "rename_button.setEnabled(plan.matched > 0)" in dialog
+
+    assert "RENAME_COLLISION" in service
+    assert "RENAME_AMBIGUOUS" in service
+    assert "source.rename(target)" in service
+    assert "target.exists()" in service
+    assert "Best-effort rollback" in service
+
+
+def test_output_health_turns_simple_exports_into_actionable_rename_recommendations():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert '"RENAME_RECOMMENDED"' in compact
+    assert "parse_simple_export_filename" in compact
+    assert "_rename_recommendations_by_source" in compact
+    assert "Current:" in compact
+    assert "Expected:" in compact
+    assert "_output_warning_double_clicked" in compact
