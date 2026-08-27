@@ -88,7 +88,7 @@ def _has_slot_object_decorator(function: ast.FunctionDef) -> bool:
     return False
 
 
-def test_source_sync_engine_runs_in_worker_not_main_window():
+def test_source_prepare_and_apply_run_in_worker_not_main_window():
     main_run = _method(
         ROOT / "app" / "main_window.py",
         "MainWindow",
@@ -103,47 +103,79 @@ def test_source_sync_engine_runs_in_worker_not_main_window():
     main_attributes = _called_attributes(main_run)
     worker_attributes = _called_attributes(worker_run)
 
-    assert "synchronize" not in main_attributes
-    assert "synchronize" in worker_attributes
+    assert "prepare" not in main_attributes
+    assert "apply" not in main_attributes
+    assert {"prepare", "apply"} <= worker_attributes
 
 
-def test_main_window_starts_worker_on_qthread():
-    main_run = _method(
+def test_main_window_starts_source_worker_on_qthread():
+    start_worker = _method(
         ROOT / "app" / "main_window.py",
         "MainWindow",
-        "_run_source_sync",
+        "_start_source_sync_worker",
     )
 
-    assert {"QThread", "SourceSyncWorker"} <= _called_names(main_run)
-    attributes = _called_attributes(main_run)
+    assert {"QThread", "SourceSyncWorker"} <= _called_names(start_worker)
+    attributes = _called_attributes(start_worker)
     assert {"moveToThread", "start", "connect"} <= attributes
 
 
-def test_worker_results_are_queued_to_main_window_slots_not_lambdas():
+def test_worker_results_are_queued_to_preview_apply_slots_not_lambdas():
     main_path = ROOT / "app" / "main_window.py"
-    main_run = _method(main_path, "MainWindow", "_run_source_sync")
+    start_worker = _method(
+        main_path,
+        "MainWindow",
+        "_start_source_sync_worker",
+    )
 
-    completed = _worker_connect_call(main_run, "completed")
-    failed = _worker_connect_call(main_run, "failed")
+    completed_calls = []
+    failed = None
+    for node in ast.walk(start_worker):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "connect":
+            continue
+        signal = node.func.value
+        if not (
+            isinstance(signal, ast.Attribute)
+            and isinstance(signal.value, ast.Name)
+            and signal.value.id == "worker"
+        ):
+            continue
+        if signal.attr == "completed":
+            completed_calls.append(node)
+        elif signal.attr == "failed":
+            failed = node
 
-    assert len(completed.args) >= 2
-    assert len(failed.args) >= 2
+    assert len(completed_calls) == 2
+    assert failed is not None
 
-    assert _is_self_method(completed.args[0], "_source_sync_completed")
-    assert _is_self_method(failed.args[0], "_source_sync_failed")
-    assert not isinstance(completed.args[0], ast.Lambda)
-    assert not isinstance(failed.args[0], ast.Lambda)
+    targets = {
+        call.args[0].attr
+        for call in completed_calls
+        if (
+            call.args
+            and isinstance(call.args[0], ast.Attribute)
+            and isinstance(call.args[0].value, ast.Name)
+            and call.args[0].value.id == "self"
+        )
+    }
+    assert targets == {"_source_sync_prepared", "_source_sync_applied"}
 
-    assert _is_queued_connection(completed.args[1])
-    assert _is_queued_connection(failed.args[1])
+    for call in [*completed_calls, failed]:
+        assert len(call.args) >= 2
+        assert not isinstance(call.args[0], ast.Lambda)
+        assert _is_queued_connection(call.args[1])
 
 
 def test_source_sync_result_handlers_are_qt_object_slots():
     main_path = ROOT / "app" / "main_window.py"
-    completed = _method(main_path, "MainWindow", "_source_sync_completed")
+    prepared = _method(main_path, "MainWindow", "_source_sync_prepared")
+    applied = _method(main_path, "MainWindow", "_source_sync_applied")
     failed = _method(main_path, "MainWindow", "_source_sync_failed")
 
-    assert _has_slot_object_decorator(completed)
+    assert _has_slot_object_decorator(prepared)
+    assert _has_slot_object_decorator(applied)
     assert _has_slot_object_decorator(failed)
 
 
