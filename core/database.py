@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -143,6 +143,25 @@ class Database:
                         ON DELETE SET NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS dialog_source_cast (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    dialogue_id INTEGER NOT NULL,
+                    character_id INTEGER NOT NULL,
+                    talent_id INTEGER,
+                    position INTEGER NOT NULL DEFAULT 0,
+                    resolution_source TEXT,
+                    UNIQUE(dialogue_id, position),
+                    FOREIGN KEY (dialogue_id)
+                        REFERENCES dialogues(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (character_id)
+                        REFERENCES characters(id)
+                        ON DELETE CASCADE,
+                    FOREIGN KEY (talent_id)
+                        REFERENCES talents(id)
+                        ON DELETE SET NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS dialogue_review (
                     dialogue_id INTEGER PRIMARY KEY,
                     classification TEXT NOT NULL,
@@ -249,6 +268,15 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_dialog_cast_talent
                     ON dialog_cast(talent_id);
+
+                CREATE INDEX IF NOT EXISTS idx_dialog_source_cast_dialogue
+                    ON dialog_source_cast(dialogue_id);
+
+                CREATE INDEX IF NOT EXISTS idx_dialog_source_cast_character
+                    ON dialog_source_cast(character_id);
+
+                CREATE INDEX IF NOT EXISTS idx_dialog_source_cast_talent
+                    ON dialog_source_cast(talent_id);
 
                 CREATE INDEX IF NOT EXISTS idx_dialogue_review_classification
                     ON dialogue_review(classification);

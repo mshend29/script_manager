@@ -285,6 +285,18 @@ class CharacterAliasService:
                 )
                 connection.execute("DELETE FROM dialog_cast WHERE id = ?", (int(cast["id"]),))
 
+            # Source provenance follows the active canonical identity.
+            # character_alias_dialogue keeps enough dialogue/position provenance
+            # to restore these rows if the alias is removed later.
+            connection.execute(
+                """
+                UPDATE dialog_source_cast
+                SET character_id = ?
+                WHERE character_id = ?
+                """,
+                (canonical_id, source_id),
+            )
+
             if source_lock is not None:
                 source_talent = int(source_lock["talent_id"])
                 if canonical_lock is None:
@@ -484,6 +496,24 @@ class CharacterAliasService:
                         """,
                         (dialogue_id, source_id, talent_id, position),
                     )
+
+                # Restore source-cast provenance for exactly the
+                # dialogue position that originally belonged to this alias.
+                connection.execute(
+                    """
+                    UPDATE dialog_source_cast
+                    SET character_id = ?
+                    WHERE dialogue_id = ?
+                      AND position = ?
+                      AND character_id = ?
+                    """,
+                    (
+                        source_id,
+                        dialogue_id,
+                        position,
+                        canonical_id,
+                    ),
+                )
 
                 if int(item["created_canonical"] or 0) == 1:
                     other = connection.execute(

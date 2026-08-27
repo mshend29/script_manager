@@ -94,11 +94,95 @@ def test_tracking_detail_shares_action_row_and_revision_is_only_manual_control()
     assert "ribbon.tracking_status_change_requested.connect" in tracking
     assert "self._service.set_downstream_status(" in tracking
 
-    # Talent summary shares the workspace header and file inventory sits below
-    # the character/episode grid.
+    # Talent summary stays in the common header while production file tools
+    # live in dedicated Tracking workspaces.
     assert "header_row.addWidget(self.title_label)" in tracking
     assert "header_row.addWidget(self.summary_label, 1)" in tracking
     assert 'QLabel("TRACK FILES")' in compact
     assert '["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]' in compact
     assert 'QLabel("OUTPUT HEALTH")' in compact
 
+
+
+def test_tracking_has_dedicated_track_files_and_output_health_workspaces():
+    compact = _read("pages/tracking_compact_page.py")
+    main = _read("app/main_window.py")
+
+    assert 'WORKSPACE_TRACKING = "tracking"' in compact
+    assert 'WORKSPACE_TRACK_FILES = "track_files"' in compact
+    assert 'WORKSPACE_OUTPUT_HEALTH = "output_health"' in compact
+    assert 'QPushButton("Go to Output Health")' in compact
+    assert '(WORKSPACE_TRACKING, "Tracking")' in compact
+    assert '(WORKSPACE_TRACK_FILES, "Track Files")' in compact
+    assert '(WORKSPACE_OUTPUT_HEALTH, "Output Health")' in compact
+    assert "QStackedWidget" in compact
+    assert "self.show_workspace(WORKSPACE_OUTPUT_HEALTH)" in compact
+
+    # Dashboard output warnings navigate to the detailed health workspace,
+    # while ordinary Tracking scope navigation returns to the grid.
+    assert 'page.show_workspace("output_health")' in main
+    assert 'page.show_workspace("track_files")' in main
+    assert 'page.show_workspace("tracking")' in main
+
+
+def test_track_name_suggestion_uses_three_columns_five_rows_and_canonical_names():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert "TRACK_NAMES_PER_COLUMN = 5" in compact
+    assert "TRACK_NAME_COLUMNS = 3" in compact
+    assert "TRACK_NAMES_PER_PAGE = TRACK_NAMES_PER_COLUMN * TRACK_NAME_COLUMNS" in compact
+    assert 'QLabel("TRACK NAME SUGGESTION")' in compact
+    assert "str(row.character_name).upper()" in compact
+    assert "index % self.TRACK_NAMES_PER_COLUMN" in compact
+    assert "index // self.TRACK_NAMES_PER_COLUMN" in compact
+    assert "QApplication.clipboard().setText" in compact
+    assert "Aliases:" in compact
+
+
+def test_output_health_workspace_explains_episode_counts_and_warning_details():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert 'QLabel("OUTPUT SUMMARY")' in compact
+    assert 'QLabel("EPISODE STATUS")' in compact
+    assert 'QLabel("WARNINGS")' in compact
+    assert '["EPS", "STEM", "DELIVERY", "WARNING"]' in compact
+    assert '["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]' in compact
+    assert '"Expected Tracks"' in compact
+    assert '"Valid Stem"' in compact
+    assert '"Valid Delivery"' in compact
+    assert "warning.message" in compact
+
+
+def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
+    compact = _read("pages/tracking_compact_page.py")
+    dialog = _read("dialogs/track_rename_preview_dialog.py")
+    service = _read("services/track_rename_service.py")
+
+    assert 'QPushButton("Match & Rename Episode")' in compact
+    assert 'QPushButton("Batch Match & Rename Talent")' in compact
+    assert '"Rename Stem / Export to Expected"' in compact
+    assert "cellDoubleClicked.connect" in compact
+    assert "TrackRenamePreviewDialog" in compact
+    assert "self._track_rename_service.execute(plan)" in compact
+
+    assert '"CURRENT", "EXPECTED", "STATUS"' in dialog
+    assert "Tidak ada file yang akan" in dialog
+    assert "ditimpa" in dialog
+    assert "rename_button.setEnabled(plan.matched > 0)" in dialog
+
+    assert "RENAME_COLLISION" in service
+    assert "RENAME_AMBIGUOUS" in service
+    assert "source.rename(target)" in service
+    assert "target.exists()" in service
+    assert "Best-effort rollback" in service
+
+
+def test_output_health_turns_simple_exports_into_actionable_rename_recommendations():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert '"RENAME_RECOMMENDED"' in compact
+    assert "parse_simple_export_filename" in compact
+    assert "_rename_recommendations_by_source" in compact
+    assert "Current:" in compact
+    assert "Expected:" in compact
+    assert "_output_warning_double_clicked" in compact

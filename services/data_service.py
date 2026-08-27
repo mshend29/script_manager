@@ -658,8 +658,60 @@ class DataService:
         )
 
     def unlock_mapping(self, character_id: int) -> None:
+        """Remove manual override and restore the latest source cast baseline."""
+        character_id = int(character_id)
         now = datetime.now().isoformat(timespec="seconds")
+        backup = BackupService(self.database).create(
+            "before-character-unlock"
+        )
+
         with self.database.connect() as connection:
+            character = connection.execute(
+                """
+                SELECT
+                    c.id,
+                    c.name,
+                    c.identity_talent_id
+                FROM characters AS c
+                WHERE c.id = ?
+                  AND c.is_active = 1
+                """,
+                (character_id,),
+            ).fetchone()
+            if character is None:
+                raise ValueError("Character tidak ditemukan atau sudah inactive.")
+
+            current_lock = connection.execute(
+                """
+                SELECT ct.talent_id, t.name AS talent_name, ct.source
+                FROM character_talent AS ct
+                JOIN talents AS t ON t.id = ct.talent_id
+                WHERE ct.character_id = ?
+                  AND ct.is_locked = 1
+                ORDER BY
+                    CASE WHEN ct.source = 'manual' THEN 0 ELSE 1 END,
+                    ct.id
+                LIMIT 1
+                """,
+                (character_id,),
+            ).fetchone()
+
+            affected = connection.execute(
+                """
+                SELECT
+                    dc.dialogue_id,
+                    d.episode_id,
+                    MIN(dc.position) AS fallback_position
+                FROM dialog_cast AS dc
+                JOIN dialogues AS d ON d.id = dc.dialogue_id
+                WHERE dc.character_id = ?
+                  AND d.is_active = 1
+                GROUP BY dc.dialogue_id, d.episode_id
+                ORDER BY dc.dialogue_id
+                """,
+                (character_id,),
+            ).fetchall()
+
             connection.execute(
                 """
                 UPDATE character_talent
@@ -669,17 +721,156 @@ class DataService:
                         ELSE source
                     END,
                     updated_at = ?
-                WHERE character_id = ? AND is_locked = 1
+                WHERE character_id = ?
+                  AND is_locked = 1
                 """,
                 (now, character_id),
             )
 
+            restored_labels: set[str] = set()
+            used_fallback = False
+
+            for item in affected:
+                dialogue_id = int(item["dialogue_id"])
+                connection.execute(
+                    """
+                    DELETE FROM dialog_cast
+                    WHERE dialogue_id = ?
+                      AND character_id = ?
+                    """,
+                    (dialogue_id, character_id),
+                )
+
+                source_rows = connection.execute(
+                    """
+                    SELECT
+                        talent_id,
+                        position,
+                        resolution_source
+                    FROM dialog_source_cast
+                    WHERE dialogue_id = ?
+                      AND character_id = ?
+                    ORDER BY position, id
+                    """,
+                    (dialogue_id, character_id),
+                ).fetchall()
+
+                if source_rows:
+                    for source_row in source_rows:
+                        talent_id = (
+                            int(source_row["talent_id"])
+                            if source_row["talent_id"] is not None
+                            else None
+                        )
+                        connection.execute(
+                            """
+                            INSERT INTO dialog_cast(
+                                dialogue_id,
+                                character_id,
+                                talent_id,
+                                position
+                            )
+                            VALUES(?, ?, ?, ?)
+                            """,
+                            (
+                                dialogue_id,
+                                character_id,
+                                talent_id,
+                                int(source_row["position"] or 0),
+                            ),
+                        )
+                        if talent_id is None:
+                            restored_labels.add("Unresolved")
+                        else:
+                            talent = connection.execute(
+                                "SELECT name FROM talents WHERE id = ?",
+                                (talent_id,),
+                            ).fetchone()
+                            restored_labels.add(
+                                str(talent["name"]) if talent else f"#{talent_id}"
+                            )
+                    continue
+
+                # Existing v7 projects do not have provenance until the first
+                # Source Refresh after upgrading to v8. Fall back to the stable
+                # source identity talent when available, otherwise return to
+                # unresolved rather than retaining an unsafe manual assignment.
+                used_fallback = True
+                fallback_talent = (
+                    int(character["identity_talent_id"])
+                    if character["identity_talent_id"] is not None
+                    else None
+                )
+                connection.execute(
+                    """
+                    INSERT INTO dialog_cast(
+                        dialogue_id,
+                        character_id,
+                        talent_id,
+                        position
+                    )
+                    VALUES(?, ?, ?, ?)
+                    """,
+                    (
+                        dialogue_id,
+                        character_id,
+                        fallback_talent,
+                        int(item["fallback_position"] or 0),
+                    ),
+                )
+                if fallback_talent is None:
+                    restored_labels.add("Unresolved")
+                else:
+                    talent = connection.execute(
+                        "SELECT name FROM talents WHERE id = ?",
+                        (fallback_talent,),
+                    ).fetchone()
+                    restored_labels.add(
+                        str(talent["name"]) if talent else f"#{fallback_talent}"
+                    )
+
+            episode_ids = sorted(
+                {int(item["episode_id"]) for item in affected}
+            )
+            if episode_ids:
+                placeholders = ",".join("?" for _ in episode_ids)
+                connection.execute(
+                    f"""
+                    DELETE FROM stem_status
+                    WHERE character_id = ?
+                      AND episode_id IN ({placeholders})
+                    """,
+                    (character_id, *episode_ids),
+                )
+
+            character_name = str(character["name"])
+            previous_label = (
+                str(current_lock["talent_name"])
+                if current_lock is not None
+                else "Unlocked"
+            )
+
+        restored_text = (
+            ", ".join(sorted(restored_labels, key=str.casefold))
+            if restored_labels
+            else "No active dialogue"
+        )
         AuditService(self.database).record(
             event_type="MAPPING",
             action="UNLOCK_TALENT",
             entity_type="character",
             entity_id=character_id,
-            summary=f"Character {character_id} mapping unlocked.",
+            summary=(
+                f"{character_name} manual mapping removed: "
+                f"{previous_label} → {restored_text}."
+            ),
+            details={
+                "restored_to": sorted(restored_labels, key=str.casefold),
+                "affected_dialogues": len(affected),
+                "affected_episodes": episode_ids,
+                "source_provenance_fallback": used_fallback,
+                "backup_path": str(backup),
+            },
             created_at=now,
         )
 

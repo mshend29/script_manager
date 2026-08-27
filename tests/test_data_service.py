@@ -172,7 +172,7 @@ def test_manual_lock_updates_active_cast_and_preserves_recording(tmp_path):
     assert service.get_overview().unresolved_cast == 0
 
 
-def test_unlock_removes_lock_but_keeps_current_cast(tmp_path):
+def test_unlock_removes_lock_and_restores_unresolved_without_source_provenance(tmp_path):
     database = Database(tmp_path / 'project.db')
     ids = _seed(database)
     service = DataService(database)
@@ -199,7 +199,12 @@ def test_unlock_removes_lock_but_keeps_current_cast(tmp_path):
         ).fetchone()
 
     assert int(locked['total']) == 0
-    assert int(cast['talent_id']) == ids['brama']
+    assert cast['talent_id'] is None
+    unresolved = service.get_unresolved_cast()
+    assert any(
+        row.character_id == ids['hendra']
+        for row in unresolved
+    )
 
 
 def test_ensure_talent_reuses_normalized_name(tmp_path):

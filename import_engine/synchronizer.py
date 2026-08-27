@@ -369,10 +369,16 @@ class DialogueSynchronizer:
                         (dialogue_id, synced_at),
                     )
 
-                    # Rebuild current cast and alias provenance together. This
-                    # keeps Remove Alias reversible even after later refreshes.
+                    # Rebuild source provenance, effective cast and alias
+                    # provenance together. dialog_source_cast intentionally
+                    # ignores manual Character Mapping so Unlock can restore
+                    # the latest source/resolver baseline.
                     connection.execute(
                         "DELETE FROM character_alias_dialogue WHERE dialogue_id = ?",
+                        (dialogue_id,),
+                    )
+                    connection.execute(
+                        "DELETE FROM dialog_source_cast WHERE dialogue_id = ?",
                         (dialogue_id,),
                     )
                     connection.execute(
@@ -383,9 +389,36 @@ class DialogueSynchronizer:
                         (dialogue_id,),
                     )
 
+                    source_cast, _source_warnings = resolver.resolve_row(
+                        parsed_row,
+                        timestamp=synced_at,
+                        apply_manual_overrides=False,
+                    )
+                    for position, cast_member in enumerate(source_cast):
+                        connection.execute(
+                            """
+                            INSERT INTO dialog_source_cast(
+                                dialogue_id,
+                                character_id,
+                                talent_id,
+                                position,
+                                resolution_source
+                            )
+                            VALUES(?, ?, ?, ?, ?)
+                            """,
+                            (
+                                dialogue_id,
+                                cast_member.character_id,
+                                cast_member.talent_id,
+                                position,
+                                cast_member.source,
+                            ),
+                        )
+
                     resolved_cast, cast_warnings = resolver.resolve_row(
                         parsed_row,
                         timestamp=synced_at,
+                        apply_manual_overrides=True,
                     )
                     report.warnings.extend(
                         f"Episode {parse_result.episode_number} row "

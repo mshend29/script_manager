@@ -387,14 +387,30 @@ class SourceChangeService:
             SELECT
                 c.name AS character_name,
                 COALESCE(t.name, 'Talent Unknown') AS talent_name
-            FROM dialog_cast AS dc
-            JOIN characters AS c ON c.id = dc.character_id
-            LEFT JOIN talents AS t ON t.id = dc.talent_id
-            WHERE dc.dialogue_id = ?
-            ORDER BY dc.position, dc.id
+            FROM dialog_source_cast AS dsc
+            JOIN characters AS c ON c.id = dsc.character_id
+            LEFT JOIN talents AS t ON t.id = dsc.talent_id
+            WHERE dsc.dialogue_id = ?
+            ORDER BY dsc.position, dsc.id
             """,
             (int(dialogue_id),),
         ).fetchall()
+
+        if not rows:
+            rows = connection.execute(
+                """
+                SELECT
+                    c.name AS character_name,
+                    COALESCE(t.name, 'Talent Unknown') AS talent_name
+                FROM dialog_cast AS dc
+                JOIN characters AS c ON c.id = dc.character_id
+                LEFT JOIN talents AS t ON t.id = dc.talent_id
+                WHERE dc.dialogue_id = ?
+                ORDER BY dc.position, dc.id
+                """,
+                (int(dialogue_id),),
+            ).fetchall()
+
         if not rows:
             return "Character Unknown / Talent Unknown"
         return ", ".join(
@@ -407,12 +423,24 @@ class SourceChangeService:
         rows = connection.execute(
             """
             SELECT t.name
-            FROM dialog_cast AS dc
-            JOIN talents AS t ON t.id = dc.talent_id
-            WHERE dc.dialogue_id = ?
+            FROM dialog_source_cast AS dsc
+            JOIN talents AS t ON t.id = dsc.talent_id
+            WHERE dsc.dialogue_id = ?
             """,
             (int(dialogue_id),),
         ).fetchall()
+
+        if not rows:
+            rows = connection.execute(
+                """
+                SELECT t.name
+                FROM dialog_cast AS dc
+                JOIN talents AS t ON t.id = dc.talent_id
+                WHERE dc.dialogue_id = ?
+                """,
+                (int(dialogue_id),),
+            ).fetchall()
+
         return {
             normalize_key(str(row["name"]))
             for row in rows
