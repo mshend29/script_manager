@@ -10,6 +10,7 @@ from import_engine.parser import (
 from import_engine.scanner import ScannedSourceFile, SourceScanResult
 from import_engine.synchronizer import DialogueSynchronizer
 from services.tracking_service import (
+    AUTO_FILE_STATUS_NOTE,
     DELIVERED,
     IN_PROGRESS,
     NOT_READY,
@@ -125,12 +126,21 @@ def test_changed_source_invalidates_delivered_status_before_new_line_is_recorded
     character_id = int(ids["character_id"])
     talent_id = int(ids["talent_id"])
 
-    service.set_downstream_status(
-        episode_id=episode_id,
-        talent_id=talent_id,
-        character_id=character_id,
-        status=DELIVERED,
-    )
+    with database.connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id, talent_id, character_id, status, note
+            ) VALUES(?, ?, ?, ?, ?)
+            """,
+            (
+                episode_id,
+                talent_id,
+                character_id,
+                DELIVERED,
+                AUTO_FILE_STATUS_NOTE,
+            ),
+        )
     before = _single_chip(service, talent_id)
     assert before.display_status == DELIVERED
 
