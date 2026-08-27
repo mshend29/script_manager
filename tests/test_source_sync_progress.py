@@ -64,6 +64,9 @@ def test_source_sync_reports_progress_for_files_that_are_processed(tmp_path):
     assert "classifying" in stages
     assert "inspecting" in stages
     assert "parsing" in stages
+    assert "diffing" in stages
+    assert "preview_ready" in stages
+    assert "backup" in stages
     assert "synchronizing" in stages
     assert stages[-1] == "complete"
 
@@ -105,6 +108,9 @@ def test_unchanged_refresh_skips_file_progress_but_reports_sync(tmp_path):
     assert stages == [
         "scanning",
         "classifying",
+        "diffing",
+        "preview_ready",
+        "backup",
         "synchronizing",
         "complete",
     ]
