@@ -21,6 +21,7 @@ RENAME_UNMATCHED = "UNMATCHED"
 
 MATCH_SEMANTIC = "semantic"
 MATCH_SIMPLE_EXPORT = "simple-export"
+MATCH_MANUAL = "manual"
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,16 @@ class SimpleExportFilename:
 
 
 @dataclass(frozen=True)
+class TrackRenameChoice:
+    expected_filename: str
+    episode_number: int
+    character_id: int
+    character_name: str
+    talent_id: int
+    talent_name: str
+
+
+@dataclass
 class TrackRenameItem:
     source_path: str
     target_path: str
@@ -41,6 +52,7 @@ class TrackRenameItem:
     talent_id: int | None
     talent_name: str
     detail: str = ""
+    choices: tuple[TrackRenameChoice, ...] = ()
 
     @property
     def can_rename(self) -> bool:
@@ -117,9 +129,7 @@ class TrackRenameService:
             )
         ]
 
-        talent_name = (
-            scoped_rows[0].talent_name if scoped_rows else ""
-        )
+        talent_name = scoped_rows[0].talent_name if scoped_rows else ""
         plan = TrackRenamePlan(
             output_folder=self.output_folder,
             talent_id=int(talent_id),
@@ -158,7 +168,7 @@ class TrackRenameService:
             item = self._classify_file(
                 path,
                 scoped_rows,
-                include_unmatched=bool(selected_source_path),
+                include_out_of_scope=bool(selected_source_path),
             )
             if item is None:
                 continue
@@ -179,19 +189,11 @@ class TrackRenameService:
                 item.status == RENAME_MATCHED
                 and len(target_usage.get(target_key, [])) > 1
             ):
-                plan.items.append(
-                    TrackRenameItem(
-                        **{
-                            **item.__dict__,
-                            "status": RENAME_AMBIGUOUS,
-                            "detail": (
-                                "Lebih dari satu source file mengarah ke "
-                                "expected filename yang sama."
-                            ),
-                        }
-                    )
+                item.status = RENAME_AMBIGUOUS
+                item.detail = (
+                    "Lebih dari satu source file mengarah ke expected "
+                    "filename yang sama. Pilih expected filename secara manual."
                 )
-                continue
             plan.items.append(item)
 
         plan.items.sort(
@@ -210,7 +212,6 @@ class TrackRenameService:
         if not items:
             return []
 
-        # Revalidate every source/target immediately before touching files.
         targets: set[str] = set()
         for item in items:
             source = Path(item.source_path)
@@ -246,8 +247,6 @@ class TrackRenameService:
                 source = Path(item.source_path)
                 target = Path(item.target_path)
 
-                # Case-insensitive equality means the file is already equivalent
-                # on Windows; avoid a risky case-only rename through Drive Desktop.
                 if source.name.casefold() == target.name.casefold():
                     continue
 
@@ -259,7 +258,6 @@ class TrackRenameService:
                 source.rename(target)
                 completed.append((source, target))
         except Exception:
-            # Best-effort rollback. Never overwrite a source during rollback.
             for source, target in reversed(completed):
                 try:
                     if target.exists() and not source.exists():
@@ -303,7 +301,7 @@ class TrackRenameService:
         path: Path,
         rows: list[TrackFileRow],
         *,
-        include_unmatched: bool,
+        include_out_of_scope: bool,
     ) -> TrackRenameItem | None:
         semantic_matches = [
             row
@@ -324,22 +322,27 @@ class TrackRenameService:
                 match_kind=MATCH_SEMANTIC,
             )
         if len(semantic_matches) > 1:
+            episode = self._episode_from_rows(semantic_matches)
             return TrackRenameItem(
                 source_path=str(path),
                 target_path="",
                 status=RENAME_AMBIGUOUS,
                 match_kind=MATCH_SEMANTIC,
-                episode_number=None,
+                episode_number=episode,
                 character_id=None,
                 character_name="",
-                talent_id=None,
-                talent_name="",
-                detail="File cocok dengan lebih dari satu expected identity.",
+                talent_id=rows[0].talent_id if rows else None,
+                talent_name=rows[0].talent_name if rows else "",
+                detail=(
+                    "File cocok dengan lebih dari satu expected identity. "
+                    "Pilih expected filename secara manual."
+                ),
+                choices=self._choices(semantic_matches),
             )
 
         simple = parse_simple_export_filename(path.name)
         if simple is None:
-            if not include_unmatched:
+            if not include_out_of_scope:
                 return None
             return TrackRenameItem(
                 source_path=str(path),
@@ -349,17 +352,40 @@ class TrackRenameService:
                 episode_number=None,
                 character_id=None,
                 character_name="",
-                talent_id=None,
-                talent_name="",
-                detail="Filename tidak mengikuti format {episode}_{track}.wav.",
+                talent_id=rows[0].talent_id if rows else None,
+                talent_name=rows[0].talent_name if rows else "",
+                detail=(
+                    "Episode tidak dapat dibaca dari filename. "
+                    "File tidak dapat dimatch otomatis."
+                ),
+            )
+
+        episode_rows = [
+            row
+            for row in rows
+            if row.episode_number == simple.episode_number
+        ]
+        if not episode_rows:
+            if not include_out_of_scope:
+                return None
+            return TrackRenameItem(
+                source_path=str(path),
+                target_path="",
+                status=RENAME_UNMATCHED,
+                match_kind=MATCH_SIMPLE_EXPORT,
+                episode_number=simple.episode_number,
+                character_id=None,
+                character_name=simple.track_name,
+                talent_id=rows[0].talent_id if rows else None,
+                talent_name=rows[0].talent_name if rows else "",
+                detail="Episode file berada di luar scope rename saat ini.",
             )
 
         candidates = [
             row
-            for row in rows
+            for row in episode_rows
             if (
-                row.episode_number == simple.episode_number
-                and _track_name_key(row.character_name)
+                _track_name_key(row.character_name)
                 == _track_name_key(simple.track_name)
             )
         ]
@@ -389,13 +415,17 @@ class TrackRenameService:
                 episode_number=simple.episode_number,
                 character_id=None,
                 character_name=simple.track_name,
-                talent_id=rows[0].talent_id if rows else None,
-                talent_name=rows[0].talent_name if rows else "",
-                detail=f"Track name ambigu: {names}",
+                talent_id=episode_rows[0].talent_id,
+                talent_name=episode_rows[0].talent_name,
+                detail=(
+                    f"Track name ambigu: {names}. "
+                    "Pilih expected filename secara manual."
+                ),
+                choices=self._choices(candidates),
             )
 
-        if not include_unmatched:
-            return None
+        # The episode is known, so the file must remain visible even though the
+        # track name itself does not match any canonical character.
         return TrackRenameItem(
             source_path=str(path),
             target_path="",
@@ -404,9 +434,13 @@ class TrackRenameService:
             episode_number=simple.episode_number,
             character_id=None,
             character_name=simple.track_name,
-            talent_id=rows[0].talent_id if rows else None,
-            talent_name=rows[0].talent_name if rows else "",
-            detail="Tidak ada expected track yang cocok pada scope talent ini.",
+            talent_id=episode_rows[0].talent_id,
+            talent_name=episode_rows[0].talent_name,
+            detail=(
+                "Nama track tidak cocok dengan expected character. "
+                "Pilih expected filename secara manual."
+            ),
+            choices=self._choices(episode_rows),
         )
 
     @staticmethod
@@ -445,7 +479,77 @@ class TrackRenameService:
             talent_id=row.talent_id,
             talent_name=row.talent_name,
             detail=detail,
+            choices=TrackRenameService._choices((row,)),
         )
+
+    @staticmethod
+    def _choices(
+        rows: tuple[TrackFileRow, ...] | list[TrackFileRow],
+    ) -> tuple[TrackRenameChoice, ...]:
+        unique: dict[str, TrackRenameChoice] = {}
+        for row in rows:
+            key = row.expected_filename.casefold()
+            unique[key] = TrackRenameChoice(
+                expected_filename=row.expected_filename,
+                episode_number=row.episode_number,
+                character_id=row.character_id,
+                character_name=row.character_name,
+                talent_id=row.talent_id,
+                talent_name=row.talent_name,
+            )
+        return tuple(
+            sorted(
+                unique.values(),
+                key=lambda item: item.expected_filename.casefold(),
+            )
+        )
+
+    @staticmethod
+    def _episode_from_rows(
+        rows: list[TrackFileRow],
+    ) -> int | None:
+        episodes = {row.episode_number for row in rows}
+        return next(iter(episodes)) if len(episodes) == 1 else None
+
+
+def assign_manual_expected(
+    item: TrackRenameItem,
+    expected_filename: str,
+) -> None:
+    choice = next(
+        (
+            candidate
+            for candidate in item.choices
+            if candidate.expected_filename.casefold()
+            == str(expected_filename).casefold()
+        ),
+        None,
+    )
+    if choice is None:
+        raise ValueError("Expected filename tidak tersedia untuk file ini.")
+
+    source = Path(item.source_path)
+    target = source.parent / choice.expected_filename
+
+    item.target_path = str(target)
+    item.match_kind = MATCH_MANUAL
+    item.episode_number = choice.episode_number
+    item.character_id = choice.character_id
+    item.character_name = choice.character_name
+    item.talent_id = choice.talent_id
+    item.talent_name = choice.talent_name
+
+    if source.name.casefold() == target.name.casefold():
+        item.status = RENAME_ALREADY_EXPECTED
+        item.detail = "Filename sudah sesuai expected."
+    elif target.exists():
+        item.status = RENAME_COLLISION
+        item.detail = (
+            "Expected filename sudah ada. File tidak akan ditimpa."
+        )
+    else:
+        item.status = RENAME_MATCHED
+        item.detail = "Expected filename dipilih manual oleh user."
 
 
 def parse_simple_export_filename(
