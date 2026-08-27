@@ -35,6 +35,7 @@ class CompactTrackingPage(TrackingPage):
         self._track_file_inventory = TrackFileInventory()
         self._track_file_settings = ProjectSettings()
         super().__init__(parent)
+        self.summary_label.setContentsMargins(8, 2, 8, 2)
         self._compact_status_legend()
         self._add_output_health()
         self._add_track_files_table()
