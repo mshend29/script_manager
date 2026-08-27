@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from core.database import Database
+from services.audit_service import AuditService
 
 
 NON_DIALOGUE = "NON_DIALOGUE"
@@ -120,6 +121,16 @@ class ReviewService:
                 (int(dialogue_id), NON_DIALOGUE, note.strip(), now),
             )
 
+        AuditService(self.database).record(
+            event_type="REVIEW",
+            action="MARK_NON_DIALOGUE",
+            entity_type="dialogue",
+            entity_id=dialogue_id,
+            summary=f"Dialogue {dialogue_id} marked Narration / Non-Dialogue.",
+            details={"note": note.strip()},
+            created_at=now,
+        )
+
     def restore_to_review(self, dialogue_id: int) -> None:
         with self.database.connect() as connection:
             connection.execute(
@@ -129,3 +140,11 @@ class ReviewService:
                 """,
                 (int(dialogue_id), NON_DIALOGUE),
             )
+
+        AuditService(self.database).record(
+            event_type="REVIEW",
+            action="RESTORE_TO_REVIEW",
+            entity_type="dialogue",
+            entity_id=dialogue_id,
+            summary=f"Dialogue {dialogue_id} restored to Needs Review.",
+        )
