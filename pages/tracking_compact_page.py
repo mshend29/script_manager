@@ -1095,7 +1095,7 @@ class CompactTrackingPage(TrackingPage):
                 )
 
             delivery_pending = (
-                (row.output.valid or simplified_candidate)
+                row.output.valid
                 and not row.delivered.exists
             )
             delivered = QTableWidgetItem(
