@@ -16,12 +16,15 @@ QPushButton[ribbonTab="true"]:checked {
     color: #217346; background: #ffffff;
     border-bottom: 3px solid #217346;
 }
-#RibbonContent { background: #ffffff; min-height: 82px; }
+#RibbonContent { background: #ffffff; min-height: 72px; }
 #RibbonGroup { background: #ffffff; border-right: 1px solid #dedede; }
-#RibbonGroupTitle { color: #6b6b6b; font-size: 8pt; }
+#RibbonGroupTitle {
+    color: #6b6b6b; font-size: 8pt;
+    padding: 0px 2px; margin: 0px;
+}
 QPushButton[ribbonAction="true"] {
     background: #ffffff; border: 1px solid transparent;
-    border-radius: 3px; padding: 6px 10px; min-height: 28px;
+    border-radius: 3px; padding: 5px 10px; min-height: 26px;
 }
 QPushButton[ribbonAction="true"]:hover {
     background: #edf5f0; border-color: #c4ddcd;
