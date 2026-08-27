@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QTableWidget,
@@ -22,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from core.database import Database
 from core.project_settings import ProjectSettings
+from dialogs.track_rename_preview_dialog import TrackRenamePreviewDialog
 from pages.tracking_page import STATUS_ORDER, TrackingPage
 from services.track_file_service import (
     AudioFileCheck,
@@ -30,6 +33,16 @@ from services.track_file_service import (
     TrackFileRow,
     TrackFileService,
     TrackFileWarning,
+    sanitize_filename_component,
+)
+from services.track_rename_service import (
+    MATCH_SIMPLE_EXPORT,
+    RENAME_COLLISION,
+    RENAME_MATCHED,
+    TrackRenameItem,
+    TrackRenamePlan,
+    TrackRenameService,
+    parse_simple_export_filename,
 )
 from services.tracking_summary_service import TrackingSummaryService
 
@@ -49,7 +62,9 @@ class CompactTrackingPage(TrackingPage):
     def __init__(self, parent=None):
         self._summary_service: TrackingSummaryService | None = None
         self._track_file_service: TrackFileService | None = None
+        self._track_rename_service: TrackRenameService | None = None
         self._track_file_inventory = TrackFileInventory()
+        self._track_rename_plan = TrackRenamePlan()
         self._track_file_settings = ProjectSettings()
         self._track_name_page = 0
         self._workspace_key = WORKSPACE_TRACKING
@@ -77,6 +92,11 @@ class CompactTrackingPage(TrackingPage):
             if database is not None
             else None
         )
+        self._track_rename_service = (
+            self._build_track_rename_service(database)
+            if database is not None
+            else None
+        )
         self._track_file_inventory = self._scan_track_files()
         super().set_database(database)
         self._refresh_track_file_ui()
@@ -88,6 +108,9 @@ class CompactTrackingPage(TrackingPage):
         current_talent = self.talent_combo.currentData()
         current_episode = self.episode_combo.currentData()
         self._track_file_service = self._build_track_file_service(self._database)
+        self._track_rename_service = self._build_track_rename_service(
+            self._database
+        )
         self._track_file_inventory = self._scan_track_files()
 
         super().reload(
@@ -112,6 +135,15 @@ class CompactTrackingPage(TrackingPage):
                 bit_depth=int(settings.audio_bit_depth or 24),
                 channels=int(settings.audio_channels or 1),
             ),
+        )
+
+    def _build_track_rename_service(
+        self,
+        database: Database,
+    ) -> TrackRenameService:
+        return TrackRenameService(
+            database,
+            output_folder=self._track_file_settings.stem_output_folder,
         )
 
     def _scan_track_files(self) -> TrackFileInventory:
@@ -425,9 +457,37 @@ class CompactTrackingPage(TrackingPage):
 
         root.addWidget(suggestion_frame)
 
+        track_files_header = QHBoxLayout()
+        track_files_header.setContentsMargins(0, 0, 0, 0)
+        track_files_header.setSpacing(6)
+
         self.track_files_title = QLabel("TRACK FILES")
         self.track_files_title.setObjectName("SectionTitle")
-        root.addWidget(self.track_files_title)
+        track_files_header.addWidget(self.track_files_title)
+        track_files_header.addStretch(1)
+
+        self.rename_episode_button = QPushButton("Match & Rename Episode")
+        self.rename_episode_button.setProperty("secondary", True)
+        self.rename_episode_button.clicked.connect(
+            self._rename_current_episode
+        )
+        track_files_header.addWidget(self.rename_episode_button)
+
+        self.rename_talent_button = QPushButton("Batch Match & Rename Talent")
+        self.rename_talent_button.setProperty("secondary", True)
+        self.rename_talent_button.clicked.connect(
+            self._rename_current_talent
+        )
+        track_files_header.addWidget(self.rename_talent_button)
+
+        self.refresh_track_files_button = QPushButton("Refresh Files")
+        self.refresh_track_files_button.setProperty("secondary", True)
+        self.refresh_track_files_button.clicked.connect(
+            self.refresh_track_files
+        )
+        track_files_header.addWidget(self.refresh_track_files_button)
+
+        root.addLayout(track_files_header)
 
         self.track_files_table = QTableWidget(0, 3)
         self.track_files_table.setHorizontalHeaderLabels(
@@ -441,6 +501,15 @@ class CompactTrackingPage(TrackingPage):
             QAbstractItemView.SelectionBehavior.SelectRows
         )
         self.track_files_table.verticalHeader().setVisible(False)
+        self.track_files_table.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.track_files_table.customContextMenuRequested.connect(
+            self._show_track_file_context_menu
+        )
+        self.track_files_table.cellDoubleClicked.connect(
+            self._track_file_double_clicked
+        )
         header = self.track_files_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -828,20 +897,77 @@ class CompactTrackingPage(TrackingPage):
         talent_id = self.talent_combo.currentData()
         if talent_id is None:
             self.track_files_table.setRowCount(0)
+            self._track_rename_plan = TrackRenamePlan()
             return
 
-        rows = self._track_file_inventory.rows_for_talent(int(talent_id))
+        talent_id = int(talent_id)
+        rows = self._track_file_inventory.rows_for_talent(talent_id)
+        self._track_rename_plan = self._build_rename_plan(
+            talent_id=talent_id,
+        )
+        rename_by_scope = {
+            (
+                item.episode_number,
+                item.character_id,
+                item.talent_id,
+            ): item
+            for item in self._track_rename_plan.items
+            if (
+                item.character_id is not None
+                and item.talent_id is not None
+                and item.status in {RENAME_MATCHED, RENAME_COLLISION}
+            )
+        }
+
         self.track_files_table.setRowCount(len(rows))
         for row_index, row in enumerate(rows):
             suggestion = QTableWidgetItem(row.track_suggestion)
             suggestion.setToolTip(self._track_suggestion_tooltip(row))
 
-            output = QTableWidgetItem(
-                self._file_cell_text(row.output, pending=False)
+            rename_item = rename_by_scope.get(
+                (
+                    row.episode_number,
+                    row.character_id,
+                    row.talent_id,
+                )
             )
-            output.setToolTip(self._file_tooltip(row.output))
+            simplified_candidate = (
+                rename_item is not None
+                and rename_item.match_kind == MATCH_SIMPLE_EXPORT
+                and not row.output.exists
+            )
 
-            delivery_pending = row.output.valid and not row.delivered.exists
+            if simplified_candidate:
+                source_name = Path(rename_item.source_path).name
+                output = QTableWidgetItem(f"↻ {source_name}")
+                output.setToolTip(
+                    "Rename Recommended\n"
+                    f"Current: {source_name}\n"
+                    f"Expected: {Path(rename_item.target_path).name}\n"
+                    f"{rename_item.detail}\n\n"
+                    "Right-click or double-click to preview rename."
+                )
+                output.setForeground(QColor("#9a5a00"))
+            else:
+                output = QTableWidgetItem(
+                    self._file_cell_text(row.output, pending=False)
+                )
+                output.setToolTip(self._file_tooltip(row.output))
+
+            if rename_item is not None and rename_item.can_rename:
+                output.setData(
+                    Qt.ItemDataRole.UserRole,
+                    rename_item.source_path,
+                )
+                output.setData(
+                    Qt.ItemDataRole.UserRole + 1,
+                    rename_item.target_path,
+                )
+
+            delivery_pending = (
+                (row.output.valid or simplified_candidate)
+                and not row.delivered.exists
+            )
             delivered = QTableWidgetItem(
                 self._file_cell_text(
                     row.delivered,
@@ -859,9 +985,9 @@ class CompactTrackingPage(TrackingPage):
                     item,
                 )
 
-            if row.output.valid:
+            if row.output.valid and not simplified_candidate:
                 output.setForeground(QColor("#176b2c"))
-            elif row.output.exists:
+            elif row.output.exists and not simplified_candidate:
                 output.setForeground(QColor("#9a5a00"))
 
             if row.delivered.valid:
@@ -881,6 +1007,149 @@ class CompactTrackingPage(TrackingPage):
                         for warning in row.warnings
                     )
                 )
+
+    def _build_rename_plan(
+        self,
+        *,
+        talent_id: int,
+        episode_number: int | None = None,
+        selected_source_path: str | None = None,
+    ) -> TrackRenamePlan:
+        if self._track_rename_service is None:
+            return TrackRenamePlan()
+
+        return self._track_rename_service.build_plan(
+            self._track_file_inventory.rows,
+            talent_id=int(talent_id),
+            episode_number=(
+                int(episode_number)
+                if episode_number is not None
+                else None
+            ),
+            selected_source_path=selected_source_path,
+        )
+
+    def _rename_current_episode(self) -> None:
+        talent_id = self.talent_combo.currentData()
+        episode_number = self.episode_combo.currentData()
+        if talent_id is None:
+            QMessageBox.information(
+                self,
+                "Rename Track Files",
+                "Pilih talent terlebih dahulu.",
+            )
+            return
+        if episode_number is None:
+            QMessageBox.information(
+                self,
+                "Rename Track Files",
+                "Pilih episode yang akan di-match dan rename.",
+            )
+            return
+
+        plan = self._build_rename_plan(
+            talent_id=int(talent_id),
+            episode_number=int(episode_number),
+        )
+        self._preview_and_execute_rename(plan)
+
+    def _rename_current_talent(self) -> None:
+        talent_id = self.talent_combo.currentData()
+        if talent_id is None:
+            QMessageBox.information(
+                self,
+                "Rename Track Files",
+                "Pilih talent terlebih dahulu.",
+            )
+            return
+
+        plan = self._build_rename_plan(
+            talent_id=int(talent_id),
+        )
+        self._preview_and_execute_rename(plan)
+
+    def _show_track_file_context_menu(self, position) -> None:
+        item = self.track_files_table.itemAt(position)
+        if item is None:
+            return
+
+        row = item.row()
+        output_item = self.track_files_table.item(row, 1)
+        if output_item is None:
+            return
+
+        source_path = output_item.data(Qt.ItemDataRole.UserRole)
+        if not source_path:
+            return
+
+        menu = QMenu(self.track_files_table)
+        action = menu.addAction("Rename Stem / Export to Expected")
+        selected = menu.exec(
+            self.track_files_table.viewport().mapToGlobal(position)
+        )
+        if selected == action:
+            self._rename_single_source(str(source_path))
+
+    def _track_file_double_clicked(
+        self,
+        row: int,
+        column: int,
+    ) -> None:
+        if column != 1:
+            return
+        item = self.track_files_table.item(row, column)
+        if item is None:
+            return
+        source_path = item.data(Qt.ItemDataRole.UserRole)
+        if source_path:
+            self._rename_single_source(str(source_path))
+
+    def _rename_single_source(self, source_path: str) -> None:
+        talent_id = self.talent_combo.currentData()
+        if talent_id is None:
+            return
+
+        plan = self._build_rename_plan(
+            talent_id=int(talent_id),
+            selected_source_path=source_path,
+        )
+        self._preview_and_execute_rename(plan)
+
+    def _preview_and_execute_rename(
+        self,
+        plan: TrackRenamePlan,
+    ) -> None:
+        if not plan.items:
+            QMessageBox.information(
+                self,
+                "Rename Track Files",
+                "Tidak ada file yang cocok pada scope ini.",
+            )
+            return
+
+        dialog = TrackRenamePreviewDialog(plan, parent=self)
+        if not dialog.exec():
+            return
+
+        if self._track_rename_service is None:
+            return
+
+        try:
+            renamed = self._track_rename_service.execute(plan)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Rename Track Files",
+                f"Rename gagal. Tidak ada file yang sengaja dioverwrite.\n\n{exc}",
+            )
+            return
+
+        self.refresh_track_files()
+        QMessageBox.information(
+            self,
+            "Rename Track Files",
+            f"{len(renamed)} file berhasil dinormalisasi ke expected filename.",
+        )
 
     def _set_output_health_empty(self) -> None:
         self.stemmed_health_value.setText("0/0")
