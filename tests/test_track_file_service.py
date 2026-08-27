@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import struct
 import wave
 
 from core.database import Database
