@@ -431,7 +431,7 @@ def test_v5_database_migrates_locked_character_to_source_identity_hint(tmp_path)
             "SELECT value FROM app_meta WHERE key = 'schema_version'"
         ).fetchone()
 
-    assert SCHEMA_VERSION == 6
-    assert str(version["value"]) == "6"
+    assert SCHEMA_VERSION >= 6
+    assert str(version["value"]) == str(SCHEMA_VERSION)
     assert str(row["base_normalized_name"]) == "bapak kemeja biru"
     assert str(row["identity_talent_name"]) == "Brama"
