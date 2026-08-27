@@ -13,15 +13,9 @@ from PySide6.QtWidgets import (
 )
 
 from services.tracking_service import (
-    DELIVERED,
-    IN_PROGRESS,
     NOT_READY,
-    NOT_STARTED,
-    READY_TO_STEM,
-    RECORDED,
     REVISION,
     STATUS_LABELS,
-    STEMMED,
 )
 from widgets.episode_chip import status_palette
 
@@ -33,8 +27,8 @@ class RibbonGroup(QFrame):
         super().__init__(parent)
         self.setObjectName("RibbonGroup")
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 7, 10, 5)
-        root.setSpacing(3)
+        root.setContentsMargins(9, 4, 9, 2)
+        root.setSpacing(2)
 
         row = QHBoxLayout()
         row.setSpacing(4)
@@ -58,16 +52,6 @@ class RibbonGroup(QFrame):
 class TrackingDetailGroup(QFrame):
     status_change_requested = Signal(str)
 
-    STATUS_BUTTON_ORDER = (
-        NOT_STARTED,
-        IN_PROGRESS,
-        RECORDED,
-        READY_TO_STEM,
-        STEMMED,
-        DELIVERED,
-        REVISION,
-    )
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("TrackingDetailGroup")
@@ -76,13 +60,11 @@ class TrackingDetailGroup(QFrame):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred,
         )
-        self._loading = False
         self._chip = None
-        self._status_buttons: dict[str, QPushButton] = {}
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(6, 3, 6, 3)
-        root.setSpacing(2)
+        root.setContentsMargins(6, 2, 6, 2)
+        root.setSpacing(1)
 
         body = QHBoxLayout()
         body.setSpacing(6)
@@ -105,61 +87,48 @@ class TrackingDetailGroup(QFrame):
         body.addWidget(dialogue_card, 2)
         body.addWidget(status_card, 2)
 
-        picker = QFrame()
-        picker.setObjectName("TrackingStatusPicker")
-        picker.setMinimumWidth(0)
-        picker.setSizePolicy(
+        revision_panel = QFrame()
+        revision_panel.setObjectName("TrackingStatusPicker")
+        revision_panel.setMinimumWidth(150)
+        revision_panel.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred,
         )
-        picker.setStyleSheet(
+        revision_panel.setStyleSheet(
             "QFrame#TrackingStatusPicker {"
             "background: #ffffff; border: 1px solid #c8cdd1; "
             "border-radius: 9px;"
             "}"
         )
-        picker_layout = QHBoxLayout(picker)
-        picker_layout.setContentsMargins(8, 5, 8, 5)
-        picker_layout.setSpacing(7)
+        revision_layout = QHBoxLayout(revision_panel)
+        revision_layout.setContentsMargins(9, 4, 9, 4)
+        revision_layout.setSpacing(8)
 
-        picker_title = QLabel("Ubah\nStatus")
-        picker_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        picker_title.setMinimumWidth(48)
-        picker_title.setMaximumWidth(62)
-        picker_title.setStyleSheet("font-weight: 700; font-size: 10pt;")
-        picker_layout.addWidget(picker_title)
+        revision_title = QLabel("Revision")
+        revision_title.setStyleSheet("font-weight: 700;")
+        revision_layout.addWidget(revision_title)
 
-        button_grid = QGridLayout()
-        button_grid.setContentsMargins(0, 0, 0, 0)
-        button_grid.setHorizontalSpacing(6)
-        button_grid.setVerticalSpacing(5)
-        for column in range(4):
-            button_grid.setColumnStretch(column, 1)
+        self.revision_button = QPushButton("Mark Revision")
+        self.revision_button.setMinimumHeight(28)
+        self.revision_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        background, foreground, border = status_palette(REVISION)
+        self.revision_button.setStyleSheet(
+            "QPushButton {"
+            f"background: {background}; color: {foreground}; "
+            f"border: 1px solid {border}; border-radius: 5px; "
+            "padding: 3px 10px; font-weight: 700;"
+            "}"
+            "QPushButton:hover {"
+            f"border: 2px solid {border};"
+            "}"
+        )
+        self.revision_button.clicked.connect(self._revision_clicked)
+        revision_layout.addWidget(self.revision_button, 1)
 
-        self.status_button_group = QButtonGroup(self)
-        self.status_button_group.setExclusive(True)
-
-        for index, status in enumerate(self.STATUS_BUTTON_ORDER):
-            button = QPushButton(STATUS_LABELS[status])
-            button.setCheckable(True)
-            button.setMinimumWidth(78)
-            button.setMinimumHeight(28)
-            button.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
-            )
-            button.setToolTip(self._status_tooltip(status))
-            self._apply_status_button_style(button, status)
-            button.clicked.connect(
-                lambda checked=False, value=status:
-                    self._status_button_clicked(value)
-            )
-            self.status_button_group.addButton(button)
-            self._status_buttons[status] = button
-            button_grid.addWidget(button, index // 4, index % 4)
-
-        picker_layout.addLayout(button_grid, 1)
-        body.addWidget(picker, 7)
+        body.addWidget(revision_panel, 4)
         root.addLayout(body)
 
         title_label = QLabel("Episode Detail")
@@ -185,8 +154,8 @@ class TrackingDetailGroup(QFrame):
             "}"
         )
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(8, 5, 8, 5)
-        layout.setSpacing(1)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(0)
 
         caption_label = QLabel(caption)
         caption_label.setAlignment(Qt.AlignCenter)
@@ -209,36 +178,6 @@ class TrackingDetailGroup(QFrame):
         layout.addWidget(caption_label)
         layout.addWidget(value_label, 1)
         return frame, caption_label, value_label
-
-    @staticmethod
-    def _status_tooltip(status: str) -> str:
-        if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:
-            return (
-                "Status recording bersifat otomatis dari checkbox DIALOG. "
-                "Status recording yang sedang aktual dapat dipilih untuk kembali ke mode Auto."
-            )
-        return "Pilih untuk menyimpan status tracking secara otomatis."
-
-    @staticmethod
-    def _apply_status_button_style(button: QPushButton, status: str) -> None:
-        background, foreground, border = status_palette(status)
-        button.setStyleSheet(
-            "QPushButton {"
-            f"background: {background}; color: {foreground}; "
-            f"border: 1px solid {border}; border-radius: 5px; "
-            "padding: 3px 6px; font-weight: 650;"
-            "}"
-            "QPushButton:hover {"
-            f"border: 2px solid {border};"
-            "}"
-            "QPushButton:checked {"
-            "border: 3px solid #202124; font-weight: 800;"
-            "}"
-            "QPushButton:disabled {"
-            f"background: {background}; color: {foreground}; "
-            "border: 1px dashed #b7bcc1;"
-            "}"
-        )
 
     def _set_status_card(self, status: str | None) -> None:
         if not status:
@@ -269,69 +208,44 @@ class TrackingDetailGroup(QFrame):
         )
 
     def set_chip(self, chip) -> None:
-        self._loading = True
-        try:
-            self._chip = chip
-            if chip is None:
-                self.episode_caption.setText("Episode -")
-                self.character_value.setText("Pilih episode")
-                self.character_value.setToolTip("")
-                self.dialogue_value.setText("0/0")
-                self.status_value.setText("-")
-                self._set_status_card(None)
-                self._clear_checked_status()
-                for button in self._status_buttons.values():
-                    button.setEnabled(False)
-                return
-
-            self.episode_caption.setText(f"Episode {chip.episode_number}")
-            self.character_value.setText(chip.character_name)
-            self.character_value.setToolTip(chip.character_name)
-            self.dialogue_value.setText(
-                f"{chip.recorded_dialogues}/{chip.total_dialogues}"
-            )
-            self.status_value.setText(
-                STATUS_LABELS.get(chip.display_status, chip.display_status)
-            )
-            self._set_status_card(chip.display_status)
-
-            recording_complete = chip.recording_status == RECORDED
-            for status, button in self._status_buttons.items():
-                if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:
-                    button.setEnabled(status == chip.recording_status)
-                elif status in {READY_TO_STEM, STEMMED, DELIVERED}:
-                    button.setEnabled(recording_complete)
-                else:
-                    button.setEnabled(True)
-
-            self._clear_checked_status()
-            current_button = self._status_buttons.get(chip.display_status)
-            if current_button is not None:
-                current_button.setChecked(True)
-        finally:
-            self._loading = False
-
-    def _clear_checked_status(self) -> None:
-        exclusive = self.status_button_group.exclusive()
-        self.status_button_group.setExclusive(False)
-        try:
-            for button in self._status_buttons.values():
-                button.setChecked(False)
-        finally:
-            self.status_button_group.setExclusive(exclusive)
-
-    def _status_button_clicked(self, status: str) -> None:
-        if self._loading or self._chip is None:
+        self._chip = chip
+        if chip is None:
+            self.episode_caption.setText("Episode -")
+            self.character_value.setText("Pilih episode")
+            self.character_value.setToolTip("")
+            self.dialogue_value.setText("0/0")
+            self.status_value.setText("-")
+            self._set_status_card(None)
+            self.revision_button.setText("Mark Revision")
+            self.revision_button.setEnabled(False)
             return
 
-        if status in {NOT_STARTED, IN_PROGRESS, RECORDED}:
-            if status != self._chip.recording_status:
-                return
-            requested = NOT_READY
-        else:
-            requested = status
+        self.episode_caption.setText(f"Episode {chip.episode_number}")
+        self.character_value.setText(chip.character_name)
+        self.character_value.setToolTip(chip.character_name)
+        self.dialogue_value.setText(
+            f"{chip.recorded_dialogues}/{chip.total_dialogues}"
+        )
+        self.status_value.setText(
+            STATUS_LABELS.get(chip.display_status, chip.display_status)
+        )
+        self._set_status_card(chip.display_status)
+        self.revision_button.setEnabled(True)
+        self.revision_button.setText(
+            "Clear Revision"
+            if chip.display_status == REVISION
+            else "Mark Revision"
+        )
 
-        self.status_change_requested.emit(str(requested))
+    def _revision_clicked(self) -> None:
+        if self._chip is None:
+            return
+        requested = (
+            NOT_READY
+            if self._chip.display_status == REVISION
+            else REVISION
+        )
+        self.status_change_requested.emit(requested)
 
 
 class Ribbon(QWidget):
