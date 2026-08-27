@@ -14,6 +14,7 @@ from services.track_rename_service import (
     RENAME_MATCHED,
     RENAME_UNMATCHED,
     TrackRenameService,
+    assign_manual_expected,
 )
 
 
@@ -229,3 +230,107 @@ def test_single_source_action_surfaces_unmatched_file_instead_of_guessing(tmp_pa
     assert len(plan.items) == 1
     assert plan.items[0].status == RENAME_UNMATCHED
     assert plan.matched == 0
+
+
+def test_episode_batch_keeps_wrong_track_name_visible_and_manual_choice_can_rename(
+    tmp_path,
+):
+    _database, output, service = _service(tmp_path)
+    rows = [
+        _row(
+            episode=1,
+            character_id=1,
+            character="A",
+            expected="1_A_Brama.wav",
+        ),
+        _row(
+            episode=1,
+            character_id=2,
+            character="B",
+            expected="1_B_Brama.wav",
+        ),
+        _row(
+            episode=1,
+            character_id=3,
+            character="C",
+            expected="1_C_Brama.wav",
+        ),
+    ]
+
+    (output / "1_A.wav").write_bytes(b"a")
+    (output / "1_B.wav").write_bytes(b"b")
+    wrong = output / "1_SALAHNAMA.wav"
+    wrong.write_bytes(b"c")
+
+    plan = service.build_plan(
+        rows,
+        talent_id=1,
+        episode_number=1,
+    )
+
+    assert plan.matched == 2
+    assert plan.unmatched == 1
+
+    unmatched = next(
+        item
+        for item in plan.items
+        if Path(item.source_path).name == "1_SALAHNAMA.wav"
+    )
+    assert unmatched.status == RENAME_UNMATCHED
+    assert unmatched.episode_number == 1
+    assert {
+        choice.expected_filename for choice in unmatched.choices
+    } == {
+        "1_A_Brama.wav",
+        "1_B_Brama.wav",
+        "1_C_Brama.wav",
+    }
+
+    assign_manual_expected(unmatched, "1_C_Brama.wav")
+
+    assert unmatched.status == RENAME_MATCHED
+    assert unmatched.character_name == "C"
+    assert Path(unmatched.target_path).name == "1_C_Brama.wav"
+    assert plan.matched == 3
+    assert plan.unmatched == 0
+
+    renamed = service.execute(plan)
+    assert len(renamed) == 3
+    assert not wrong.exists()
+    assert (output / "1_C_Brama.wav").exists()
+
+
+def test_talent_batch_keeps_unmatched_files_for_known_episode_visible(tmp_path):
+    _database, output, service = _service(tmp_path)
+    rows = [
+        _row(
+            episode=1,
+            character_id=1,
+            character="A",
+            expected="1_A_Brama.wav",
+        ),
+        _row(
+            episode=2,
+            character_id=2,
+            character="B",
+            expected="2_B_Brama.wav",
+        ),
+    ]
+    (output / "1_UNKNOWN.wav").write_bytes(b"x")
+    (output / "99_OUTSIDE.wav").write_bytes(b"outside")
+
+    plan = service.build_plan(rows, talent_id=1)
+
+    names = {Path(item.source_path).name for item in plan.items}
+    assert "1_UNKNOWN.wav" in names
+    assert "99_OUTSIDE.wav" not in names
+
+    unmatched = next(
+        item
+        for item in plan.items
+        if Path(item.source_path).name == "1_UNKNOWN.wav"
+    )
+    assert unmatched.status == RENAME_UNMATCHED
+    assert [choice.expected_filename for choice in unmatched.choices] == [
+        "1_A_Brama.wav"
+    ]

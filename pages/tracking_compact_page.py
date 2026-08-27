@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QCursor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -37,8 +38,10 @@ from services.track_file_service import (
 )
 from services.track_rename_service import (
     MATCH_SIMPLE_EXPORT,
+    RENAME_AMBIGUOUS,
     RENAME_COLLISION,
     RENAME_MATCHED,
+    RENAME_UNMATCHED,
     TrackRenameItem,
     TrackRenamePlan,
     TrackRenameService,
@@ -619,7 +622,12 @@ class CompactTrackingPage(TrackingPage):
 
     @staticmethod
     def _copy_track_name(name: str) -> None:
-        QApplication.clipboard().setText(str(name))
+        text = str(name)
+        QApplication.clipboard().setText(text)
+        QToolTip.showText(
+            QCursor.pos(),
+            f"Copied: {text}",
+        )
 
     # ------------------------------------------------------------------
     # OUTPUT HEALTH WORKSPACE
@@ -767,13 +775,22 @@ class CompactTrackingPage(TrackingPage):
                 warning.code == "UNEXPECTED_TRACK_FILE"
                 and rename_item is not None
             ):
-                synthetic = TrackFileWarning(
-                    code="RENAME_RECOMMENDED",
-                    message=(
+                if rename_item.target_path:
+                    rename_message = (
                         f"{Path(rename_item.source_path).name} dapat "
                         f"dinormalisasi menjadi "
                         f"{Path(rename_item.target_path).name}."
-                    ),
+                    )
+                else:
+                    rename_message = (
+                        f"{Path(rename_item.source_path).name} belum cocok "
+                        "otomatis. Double-click untuk memilih expected "
+                        "filename secara manual."
+                    )
+
+                synthetic = TrackFileWarning(
+                    code="RENAME_RECOMMENDED",
+                    message=rename_message,
                     path=rename_item.source_path,
                     talent_id=talent_id,
                     episode_number=rename_item.episode_number,
@@ -960,9 +977,13 @@ class CompactTrackingPage(TrackingPage):
             for item in plan.items
             if (
                 item.match_kind == MATCH_SIMPLE_EXPORT
-                and item.status in {RENAME_MATCHED, RENAME_COLLISION}
+                and item.status in {
+                    RENAME_MATCHED,
+                    RENAME_COLLISION,
+                    RENAME_UNMATCHED,
+                    RENAME_AMBIGUOUS,
+                }
                 and item.source_path
-                and item.target_path
             )
         }
 
@@ -1049,7 +1070,25 @@ class CompactTrackingPage(TrackingPage):
             )
         }
 
-        self.track_files_table.setRowCount(len(rows))
+        # Files with a readable episode but no automatic character match must
+        # remain visible. They are appended after expected rows and can be
+        # manually assigned through the same rename preview.
+        unmatched_items = [
+            item
+            for item in self._track_rename_plan.items
+            if (
+                item.character_id is None
+                and item.status in {
+                    RENAME_UNMATCHED,
+                    RENAME_AMBIGUOUS,
+                }
+                and item.source_path
+            )
+        ]
+
+        self.track_files_table.setRowCount(
+            len(rows) + len(unmatched_items)
+        )
         for row_index, row in enumerate(rows):
             suggestion = QTableWidgetItem(row.track_suggestion)
             suggestion.setToolTip(self._track_suggestion_tooltip(row))
@@ -1138,6 +1177,61 @@ class CompactTrackingPage(TrackingPage):
                     )
                 )
 
+        offset = len(rows)
+        for extra_index, rename_item in enumerate(unmatched_items):
+            table_row = offset + extra_index
+            status_label = (
+                "AMBIGUOUS EXPORT"
+                if rename_item.status == RENAME_AMBIGUOUS
+                else "UNMATCHED EXPORT"
+            )
+            episode_label = (
+                f"EP{rename_item.episode_number} "
+                if rename_item.episode_number is not None
+                else ""
+            )
+
+            suggestion = QTableWidgetItem(
+                f"⚠ {episode_label}{status_label}"
+            )
+            suggestion.setBackground(QColor("#FFF4CE"))
+            suggestion.setToolTip(
+                rename_item.detail
+                + "\n\nDouble-click Stem / Export untuk memilih "
+                "expected filename secara manual."
+            )
+
+            output = QTableWidgetItem(
+                f"↻ {Path(rename_item.source_path).name}"
+            )
+            output.setForeground(QColor("#9a5a00"))
+            output.setToolTip(
+                f"{rename_item.detail}\n\n"
+                "Right-click atau double-click untuk manual match."
+            )
+            output.setData(
+                Qt.ItemDataRole.UserRole,
+                rename_item.source_path,
+            )
+
+            delivered = QTableWidgetItem("—")
+
+            self.track_files_table.setItem(
+                table_row,
+                0,
+                suggestion,
+            )
+            self.track_files_table.setItem(
+                table_row,
+                1,
+                output,
+            )
+            self.track_files_table.setItem(
+                table_row,
+                2,
+                delivered,
+            )
+
     def _build_rename_plan(
         self,
         *,
@@ -1213,7 +1307,7 @@ class CompactTrackingPage(TrackingPage):
             return
 
         menu = QMenu(self.track_files_table)
-        action = menu.addAction("Rename Stem / Export to Expected")
+        action = menu.addAction("Match / Rename Stem / Export…")
         selected = menu.exec(
             self.track_files_table.viewport().mapToGlobal(position)
         )
