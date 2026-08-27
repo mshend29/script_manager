@@ -26,6 +26,12 @@ class BackupService:
         ).strip("-") or "manual"
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         target = backup_dir / f"project_{reason_key}_{stamp}.db"
+        suffix = 1
+        while target.exists():
+            target = backup_dir / (
+                f"project_{reason_key}_{stamp}_{suffix}.db"
+            )
+            suffix += 1
 
         with self.database.connect() as source:
             destination = sqlite3.connect(target)
