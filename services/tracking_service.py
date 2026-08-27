@@ -14,12 +14,13 @@ STEMMED = "STEMMED"
 DELIVERED = "DELIVERED"
 REVISION = "REVISION"
 NOT_READY = "NOT_READY"
+AUTO_FILE_STATUS_NOTE = "auto:file-inventory"
 
+# Only Revision remains a manual downstream state. STEMMED/DELIVERED are
+# derived from filesystem inventory; READY_TO_STEM is retained only for
+# compatibility with historical rows and is no longer an active workflow state.
 DOWNSTREAM_STATUSES = {
     NOT_READY,
-    READY_TO_STEM,
-    STEMMED,
-    DELIVERED,
     REVISION,
 }
 
@@ -52,6 +53,7 @@ class TrackingChip:
     recorded_dialogues: int
     recording_status: str
     downstream_status: str
+    downstream_note: str
     display_status: str
 
     @property
@@ -156,7 +158,8 @@ class TrackingService:
                         THEN d.id
                     END
                 ) AS recorded_dialogues,
-                COALESCE(ss.status, 'NOT_READY') AS downstream_status
+                COALESCE(ss.status, 'NOT_READY') AS downstream_status,
+                COALESCE(ss.note, '') AS downstream_note
             FROM dialog_cast AS dc
             JOIN dialogues AS d
               ON d.id = dc.dialogue_id
@@ -184,7 +187,8 @@ class TrackingService:
                 c.name,
                 t.id,
                 t.name,
-                ss.status
+                ss.status,
+                ss.note
             ORDER BY
                 c.name COLLATE NOCASE,
                 c.id,
@@ -200,11 +204,13 @@ class TrackingService:
             total = int(row["total_dialogues"] or 0)
             recorded = int(row["recorded_dialogues"] or 0)
             downstream = str(row["downstream_status"] or NOT_READY)
+            downstream_note = str(row["downstream_note"] or "")
             recording_status = derive_recording_status(recorded, total)
             display_status = derive_display_status(
                 recorded_dialogues=recorded,
                 total_dialogues=total,
                 downstream_status=downstream,
+                downstream_note=downstream_note,
             )
 
             chip = TrackingChip(
@@ -218,6 +224,7 @@ class TrackingService:
                 recorded_dialogues=recorded,
                 recording_status=recording_status,
                 downstream_status=downstream,
+                downstream_note=downstream_note,
                 display_status=display_status,
             )
 
@@ -242,7 +249,7 @@ class TrackingService:
             episode_number=episode_number,
         )
 
-        work_statuses = {RECORDED, READY_TO_STEM, REVISION}
+        work_statuses = {RECORDED, REVISION}
         result: list[TrackingChip] = []
 
         for row in rows:
@@ -268,7 +275,10 @@ class TrackingService:
         normalized_status = str(status).strip().upper()
 
         if normalized_status not in DOWNSTREAM_STATUSES:
-            raise ValueError(f"Status tracking tidak valid: {status}")
+            raise ValueError(
+                "Stemmed dan Delivered sekarang otomatis dari file. "
+                "Tracking manual hanya mendukung Revision atau kembali ke Auto."
+            )
 
         with self.database.connect() as connection:
             total, recorded = self._get_progress(
@@ -281,14 +291,6 @@ class TrackingService:
             if total < 1:
                 raise ValueError(
                     "Kombinasi episode, talent, dan character tidak memiliki dialog aktif."
-                )
-
-            if (
-                normalized_status in {READY_TO_STEM, STEMMED, DELIVERED}
-                and recorded < total
-            ):
-                raise ValueError(
-                    "Status downstream hanya dapat diubah setelah semua dialog character ini recorded."
                 )
 
             if normalized_status == NOT_READY:
@@ -394,6 +396,7 @@ def derive_display_status(
     recorded_dialogues: int,
     total_dialogues: int,
     downstream_status: str,
+    downstream_note: str = "",
 ) -> str:
     downstream = str(downstream_status or NOT_READY).strip().upper()
 
@@ -405,7 +408,13 @@ def derive_display_status(
     if recording != RECORDED:
         return recording
 
-    if downstream in {READY_TO_STEM, STEMMED, DELIVERED}:
+    if (
+        downstream in {STEMMED, DELIVERED}
+        and str(downstream_note or "").strip() == AUTO_FILE_STATUS_NOTE
+    ):
         return downstream
 
+    # Historical READY_TO_STEM/manual STEMMED/DELIVERED rows no longer drive
+    # display state. Without a valid automatic file inventory the recorded
+    # state is authoritative.
     return RECORDED
