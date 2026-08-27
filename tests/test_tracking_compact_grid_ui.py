@@ -136,6 +136,8 @@ def test_track_name_suggestion_uses_three_columns_five_rows_and_canonical_names(
     assert "index % self.TRACK_NAMES_PER_COLUMN" in compact
     assert "index // self.TRACK_NAMES_PER_COLUMN" in compact
     assert "QApplication.clipboard().setText" in compact
+    assert "QToolTip.showText" in compact
+    assert 'f"Copied: {text}"' in compact
     assert "Aliases:" in compact
 
 
@@ -160,7 +162,7 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
 
     assert 'QPushButton("Match & Rename Episode")' in compact
     assert 'QPushButton("Batch Match & Rename Talent")' in compact
-    assert '"Rename Stem / Export to Expected"' in compact
+    assert '"Match / Rename Stem / Export…"' in compact
     assert "cellDoubleClicked.connect" in compact
     assert "TrackRenamePreviewDialog" in compact
     assert "self._track_rename_service.execute(plan)" in compact
@@ -186,3 +188,26 @@ def test_output_health_turns_simple_exports_into_actionable_rename_recommendatio
     assert "Current:" in compact
     assert "Expected:" in compact
     assert "_output_warning_double_clicked" in compact
+
+
+def test_unmatched_episode_exports_remain_visible_and_can_be_manually_mapped():
+    compact = _read("pages/tracking_compact_page.py")
+    dialog = _read("dialogs/track_rename_preview_dialog.py")
+    service = _read("services/track_rename_service.py")
+
+    assert '"UNMATCHED EXPORT"' in compact
+    assert '"AMBIGUOUS EXPORT"' in compact
+    assert "unmatched_items = [" in compact
+    assert "item.character_id is None" in compact
+    assert "Double-click Stem / Export" in compact
+
+    assert "QComboBox" in dialog
+    assert '"Choose expected…"' in dialog
+    assert "_manual_choice_changed" in dialog
+    assert "assign_manual_expected" in dialog
+    assert "File Unmatched atau Ambiguous" in dialog
+
+    assert "The episode is known" in service
+    assert "choices=self._choices(episode_rows)" in service
+    assert "def assign_manual_expected(" in service
+    assert "Expected filename dipilih manual oleh user." in service
