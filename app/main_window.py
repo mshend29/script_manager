@@ -799,6 +799,14 @@ class MainWindow(QMainWindow):
             if hasattr(page, "configure_track_files"):
                 page.configure_track_files(project.settings)
             page.set_database(project.database)
+
+            if hasattr(page, "show_workspace"):
+                if key == "file_warnings":
+                    page.show_workspace("output_health")
+                elif key in {"ready_to_stem", "pending_delivery"}:
+                    page.show_workspace("track_files")
+                else:
+                    page.show_workspace("tracking")
             return
 
     # ------------------------------------------------------------------
@@ -854,6 +862,8 @@ class MainWindow(QMainWindow):
 
         self.ribbon.select_tab("TRACKING")
         page = self.pages["TRACKING"]
+        if hasattr(page, "show_workspace"):
+            page.show_workspace("tracking")
         page.reload(
             preferred_talent=int(talent_id),
             preferred_episode=int(episode_number),
