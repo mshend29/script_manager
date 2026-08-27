@@ -53,32 +53,52 @@ class CharacterTalentResolver:
         *,
         timestamp: str,
     ) -> None:
-        for parse_result in parse_results:
+        parse_values = list(parse_results)
+
+        # Pass 1: talents first so source identity can reference stable talent IDs.
+        for parse_result in parse_values:
             for row in parse_result.rows:
                 for talent in row.talents:
                     self.ensure_talent(talent, timestamp=timestamp)
 
-                provided = self._provided_talents_by_character(row)
+        # Pass 2: only truly unambiguous single-character/single-talent rows
+        # create talent-bound source identities.
+        single_identity_names: set[str] = set()
+        for parse_result in parse_values:
+            for row in parse_result.rows:
+                if len(row.characters) != 1 or len(row.talents) != 1:
+                    continue
+                character = row.characters[0]
+                talent = row.talents[0]
+                character_key = normalize_key(character)
+                if not character_key:
+                    continue
+                single_identity_names.add(character_key)
+                self.ensure_character(
+                    character,
+                    timestamp=timestamp,
+                    source_talent_name=talent,
+                )
+
+        # Pass 3: rows without unambiguous identity evidence remain unbound.
+        # If a character already has single-row evidence, do not create a ghost
+        # unbound row merely because it also appears in a multi-character row.
+        for parse_result in parse_values:
+            for row in parse_result.rows:
                 processed: set[str] = set()
                 for character in row.characters:
                     key = normalize_key(character)
-                    if not key or key in processed:
+                    if (
+                        not key
+                        or key in processed
+                        or key in single_identity_names
+                    ):
                         continue
                     processed.add(key)
-                    talents = provided.get(key, [])
-                    if len(talents) == 1:
-                        self.ensure_character(
-                            character,
-                            timestamp=timestamp,
-                            source_talent_name=talents[0],
-                        )
-                    else:
-                        # No talent or an explicitly multi-talent row remains one
-                        # unbound character identity.
-                        self.ensure_character(
-                            character,
-                            timestamp=timestamp,
-                        )
+                    self.ensure_character(
+                        character,
+                        timestamp=timestamp,
+                    )
 
     def ensure_character(
         self,
@@ -100,6 +120,7 @@ class CharacterTalentResolver:
         *,
         timestamp: str,
         source_talent_name: str | None = None,
+        prefer_locked_variant: bool = False,
     ) -> tuple[int, str, tuple[int, ...]]:
         base_normalized = normalize_key(name)
         if not base_normalized:
@@ -164,20 +185,45 @@ class CharacterTalentResolver:
                 (base_normalized, source_talent_id),
             ).fetchone()
         else:
-            row = self.connection.execute(
-                """
-                SELECT id, name
-                FROM characters
-                WHERE COALESCE(
-                    NULLIF(base_normalized_name, ''),
-                    normalized_name
-                ) = ?
-                  AND identity_talent_id IS NULL
-                ORDER BY id
-                LIMIT 1
-                """,
-                (base_normalized,),
-            ).fetchone()
+            row = None
+
+            if prefer_locked_variant:
+                locked_variants = self.connection.execute(
+                    """
+                    SELECT c.id, c.name
+                    FROM characters AS c
+                    JOIN character_talent AS ct
+                      ON ct.character_id = c.id
+                     AND ct.is_locked = 1
+                    WHERE COALESCE(
+                        NULLIF(c.base_normalized_name, ''),
+                        c.normalized_name
+                    ) = ?
+                      AND c.is_active = 1
+                    ORDER BY
+                        CASE WHEN ct.source = 'manual' THEN 0 ELSE 1 END,
+                        c.id
+                    """,
+                    (base_normalized,),
+                ).fetchall()
+                if len(locked_variants) == 1:
+                    row = locked_variants[0]
+
+            if row is None:
+                row = self.connection.execute(
+                    """
+                    SELECT id, name
+                    FROM characters
+                    WHERE COALESCE(
+                        NULLIF(base_normalized_name, ''),
+                        normalized_name
+                    ) = ?
+                      AND identity_talent_id IS NULL
+                    ORDER BY id
+                    LIMIT 1
+                    """,
+                    (base_normalized,),
+                ).fetchone()
 
             if row is None:
                 variants = self.connection.execute(
@@ -452,8 +498,17 @@ class CharacterTalentResolver:
 
             provided_talents = provided_by_character.get(character_key, [])
 
-            # Unambiguous source pair: identity is source-name + source-talent.
-            if len(provided_talents) == 1:
+            # Only a single-character/single-talent row is strong enough
+            # evidence to create a separate source identity. Multi-character
+            # rows may have talent order reversed, so their known single-row
+            # locks must remain authoritative.
+            unambiguous_identity_pair = (
+                len(row.characters) == 1
+                and len(row.talents) == 1
+                and len(provided_talents) == 1
+            )
+
+            if unambiguous_identity_pair:
                 provided_talent = provided_talents[0]
                 character_id, canonical_name, alias_ids = (
                     self._resolve_character_identity(
@@ -509,6 +564,7 @@ class CharacterTalentResolver:
                 self._resolve_character_identity(
                     source_character_name,
                     timestamp=timestamp,
+                    prefer_locked_variant=True,
                 )
             )
             locked = self._get_locked_mapping(character_id)
