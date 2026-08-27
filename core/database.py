@@ -248,20 +248,6 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_character_alias_dialogue_dialogue
                     ON character_alias_dialogue(dialogue_id);
 
-                CREATE INDEX IF NOT EXISTS idx_characters_base_normalized
-                    ON characters(base_normalized_name);
-
-                CREATE INDEX IF NOT EXISTS idx_characters_identity_talent
-                    ON characters(identity_talent_id);
-
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_source_identity
-                    ON characters(base_normalized_name, identity_talent_id)
-                    WHERE identity_talent_id IS NOT NULL;
-
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_unbound_identity
-                    ON characters(base_normalized_name)
-                    WHERE identity_talent_id IS NULL;
-
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_character_talent_one_locked
                     ON character_talent(character_id)
                     WHERE is_locked = 1;
