@@ -44,7 +44,6 @@ STATUS_ORDER = (
     NOT_STARTED,
     IN_PROGRESS,
     RECORDED,
-    READY_TO_STEM,
     STEMMED,
     DELIVERED,
     REVISION,
@@ -117,13 +116,18 @@ class TrackingPage(PageShell):
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(8)
 
-        title = QLabel("Tracking")
-        title.setObjectName("PageTitle")
+        self.title_label = QLabel("Tracking")
+        self.title_label.setObjectName("PageTitle")
         self.summary_label = QLabel("No project open")
         self.summary_label.setObjectName("MutedLabel")
+        self.summary_label.setContentsMargins(8, 0, 5, 0)
 
-        layout.addWidget(title)
-        layout.addWidget(self.summary_label)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
+        header_row.setSpacing(8)
+        header_row.addWidget(self.title_label)
+        header_row.addWidget(self.summary_label, 1)
+        layout.addLayout(header_row)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)

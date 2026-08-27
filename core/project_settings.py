@@ -15,6 +15,13 @@ class ProjectSettings:
 
     project_folder: str = ""
     source_folder: str = ""
+    stem_output_folder: str = ""
+    delivery_folder: str = ""
+
+    audio_format: str = "WAV"
+    audio_sample_rate: int = 48000
+    audio_bit_depth: int = 24
+    audio_channels: int = 1
 
     episode_before: str = ""
     episode_after: str = ""
@@ -35,7 +42,12 @@ class ProjectSettings:
     def normalized(self) -> "ProjectSettings":
         data = self.to_dict()
 
-        for key in ("project_folder", "source_folder"):
+        for key in (
+            "project_folder",
+            "source_folder",
+            "stem_output_folder",
+            "delivery_folder",
+        ):
             value = str(data.get(key, "") or "").strip()
             if value:
                 data[key] = str(Path(value).expanduser())
