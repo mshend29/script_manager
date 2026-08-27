@@ -176,7 +176,7 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
     assert "RENAME_AMBIGUOUS" in service
     assert "source.rename(target)" in service
     assert "target.exists()" in service
-    assert "Best-effort rollback" in service
+    assert "for source, target in reversed(completed):" in service
 
 
 def test_output_health_turns_simple_exports_into_actionable_rename_recommendations():
