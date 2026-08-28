@@ -40,6 +40,7 @@ from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
 from pages.tracking_page import TrackingPage
 from services.backup_service import BackupService
+from services.problem_report_service import ProblemReportService
 from services.project_dashboard_service import ProjectDashboardService
 
 
@@ -121,6 +122,7 @@ class MainWindow(QMainWindow):
         help_page = self.pages["HELP"]
         help_page.action_requested.connect(self.handle_ribbon_action)
         help_page.release_requested.connect(self.open_update_release)
+        help_page.issue_requested.connect(self.open_problem_issue)
 
         self._init_source_sync_progress_ui()
         self._init_keyboard_shortcuts()
@@ -1630,6 +1632,29 @@ class MainWindow(QMainWindow):
                 "Sistem tidak dapat membuka halaman release.",
             )
 
+    def report_problem(self) -> None:
+        self.ribbon.select_tab("HELP")
+        report = ProblemReportService().build()
+        self.pages["HELP"].show_report_problem(report)
+        self.statusBar().showMessage(
+            "Problem report template ready",
+            3000,
+        )
+
+    def open_problem_issue(self, url: str) -> None:
+        target = str(url or "").strip()
+        if not target:
+            return
+
+        opened = QDesktopServices.openUrl(QUrl(target))
+        if not opened:
+            QMessageBox.warning(
+                self,
+                "Report a Problem",
+                "Sistem tidak dapat membuka halaman GitHub Issue. "
+                "Gunakan Copy Report Template sebagai alternatif.",
+            )
+
     # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
@@ -1702,6 +1727,7 @@ class MainWindow(QMainWindow):
             "help.user_guide": self.open_user_guide,
             "help.keyboard_shortcuts": self.open_keyboard_shortcuts,
             "help.check_updates": self.check_for_updates,
+            "help.report_problem": self.report_problem,
         }
 
         handler = handlers.get(action_id)
