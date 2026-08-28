@@ -1488,6 +1488,12 @@ class MainWindow(QMainWindow):
         page.show_getting_started()
         self.statusBar().showMessage("Getting Started", 3000)
 
+    def open_user_guide(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+        page.show_user_guide()
+        self.statusBar().showMessage("User Guide", 3000)
+
     # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
@@ -1557,6 +1563,7 @@ class MainWindow(QMainWindow):
                 lambda: self.open_tools_drive("delivery")
             ),
             "help.getting_started": self.open_getting_started,
+            "help.user_guide": self.open_user_guide,
         }
 
         handler = handlers.get(action_id)

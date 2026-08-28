@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>User Guide — Script Manager</title>
+<style>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #202124;
+  line-height: 1.58;
+  margin: 0;
+  padding: 8px 4px 36px 4px;
+}
+h1 { font-size: 27px; margin: 0 0 6px 0; }
+h2 {
+  font-size: 19px;
+  margin-top: 30px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e1e5ea;
+}
+h3 { font-size: 16px; margin-top: 21px; }
+p, li, td, th { font-size: 14px; }
+ul, ol { padding-left: 24px; }
+code {
+  font-family: Consolas, monospace;
+  background: #f1f3f4;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.note, .warning, .tip {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+.note {
+  background: #f5f7fa;
+  border: 1px solid #d8dde5;
+}
+.warning {
+  background: #fff8e6;
+  border: 1px solid #ead7a0;
+}
+.tip {
+  background: #eef7f1;
+  border: 1px solid #c7dfce;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0 18px 0;
+}
+th, td {
+  border: 1px solid #d8dde5;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #f5f7fa; }
+.toc {
+  background: #f8f9fb;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin: 16px 0 24px 0;
+}
+.small { color: #5f6368; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>User Guide</h1>
+<p>Panduan operasional Script Manager untuk manajemen naskah drama pendek vertikal, recording dialogue, character/talent resolution, tracking stem, dan delivery.</p>
+
+<div class="toc">
+<b>Isi panduan</b>
+<ol>
+  <li>Memahami Project <code>.smproj</code></li>
+  <li>PROJECT dan Project Settings</li>
+  <li>Source Excel, Import Source, dan Refresh Data</li>
+  <li>SCRIPT</li>
+  <li>DIALOG dan Recording</li>
+  <li>TRACKING</li>
+  <li>DATA dan Validation</li>
+  <li>TOOLS &amp; Maintenance</li>
+  <li>Backup, Restore, dan Recovery</li>
+  <li>Workflow kerja yang direkomendasikan</li>
+</ol>
+</div>
+
+<h2>1. Memahami Project .smproj</h2>
+<p>Setiap project Script Manager disimpan sebagai satu file <code>.smproj</code>. Secara internal file tersebut adalah database SQLite yang menyimpan data kerja dan konfigurasi project.</p>
+
+<table>
+<tr><th>Disimpan di .smproj</th><th>Tetap eksternal</th></tr>
+<tr>
+<td>
+Project Settings, metadata source, episode, dialogue, character, talent, cast mapping, recording status, tracking status, validation state, dan audit history.
+</td>
+<td>
+Source Excel, Stem / Mixdown / Export Folder, Setoran Folder, serta Main Drive / Material / Delivery URL.
+</td>
+</tr>
+</table>
+
+<div class="note">
+Memindahkan file <code>.smproj</code> tidak otomatis memindahkan source Excel atau folder output. Jika lokasi source/output berubah, perbarui path melalui Project Settings.
+</div>
+
+<h3>Save, Save As, Duplicate</h3>
+<ul>
+  <li><b>Save</b> menyimpan perubahan ke project aktif.</li>
+  <li><b>Save As</b> membuat file <code>.smproj</code> baru dengan identitas project yang sama.</li>
+  <li><b>Duplicate</b> membuat salinan data sebagai project baru dengan identitas project baru.</li>
+  <li><b>Open Recent</b> menampilkan project terakhir yang pernah dibuka dan masih tercatat oleh aplikasi.</li>
+  <li><b>Close</b> menutup project aktif dan mengembalikan aplikasi ke kondisi tanpa project.</li>
+</ul>
+
+<h2>2. PROJECT dan Project Settings</h2>
+<p>Tab <b>PROJECT</b> adalah titik awal untuk membuat, membuka, menyimpan, dan mengelola project serta source.</p>
+
+<h3>Project Dashboard</h3>
+<p>Dashboard menampilkan ringkasan project dan pekerjaan yang membutuhkan perhatian, termasuk jumlah episode, character, talent, dialogue, kebutuhan review, recording progress, stem/delivery, revision, dan output warning jika tersedia.</p>
+
+<h3>Project Settings — Project</h3>
+<table>
+<tr><th>Field</th><th>Fungsi</th></tr>
+<tr><td>Project Name</td><td>Nama project yang ditampilkan di aplikasi.</td></tr>
+<tr><td>Project Code</td><td>Kode project yang dapat digunakan sebagai identitas kerja/nama file awal.</td></tr>
+<tr><td>Client</td><td>Nama client atau pihak pemilik project.</td></tr>
+<tr><td>Start Date</td><td>Tanggal mulai project.</td></tr>
+<tr><td>Project File</td><td>Lokasi file <code>.smproj</code> yang sedang dibuka. Ditampilkan sebagai informasi.</td></tr>
+<tr><td>Main Drive</td><td>URL navigasi ke drive utama client/project.</td></tr>
+<tr><td>Material Folder</td><td>URL material.</td></tr>
+<tr><td>Delivery / Setoran</td><td>URL delivery/setoran.</td></tr>
+</table>
+
+<h3>Project Settings — Source</h3>
+<p><b>Source Folder</b> menunjuk folder tempat file Excel naskah berada. Gunakan <b>Get Source Filenames</b> untuk membaca nama file source dan membantu memeriksa pola episode.</p>
+
+<p>Episode diekstrak dari nama file menggunakan:</p>
+<ul>
+  <li><b>Before Episode Number</b> — karakter/teks sebelum nomor episode.</li>
+  <li><b>After Episode Number</b> — karakter/teks setelah nomor episode.</li>
+</ul>
+
+<p>Contoh: jika nama file mengandung <code>第87集</code>, maka <code>第</code> dapat digunakan sebagai delimiter sebelum nomor dan <code>集</code> sebagai delimiter setelah nomor.</p>
+
+<h3>Project Settings — Track / Output</h3>
+<p>Project Settings juga menyediakan:</p>
+<ul>
+  <li><b>Stem / Mixdown / Export</b> folder.</li>
+  <li><b>Setoran Folder</b>.</li>
+  <li>Audio Format <b>WAV</b>.</li>
+  <li>Sample Rate, Bit Depth, dan Channels.</li>
+</ul>
+
+<h2>3. Source Excel, Import Source, dan Refresh Data</h2>
+<h3>Import Source</h3>
+<p><b>Import Source</b> digunakan untuk memasukkan source naskah ke project. Alur internalnya mencakup scan/fingerprint, workbook inspection, parsing, normalization, character/talent resolution, validation, lalu commit ke <code>.smproj</code>.</p>
+
+<div class="warning">
+Jika ditemukan masalah yang membuat import tidak aman—misalnya duplicate episode atau file yang tidak dapat diproses—aplikasi dapat menghentikan commit agar database tidak berubah sebagian.
+</div>
+
+<h3>Refresh Data</h3>
+<p><b>Refresh Data</b> digunakan saat source Excel berubah setelah import awal. Sistem membandingkan fingerprint source dan memproses perubahan yang diperlukan.</p>
+<ul>
+  <li><b>New</b> — file source baru.</li>
+  <li><b>Changed</b> — source yang berubah.</li>
+  <li><b>Restored</b> — source yang sebelumnya missing lalu tersedia kembali.</li>
+  <li><b>Unchanged</b> — tidak perlu diparse ulang.</li>
+</ul>
+
+<div class="note">
+Status recording dan data workflow aplikasi dipertahankan sesuai aturan sinkronisasi. Source yang hilang tidak langsung dianggap sebagai alasan untuk menghapus seluruh history project.
+</div>
+
+<h2>4. SCRIPT</h2>
+<p>Tab <b>SCRIPT</b> digunakan untuk membaca hasil naskah yang sudah masuk ke database project.</p>
+
+<p>Kontrol utama:</p>
+<ul>
+  <li><b>Episode</b> — pilih episode tertentu atau All.</li>
+  <li><b>Search</b> — cari isi yang ditampilkan pada view Script.</li>
+  <li><b>Refresh View</b> — muat ulang data view dari project aktif.</li>
+</ul>
+
+<div class="tip">
+SCRIPT membaca data yang sudah diimport ke <code>.smproj</code>. Mengubah Excel tidak otomatis mengubah view sampai source diproses melalui Refresh Data.
+</div>
+
+<h2>5. DIALOG dan Recording</h2>
+<p>Tab <b>DIALOG</b> adalah workspace untuk memilih talent, tokoh, dan episode lalu menandai progress recording dialogue.</p>
+
+<h3>Filter dan navigasi</h3>
+<ul>
+  <li><b>Talent</b> — pilih talent.</li>
+  <li><b>Tokoh</b> — pilih character/tokoh yang terkait.</li>
+  <li><b>Episode</b> — pilih episode.</li>
+  <li><b>Prev / Next</b> — berpindah episode.</li>
+  <li><b>Open Source File</b> — membuka file source untuk selection yang mempunyai source terkait.</li>
+</ul>
+
+<h3>Cast dan daftar dialog</h3>
+<p>Panel cast menampilkan pasangan <b>TOKOH</b> dan <b>TALENT</b>. Tabel dialog menampilkan checkbox recording, IN, OUT, dan DIALOG.</p>
+
+<p>Gunakan:</p>
+<ul>
+  <li>checkbox per dialog untuk menandai dialog yang sudah direkam;</li>
+  <li><b>Check All</b> untuk menandai semua dialog pada scope aktif;</li>
+  <li><b>Uncheck All</b> untuk membatalkan tanda semua dialog pada scope aktif;</li>
+  <li><b>Copy All Dialog</b> untuk menyalin isi dialog pada selection yang sedang dibuka.</li>
+</ul>
+
+<div class="note">
+Recording status disimpan di project dan dipakai oleh TRACKING untuk menghitung progress. Karena itu checkbox DIALOG adalah data workflow, bukan sekadar tampilan.
+</div>
+
+<h2>6. TRACKING</h2>
+<p>TRACKING merangkum status pekerjaan per talent, character, dan episode.</p>
+
+<h3>Episode status</h3>
+<p>View tracking menampilkan detail episode dan status. Pemilihan episode dapat menggunakan tombol Prev/Next dan filter yang tersedia pada workspace.</p>
+
+<h3>Revision</h3>
+<p>Episode detail menyediakan tindakan <b>Mark Revision</b> dan <b>Clear Revision</b> sesuai status saat ini.</p>
+
+<h3>Track Files</h3>
+<p>Workspace Track Files menyediakan fungsi untuk mencocokkan file output dengan struktur tracking, termasuk:</p>
+<ul>
+  <li><b>Match &amp; Rename Episode</b>;</li>
+  <li><b>Batch Match &amp; Rename Talent</b>;</li>
+  <li><b>Refresh Files</b>;</li>
+  <li>Track Name Suggestion.</li>
+</ul>
+
+<h3>Output Health</h3>
+<p>Output Health menampilkan ringkasan file output seperti Stemmed Episodes, Delivered Episodes, dan Warnings. Gunakan bagian ini untuk menemukan file output yang tidak sesuai ekspektasi workflow.</p>
+
+<h2>7. DATA dan Validation</h2>
+<p>Tab <b>DATA</b> digunakan untuk memeriksa kesehatan data, mapping, unresolved source, dan hasil validation.</p>
+
+<h3>Overview</h3>
+<p>Menampilkan ringkasan data dan health project.</p>
+
+<h3>Character Mapping</h3>
+<p>Menampilkan character dan mapping talent. Mapping dapat di-<b>Lock</b> atau <b>Unlock</b> sesuai kebutuhan workflow.</p>
+
+<h3>Character Alias</h3>
+<p>Character Alias digunakan ketika variasi nama dari source sebenarnya merujuk ke character canonical yang sama.</p>
+<ul>
+  <li><b>Set as Alias</b> — jadikan character terpilih sebagai alias character lain.</li>
+  <li><b>Add Alias Name…</b> — tambahkan teks alias.</li>
+  <li><b>Remove Alias / Restore</b> — hapus alias atau kembalikan character.</li>
+</ul>
+
+<h3>Talents</h3>
+<p>Menampilkan data talent yang sudah dikenal oleh project.</p>
+
+<h3>Unresolved</h3>
+<p>Digunakan untuk source/cast yang belum dapat diselesaikan otomatis dan masih membutuhkan review manual.</p>
+
+<h3>Sources</h3>
+<p>Menampilkan informasi source file yang tersimpan di database project.</p>
+
+<h3>Validation</h3>
+<p>Validation membagi issue menjadi kategori System, Review, dan Workflow. Gunakan <b>Validate</b> untuk menjalankan pemeriksaan data project.</p>
+
+<h2>8. TOOLS &amp; Maintenance</h2>
+<p>Tab <b>TOOLS</b> menyediakan fungsi pemeliharaan dan shortcut ke lokasi kerja.</p>
+
+<h3>Diagnostics</h3>
+<ul>
+  <li><b>Run Diagnostics</b> — memeriksa kondisi project, database, folder, output, dan backup.</li>
+  <li><b>Audit History</b> — melihat riwayat tindakan penting pada project.</li>
+</ul>
+
+<h3>Folder shortcuts</h3>
+<p>TOOLS menyediakan shortcut untuk membuka Project Folder, Source Folder, Stem / Export, Setoran Folder, Backups Folder, dan Logs Folder.</p>
+
+<h3>Drive shortcuts</h3>
+<p>Main Drive, Material Drive, dan Delivery Drive dapat dibuka dari TOOLS jika URL sudah dikonfigurasi di Project Settings.</p>
+
+<h3>Database maintenance</h3>
+<ul>
+  <li><b>Create Backup</b> — membuat snapshot project.</li>
+  <li><b>Restore Backup</b> — mengembalikan database project aktif dari snapshot yang valid.</li>
+  <li><b>Rebuild Index</b> pada DATA — menjalankan pemeliharaan index SQLite tanpa menghapus data.</li>
+</ul>
+
+<h2>9. Backup, Restore, dan Recovery</h2>
+<h3>Create Backup</h3>
+<p>Backup disimpan sebagai file <code>.smproj</code> di application data per-user. Backup tidak menyalin source Excel atau file audio/output eksternal.</p>
+
+<h3>Restore Backup</h3>
+<p><b>Restore Backup</b> mengganti database project aktif menggunakan snapshot yang dipilih. Sebelum restore, aplikasi membuat safety backup dari kondisi saat ini.</p>
+
+<h3>Recover Project</h3>
+<p><b>Recover Project</b> digunakan untuk membuat file <code>.smproj</code> baru dari snapshot backup, misalnya ketika project asli hilang atau ketika ingin memulihkan ke file terpisah.</p>
+
+<div class="warning">
+Restore dan Recover adalah dua operasi berbeda. Restore bekerja pada project aktif, sedangkan Recover menghasilkan file project hasil pemulihan.
+</div>
+
+<h2>10. Workflow kerja yang direkomendasikan</h2>
+<ol>
+  <li>Buat atau buka project <code>.smproj</code>.</li>
+  <li>Periksa Project Settings, Source Folder, delimiter episode, dan folder output.</li>
+  <li>Jalankan Import Source untuk source awal.</li>
+  <li>Periksa DATA → Unresolved / Validation jika ada issue.</li>
+  <li>Gunakan SCRIPT untuk membaca naskah hasil import.</li>
+  <li>Gunakan DIALOG untuk proses recording dan checkbox progress.</li>
+  <li>Pantau TRACKING untuk recording, revision, stem, delivery, dan output health.</li>
+  <li>Jika client merevisi Excel, perbarui source lalu jalankan Refresh Data.</li>
+  <li>Buat backup pada milestone penting atau sebelum operasi maintenance.</li>
+</ol>
+
+<div class="tip">
+Gunakan Getting Started untuk panduan singkat. Gunakan User Guide ini saat membutuhkan penjelasan per area aplikasi.
+</div>
+
+<p class="small">Dokumentasi ini mengikuti fitur yang tersedia pada build Script Manager saat ini. Fitur Help lainnya akan ditambahkan bertahap.</p>
+</body>
+</html>

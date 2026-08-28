@@ -335,6 +335,7 @@ class Ribbon(QWidget):
         "HELP": [
             ("Guide", [
                 ("help.getting_started", "Getting Started"),
+                ("help.user_guide", "User Guide"),
             ]),
         ],
     }
