@@ -187,18 +187,18 @@ class MainWindow(QMainWindow):
         if self.project_manager.current:
             start_dir = str(self.project_manager.current.root.parent)
 
-        project_file, _ = QFileDialog.getOpenFileName(
+        project_path = QFileDialog.getExistingDirectory(
             self,
-            "Open Project",
+            "Open Project Package (.drsp or Legacy Folder)",
             start_dir,
-            "Script Manager Project (project.json);;JSON Files (*.json)",
+            QFileDialog.Option.ShowDirsOnly,
         )
 
-        if not project_file:
+        if not project_path:
             return
 
         try:
-            project = self.project_manager.open(project_file)
+            project = self.project_manager.open(project_path)
         except Exception as exc:
             QMessageBox.critical(
                 self,
@@ -215,6 +215,78 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Project opened: {project.root}",
             5000,
+        )
+
+    def convert_project_to_drsp(self) -> None:
+        if self._block_project_change_during_sync("Convert to .drsp"):
+            return
+
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Convert to .drsp",
+                "Buka project terlebih dahulu.",
+            )
+            return
+
+        if project.is_package:
+            QMessageBox.information(
+                self,
+                "Convert to .drsp",
+                f"Project sudah menggunakan package:\n{project.root}",
+            )
+            return
+
+        target = project.root.with_name(project.root.name + ".drsp")
+        answer = QMessageBox.question(
+            self,
+            "Convert to .drsp",
+            (
+                "Project legacy akan diubah menjadi writable .drsp "
+                "directory package.\n\n"
+                f"Current:\n{project.root}\n\n"
+                f"New:\n{target}\n\n"
+                "project.json, project.db, backups, dan logs tetap berada "
+                "di dalam package. Path Source / Stem / Setoran yang berada "
+                "di luar project tidak akan dipindahkan.\n\n"
+                "Lanjutkan?"
+            ),
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            converted = self.project_manager.convert_current_to_package()
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Convert to .drsp",
+                f"Konversi gagal.\n\n{exc}",
+            )
+            return
+
+        self._clear_data_pages()
+        self.refresh_project_page()
+        self.pages["TOOLS"].set_project(converted)
+        self.setWindowTitle(
+            f"{converted.settings.project_name} - Script Manager"
+        )
+        self.statusBar().showMessage(
+            f"Project converted: {converted.root}",
+            5000,
+        )
+
+        QMessageBox.information(
+            self,
+            "Convert to .drsp",
+            (
+                "Project berhasil dikonversi.\n\n"
+                f"{converted.root}"
+            ),
         )
 
     def save_project(self) -> None:
@@ -1235,6 +1307,7 @@ class MainWindow(QMainWindow):
             "tools.audit": self.focus_tools_audit,
             "tools.backup": self.backup_database,
             "tools.restore_backup": self.restore_database_backup,
+            "tools.convert_drsp": self.convert_project_to_drsp,
             "tools.open_project_folder": (
                 lambda: self.open_tools_path("project")
             ),
