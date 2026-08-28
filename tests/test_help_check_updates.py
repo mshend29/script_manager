@@ -55,12 +55,3 @@ def test_check_updates_opens_release_page_only_by_user_action():
     assert "self.release_requested.emit(self._release_url)" in page
     assert "help_page.release_requested.connect(self.open_update_release)" in main
     assert "QDesktopServices.openUrl(QUrl(target))" in main
-
-
-def test_check_updates_stage_does_not_add_later_help_features():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
-
-    for action in (
-        "help.about",
-    ):
-        assert action not in ribbon
