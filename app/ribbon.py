@@ -341,6 +341,9 @@ class Ribbon(QWidget):
             ("Application", [
                 ("help.check_updates", "Check for Updates"),
             ]),
+            ("Support", [
+                ("help.report_problem", "Report a Problem"),
+            ]),
         ],
     }
 
