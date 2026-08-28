@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Keyboard Shortcuts — Script Manager</title>
+<style>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #202124;
+  line-height: 1.58;
+  margin: 0;
+  padding: 8px 4px 34px 4px;
+}
+h1 { font-size: 27px; margin: 0 0 6px 0; }
+h2 {
+  font-size: 19px;
+  margin-top: 28px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e1e5ea;
+}
+p, td, th { font-size: 14px; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0 18px 0;
+}
+th, td {
+  border: 1px solid #d8dde5;
+  padding: 9px 11px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #f5f7fa; }
+kbd {
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  background: #f3f4f6;
+  border: 1px solid #c9ced5;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.note {
+  background: #f5f7fa;
+  border: 1px solid #d8dde5;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+</style>
+</head>
+<body>
+<h1>Keyboard Shortcuts</h1>
+<p>Shortcut berikut aktif secara global pada jendela utama Script Manager. Daftar ini hanya menampilkan kombinasi yang benar-benar diimplementasikan pada aplikasi.</p>
+
+<h2>Project</h2>
+<table>
+<tr><th>Shortcut</th><th>Action</th><th>Keterangan</th></tr>
+<tr><td><kbd>Ctrl+N</kbd></td><td>New Project</td><td>Membuka dialog untuk membuat project <code>.smproj</code> baru.</td></tr>
+<tr><td><kbd>Ctrl+O</kbd></td><td>Open Project</td><td>Membuka file Script Management Project <code>.smproj</code>.</td></tr>
+<tr><td><kbd>Ctrl+S</kbd></td><td>Save</td><td>Menyimpan project aktif.</td></tr>
+<tr><td><kbd>Ctrl+Shift+S</kbd></td><td>Save As</td><td>Menyimpan project ke file baru dengan project identity yang sama.</td></tr>
+<tr><td><kbd>Ctrl+W</kbd></td><td>Close Project</td><td>Menutup project aktif. Aplikasi tetap terbuka.</td></tr>
+</table>
+
+<h2>Search &amp; Data</h2>
+<table>
+<tr><th>Shortcut</th><th>Action</th><th>Keterangan</th></tr>
+<tr><td><kbd>Ctrl+F</kbd></td><td>Search Script</td><td>Berpindah ke tab SCRIPT dan memfokuskan kotak Search.</td></tr>
+<tr><td><kbd>F5</kbd></td><td>Refresh Data</td><td>Menjalankan alur Refresh Data terhadap source project aktif.</td></tr>
+</table>
+
+<div class="note">
+<b>F5 bukan sekadar refresh tampilan.</b> Shortcut ini menjalankan Refresh Data terhadap source Excel, sama seperti tombol Refresh Data pada tab PROJECT. Jika source berubah, aplikasi akan menjalankan proses scan/preview/apply sesuai workflow refresh.
+</div>
+
+<h2>Help</h2>
+<table>
+<tr><th>Shortcut</th><th>Action</th><th>Keterangan</th></tr>
+<tr><td><kbd>F1</kbd></td><td>Getting Started</td><td>Membuka tab HELP dan menampilkan halaman Getting Started.</td></tr>
+</table>
+
+<h2>Perilaku saat Source Sync Berjalan</h2>
+<p>Shortcut yang dapat mengganti atau menutup project tetap mengikuti safety guard aplikasi. Jika Import Source atau Refresh Data sedang berjalan, tindakan seperti New Project, Open Project, Save As, atau Close Project dapat ditolak sampai proses sinkronisasi selesai.</p>
+
+<div class="note">
+Shortcut dibuat untuk mempercepat tindakan utama. Fitur lain tetap tersedia melalui ribbon dan context panel hingga ada kebutuhan nyata untuk menambahkan kombinasi keyboard baru.
+</div>
+</body>
+</html>

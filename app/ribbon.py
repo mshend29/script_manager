@@ -336,6 +336,7 @@ class Ribbon(QWidget):
             ("Guide", [
                 ("help.getting_started", "Getting Started"),
                 ("help.user_guide", "User Guide"),
+                ("help.keyboard_shortcuts", "Keyboard Shortcuts"),
             ]),
         ],
     }

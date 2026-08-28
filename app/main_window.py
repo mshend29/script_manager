@@ -4,7 +4,7 @@ import webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Qt, QUrl, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
     QInputDialog,
@@ -115,9 +115,29 @@ class MainWindow(QMainWindow):
         tools_page.action_requested.connect(self.handle_ribbon_action)
 
         self._init_source_sync_progress_ui()
+        self._init_keyboard_shortcuts()
         self.statusBar().showMessage("Ready")
         self.set_page("PROJECT")
         self.refresh_project_page()
+
+    def _init_keyboard_shortcuts(self) -> None:
+        self._keyboard_shortcuts: list[QShortcut] = []
+
+        bindings = (
+            ("Ctrl+N", self.new_project),
+            ("Ctrl+O", self.open_project),
+            ("Ctrl+S", self.save_project),
+            ("Ctrl+Shift+S", self.save_project_as),
+            ("Ctrl+W", self.close_project),
+            ("Ctrl+F", self.open_script_search),
+            ("F5", self.refresh_source),
+            ("F1", self.open_getting_started),
+        )
+
+        for sequence, handler in bindings:
+            shortcut = QShortcut(QKeySequence(sequence), self)
+            shortcut.activated.connect(handler)
+            self._keyboard_shortcuts.append(shortcut)
 
     def set_page(self, page_name: str) -> None:
         if page_name not in self.pages:
@@ -1322,6 +1342,18 @@ class MainWindow(QMainWindow):
         page.search_edit.selectAll()
         self.statusBar().showMessage("Script search focused", 2000)
 
+    def open_script_search(self) -> None:
+        if self.project_manager.current is None:
+            QMessageBox.information(
+                self,
+                "Search Script",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        self.ribbon.select_tab("SCRIPT")
+        self.focus_script_search()
+
     def open_dialog_source(self) -> None:
         page = self.pages["DIALOG"]
         if not page.open_source_button.isEnabled():
@@ -1494,6 +1526,12 @@ class MainWindow(QMainWindow):
         page.show_user_guide()
         self.statusBar().showMessage("User Guide", 3000)
 
+    def open_keyboard_shortcuts(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+        page.show_keyboard_shortcuts()
+        self.statusBar().showMessage("Keyboard Shortcuts", 3000)
+
     # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
@@ -1564,6 +1602,7 @@ class MainWindow(QMainWindow):
             ),
             "help.getting_started": self.open_getting_started,
             "help.user_guide": self.open_user_guide,
+            "help.keyboard_shortcuts": self.open_keyboard_shortcuts,
         }
 
         handler = handlers.get(action_id)

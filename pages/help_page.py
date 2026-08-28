@@ -17,6 +17,7 @@ from widgets.page_shell import PageShell
 HELP_ROOT = Path(__file__).resolve().parents[1] / "resources" / "help"
 GETTING_STARTED_FILE = HELP_ROOT / "getting_started.html"
 USER_GUIDE_FILE = HELP_ROOT / "user_guide.html"
+KEYBOARD_SHORTCUTS_FILE = HELP_ROOT / "keyboard_shortcuts.html"
 
 
 class HelpPage(PageShell):
@@ -38,6 +39,13 @@ class HelpPage(PageShell):
             self.show_user_guide
         )
         context.add_widget(self.user_guide_button)
+
+        self.keyboard_shortcuts_button = QPushButton("Keyboard Shortcuts")
+        self.keyboard_shortcuts_button.setProperty("secondary", True)
+        self.keyboard_shortcuts_button.clicked.connect(
+            self.show_keyboard_shortcuts
+        )
+        context.add_widget(self.keyboard_shortcuts_button)
         context.add_stretch()
 
         workspace = QWidget()
@@ -68,6 +76,7 @@ class HelpPage(PageShell):
         for button in (
             self.getting_started_button,
             self.user_guide_button,
+            self.keyboard_shortcuts_button,
         ):
             is_active = button is active
             button.setProperty("primary", is_active)
@@ -106,6 +115,25 @@ class HelpPage(PageShell):
         except OSError as exc:
             self.browser.setPlainText(
                 "User Guide tidak dapat dimuat.\n\n"
+                f"{exc}"
+            )
+            return
+
+        self.browser.setHtml(html)
+        self.browser.verticalScrollBar().setValue(0)
+
+    def show_keyboard_shortcuts(self) -> None:
+        self._set_active_button(self.keyboard_shortcuts_button)
+        self.title.setText("Keyboard Shortcuts")
+        self.subtitle.setText(
+            "Daftar shortcut keyboard yang aktif di Script Manager."
+        )
+
+        try:
+            html = KEYBOARD_SHORTCUTS_FILE.read_text(encoding="utf-8")
+        except OSError as exc:
+            self.browser.setPlainText(
+                "Keyboard Shortcuts tidak dapat dimuat.\n\n"
                 f"{exc}"
             )
             return
