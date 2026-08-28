@@ -260,7 +260,11 @@ class Ribbon(QWidget):
             ("Project", [
                 ("project.new", "New Project"),
                 ("project.open", "Open Project"),
+                ("project.open_recent", "Open Recent"),
                 ("project.save", "Save"),
+                ("project.save_as", "Save As"),
+                ("project.duplicate", "Duplicate"),
+                ("project.recover", "Recover"),
                 ("project.settings", "Project Settings"),
                 ("project.close", "Close"),
             ]),
