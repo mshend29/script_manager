@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Getting Started — Script Manager</title>
+<style>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #202124;
+  line-height: 1.55;
+  margin: 0;
+  padding: 8px 4px 32px 4px;
+}
+h1 { font-size: 26px; margin: 0 0 6px 0; }
+h2 { font-size: 18px; margin-top: 26px; }
+p, li { font-size: 14px; }
+.note {
+  background: #f5f7fa;
+  border: 1px solid #d8dde5;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+code {
+  font-family: Consolas, monospace;
+  background: #f1f3f4;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+ol, ul { padding-left: 24px; }
+</style>
+</head>
+<body>
+<h1>Getting Started</h1>
+<p>Panduan singkat untuk memulai project manajemen naskah drama pendek vertikal di Script Manager.</p>
+
+<h2>1. Buat Project</h2>
+<ol>
+  <li>Buka tab <b>PROJECT</b>.</li>
+  <li>Pilih <b>New Project</b>.</li>
+  <li>Isi Project Name, Project Code, Client, Start Date, dan lokasi penyimpanan.</li>
+  <li>Jika sudah tersedia, tentukan Source Script Folder dan delimiter nomor episode.</li>
+  <li>Klik <b>Create Project</b>.</li>
+</ol>
+<div class="note">
+Project disimpan sebagai satu file <code>.smproj</code>. File ini menyimpan database kerja, mapping, status recording, tracking, settings, dan metadata project.
+</div>
+
+<h2>2. Siapkan Source Excel</h2>
+<p>File Excel tetap berada di folder eksternal. Script Manager tidak memasukkan file Excel ke dalam <code>.smproj</code>.</p>
+<ul>
+  <li>Atur <b>Source Script Folder</b> melalui Project Settings.</li>
+  <li>Pastikan pola nama file episode sesuai delimiter yang ditentukan.</li>
+  <li>File source dapat berupa <code>.xlsx</code> atau <code>.xlsm</code> sesuai dukungan import yang tersedia.</li>
+</ul>
+
+<h2>3. Import Source</h2>
+<ol>
+  <li>Pada tab <b>PROJECT</b>, pilih <b>Import Source</b>.</li>
+  <li>Script Manager akan scan file, inspect workbook, parse, normalize, resolve character/talent, lalu melakukan validation.</li>
+  <li>Periksa preview jika ditampilkan.</li>
+  <li>Terapkan import jika hasilnya sesuai.</li>
+</ol>
+<p>Setelah import, halaman SCRIPT, DIALOG, TRACKING, dan DATA membaca data dari <code>.smproj</code>, bukan membuka ulang seluruh Excel setiap saat.</p>
+
+<h2>4. Refresh Saat Client Mengubah Naskah</h2>
+<p>Jika client mengirim revisi Excel, ganti atau perbarui file di Source Script Folder lalu pilih <b>Refresh Data</b>.</p>
+<div class="note">
+Refresh memproses source yang New, Changed, atau Restored. Recording status, mapping yang sudah dikunci, dan downstream tracking dipertahankan sesuai aturan sinkronisasi project.
+</div>
+
+<h2>5. Recording Dialogue</h2>
+<p>Buka tab <b>DIALOG</b>. Gunakan checkbox recording pada dialog yang sudah selesai direkam. Status ini disimpan langsung di <code>.smproj</code> dan menjadi dasar perhitungan progress recording di TRACKING.</p>
+
+<h2>6. Tracking</h2>
+<p>Tab <b>TRACKING</b> merangkum progress per talent, character, dan episode. Status recording berasal dari dialog. Status lanjutan seperti stem, delivery, dan revision dikelola sebagai workflow project.</p>
+
+<h2>7. Save, Save As, dan Duplicate</h2>
+<ul>
+  <li><b>Save</b> menyimpan project aktif.</li>
+  <li><b>Save As</b> membuat file baru tetapi mempertahankan identitas project yang sama.</li>
+  <li><b>Duplicate</b> membuat project baru dengan data awal yang sama tetapi identitas project baru.</li>
+</ul>
+
+<h2>8. Backup dan Recovery</h2>
+<p>Backup dibuat sebagai snapshot <code>.smproj</code> dan disimpan di application data, bukan di folder project. Gunakan <b>Recover Project</b> bila perlu membuat file project baru dari snapshot backup.</p>
+
+<h2>9. Rekomendasi Penyimpanan</h2>
+<p>Untuk workflow yang rapi, simpan file project dan source dalam struktur folder kerja yang jelas, tetapi biarkan media/source tetap sebagai file eksternal yang direferensikan oleh project.</p>
+
+<div class="note">
+Selanjutnya, dokumentasi Help akan ditambah secara bertahap melalui User Guide, Keyboard Shortcuts, Check for Updates, Report a Problem, dan About.
+</div>
+</body>
+</html>
