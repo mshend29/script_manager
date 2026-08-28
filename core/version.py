@@ -11,3 +11,7 @@ GITHUB_RELEASES_URL = (
 GITHUB_LATEST_RELEASE_API = (
     f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 )
+
+GITHUB_NEW_ISSUE_URL = (
+    f"https://github.com/{GITHUB_REPOSITORY}/issues/new"
+)
