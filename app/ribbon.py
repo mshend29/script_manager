@@ -308,13 +308,16 @@ class Ribbon(QWidget):
                 ("tools.diagnostics", "Run Diagnostics"),
                 ("tools.audit", "Audit History"),
             ]),
+            ("Project Package", [
+                ("tools.convert_drsp", "Convert to .drsp"),
+                ("tools.open_project_folder", "Open Project"),
+            ]),
             ("Database", [
                 ("tools.backup", "Create Backup"),
                 ("tools.restore_backup", "Restore Backup"),
                 ("tools.open_backups", "Open Backups"),
             ]),
             ("Folders", [
-                ("tools.open_project_folder", "Project"),
                 ("tools.open_source_folder", "Source"),
                 ("tools.open_output_folder", "Stem / Export"),
                 ("tools.open_delivery_folder", "Setoran"),

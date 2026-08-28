@@ -61,6 +61,24 @@ class ProjectDiagnosticsService:
         database = self.project.database
         settings = self.project.settings
 
+        result.checks.append(
+            DiagnosticCheck(
+                key="project_package",
+                label="Project Package",
+                status=STATUS_OK if self.project.is_package else STATUS_WARNING,
+                value=(
+                    self.project.package_name
+                    if self.project.is_package
+                    else "Legacy Folder"
+                ),
+                detail=(
+                    "Writable .drsp directory package."
+                    if self.project.is_package
+                    else "Project lama masih didukung. Gunakan TOOLS → "
+                    "Convert to .drsp untuk format project baru."
+                ),
+            )
+        )
         result.checks.extend(self._database_checks())
 
         issues = ValidationService(database).validate()

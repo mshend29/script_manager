@@ -12,7 +12,14 @@ from core.project_settings import ProjectSettings
 
 PROJECT_FILE_NAME = "project.json"
 DATABASE_FILE_NAME = "project.db"
-PROJECT_FORMAT_VERSION = 1
+PROJECT_PACKAGE_EXTENSION = ".drsp"
+PROJECT_PACKAGE_TYPE = "directory-package"
+LEGACY_PROJECT_FORMAT_VERSION = 1
+PROJECT_FORMAT_VERSION = 2
+SUPPORTED_PROJECT_FORMAT_VERSIONS = {
+    LEGACY_PROJECT_FORMAT_VERSION,
+    PROJECT_FORMAT_VERSION,
+}
 
 
 class ProjectFormatError(ValueError):
@@ -29,6 +36,16 @@ class Project:
     @property
     def project_file(self) -> Path:
         return self.root / PROJECT_FILE_NAME
+
+    @property
+    def is_package(self) -> bool:
+        return self.root.name.casefold().endswith(
+            PROJECT_PACKAGE_EXTENSION.casefold()
+        )
+
+    @property
+    def package_name(self) -> str:
+        return self.root.name
 
     @property
     def database_file(self) -> Path:
@@ -63,6 +80,12 @@ class Project:
 
         payload: dict[str, Any] = {
             "format_version": PROJECT_FORMAT_VERSION,
+            "package_type": (
+                PROJECT_PACKAGE_TYPE if self.is_package else "legacy-directory"
+            ),
+            "package_extension": (
+                PROJECT_PACKAGE_EXTENSION if self.is_package else ""
+            ),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "settings": self.settings.to_dict(),
@@ -78,14 +101,24 @@ class Project:
 
     @classmethod
     def load(cls, project_file: str | Path) -> "Project":
-        path = Path(project_file)
+        path = Path(project_file).expanduser()
+
+        if (
+            path.suffix.casefold() == PROJECT_PACKAGE_EXTENSION
+            and path.exists()
+            and not path.is_dir()
+        ):
+            raise ProjectFormatError(
+                ".drsp harus berupa project package directory, bukan file."
+            )
 
         if path.is_dir():
             path = path / PROJECT_FILE_NAME
 
         if path.name.casefold() != PROJECT_FILE_NAME.casefold():
             raise ProjectFormatError(
-                f"File project harus bernama {PROJECT_FILE_NAME}: {path.name}"
+                "Pilih folder project .drsp / legacy project folder "
+                f"atau file {PROJECT_FILE_NAME}: {path.name}"
             )
 
         if not path.exists():
@@ -109,10 +142,17 @@ class Project:
             raise ProjectFormatError("Project descriptor harus berupa JSON object.")
 
         format_version = payload.get("format_version")
-        if type(format_version) is not int or format_version != PROJECT_FORMAT_VERSION:
+        if (
+            type(format_version) is not int
+            or format_version not in SUPPORTED_PROJECT_FORMAT_VERSIONS
+        ):
+            supported = ", ".join(
+                str(value)
+                for value in sorted(SUPPORTED_PROJECT_FORMAT_VERSIONS)
+            )
             raise ProjectFormatError(
                 "Project format tidak didukung: "
-                f"{format_version!r}; aplikasi mendukung {PROJECT_FORMAT_VERSION}."
+                f"{format_version!r}; aplikasi mendukung {supported}."
             )
 
         settings_payload = payload.get("settings")

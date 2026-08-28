@@ -40,8 +40,8 @@ class NewProjectDialog(QDialog):
         root.addWidget(title)
 
         subtitle = QLabel(
-            "Project akan dibuat sebagai satu folder yang berisi project.json, "
-            "project.db, backups, dan logs."
+            "Project akan dibuat sebagai writable .drsp directory package "
+            "yang berisi project.json, project.db, backups, dan logs."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
