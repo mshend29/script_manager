@@ -20,7 +20,7 @@ def test_report_problem_help_content_explains_privacy_and_manual_submit():
         "Source Folder",
         "Drive URL",
         "dialogue text",
-        "periksa kembali isi laporan sebelum Submit",
+        "Periksa kembali isi laporan sebelum Submit",
     ):
         assert expected in content
 
@@ -34,7 +34,7 @@ def test_report_problem_is_wired_to_help_ribbon_and_main_window():
     assert 'QPushButton("Report a Problem")' in page
     assert '"help.report_problem": self.report_problem' in main
     assert "ProblemReportService().build()" in main
-    assert "page.show_report_problem(report)" in main
+    assert 'self.pages["HELP"].show_report_problem(report)' in main
 
 
 def test_report_problem_has_open_issue_and_copy_fallback():
