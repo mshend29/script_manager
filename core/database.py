@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
+from typing import Any
+
+from core.app_paths import database_backups_dir
 
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -57,6 +61,16 @@ class Database:
                 CREATE TABLE IF NOT EXISTS app_meta (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS smproj_meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS project_settings (
+                    key TEXT PRIMARY KEY,
+                    value_json TEXT NOT NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS source_files (
@@ -387,14 +401,20 @@ class Database:
             connection.close()
 
     def _backup_before_migration(self, from_version: int) -> Path:
-        backup_dir = self.path.parent / "backups"
+        project_id = self.get_smproj_meta("project_id", default="")
+        backup_dir = database_backups_dir(
+            self.path,
+            project_id=project_id,
+        ) / "Migrations"
         backup_dir.mkdir(parents=True, exist_ok=True)
+
         stamp = __import__("datetime").datetime.now().strftime(
             "%Y%m%d_%H%M%S_%f"
         )
+        extension = ".smproj" if self.path.suffix.casefold() == ".smproj" else ".db"
         target = backup_dir / (
-            f"project_before_schema_v{from_version}_to_v"
-            f"{SCHEMA_VERSION}_{stamp}.db"
+            f"{self.path.stem}_before_schema_v{from_version}_to_v"
+            f"{SCHEMA_VERSION}_{stamp}{extension}"
         )
 
         source = sqlite3.connect(self.path)
@@ -560,6 +580,98 @@ class Database:
         )
 
         connection.execute("DROP TABLE stem_status_v2")
+
+    def get_smproj_meta(
+        self,
+        key: str,
+        *,
+        default: str = "",
+    ) -> str:
+        if not self.path.exists():
+            return default
+
+        try:
+            with self.connect() as connection:
+                table = connection.execute(
+                    """
+                    SELECT 1
+                    FROM sqlite_master
+                    WHERE type = 'table' AND name = 'smproj_meta'
+                    """
+                ).fetchone()
+                if table is None:
+                    return default
+
+                row = connection.execute(
+                    "SELECT value FROM smproj_meta WHERE key = ?",
+                    (str(key),),
+                ).fetchone()
+        except sqlite3.DatabaseError:
+            return default
+
+        return str(row["value"] if row else default)
+
+    def set_smproj_meta(self, values: dict[str, str]) -> None:
+        with self.connect() as connection:
+            connection.executemany(
+                """
+                INSERT INTO smproj_meta(key, value)
+                VALUES(?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """,
+                [
+                    (str(key), str(value))
+                    for key, value in values.items()
+                ],
+            )
+
+    def load_project_settings(self) -> dict[str, Any]:
+        if not self.path.exists():
+            return {}
+
+        with self.connect() as connection:
+            table = connection.execute(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'project_settings'
+                """
+            ).fetchone()
+            if table is None:
+                return {}
+
+            rows = connection.execute(
+                "SELECT key, value_json FROM project_settings"
+            ).fetchall()
+
+        result: dict[str, Any] = {}
+        for row in rows:
+            key = str(row["key"])
+            raw = str(row["value_json"])
+            try:
+                result[key] = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise DatabaseCompatibilityError(
+                    f"Project setting {key!r} tidak valid."
+                ) from exc
+        return result
+
+    def save_project_settings(self, values: dict[str, Any]) -> None:
+        with self.connect() as connection:
+            connection.execute("DELETE FROM project_settings")
+            connection.executemany(
+                """
+                INSERT INTO project_settings(key, value_json)
+                VALUES(?, ?)
+                """,
+                [
+                    (
+                        str(key),
+                        json.dumps(value, ensure_ascii=False),
+                    )
+                    for key, value in values.items()
+                ],
+            )
 
     def get_counts(self) -> dict[str, int]:
         tables = {
