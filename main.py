@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 
 from app import main_window as main_window_module
 from app.theme import APP_STYLESHEET
+from core.version import APP_VERSION
 from pages.data_alias_page import AliasDataPage
 from pages.tracking_compact_page import CompactTrackingPage
 
@@ -18,6 +19,7 @@ MainWindow = main_window_module.MainWindow
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Script Manager")
+    app.setApplicationVersion(APP_VERSION)
     app.setStyleSheet(APP_STYLESHEET)
     window = MainWindow()
 
