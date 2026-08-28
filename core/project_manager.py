@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import shutil
+import uuid
 from pathlib import Path
 
+from core.app_paths import project_runtime_root
 from core.database import DatabaseCompatibilityError
 from core.project import (
-    DATABASE_FILE_NAME,
-    PROJECT_FILE_NAME,
-    PROJECT_PACKAGE_EXTENSION,
+    PROJECT_FILE_EXTENSION,
     Project,
     ProjectFormatError,
 )
@@ -40,43 +40,49 @@ class ProjectManager:
         parent = Path(parent_folder).expanduser()
         parent.mkdir(parents=True, exist_ok=True)
 
-        raw_folder_name = normalized.project_code or project_name
-        if raw_folder_name.casefold().endswith(
-            PROJECT_PACKAGE_EXTENSION.casefold()
+        raw_name = normalized.project_code or project_name
+        if raw_name.casefold().endswith(
+            PROJECT_FILE_EXTENSION.casefold()
         ):
-            raw_folder_name = raw_folder_name[
-                :-len(PROJECT_PACKAGE_EXTENSION)
-            ]
+            raw_name = raw_name[:-len(PROJECT_FILE_EXTENSION)]
 
-        folder_name = self._safe_folder_name(raw_folder_name)
+        file_stem = self._safe_file_stem(raw_name)
+        project_file = parent / f"{file_stem}{PROJECT_FILE_EXTENSION}"
 
-        project_root = parent / f"{folder_name}{PROJECT_PACKAGE_EXTENSION}"
-
-        if project_root.exists() and any(project_root.iterdir()):
+        if project_file.exists():
             raise ProjectError(
-                f"Folder project sudah ada dan tidak kosong:\n{project_root}"
+                f"Project file sudah ada:\n{project_file}"
             )
 
-        project_root.mkdir(parents=True, exist_ok=True)
-
-        normalized.project_folder = str(project_root)
+        project_id = str(uuid.uuid4())
+        normalized.project_folder = str(project_file)
 
         project = Project(
-            root=project_root,
+            file_path=project_file,
             settings=normalized,
+            project_id=project_id,
         )
 
         try:
-            project.ensure_structure()
-            project.database.initialize()
             project.save()
         except Exception:
-            # Jika create gagal di tengah jalan, hapus folder hanya jika
-            # folder tersebut baru dan aman untuk dibersihkan.
+            for candidate in (
+                project_file,
+                Path(str(project_file) + "-journal"),
+                Path(str(project_file) + "-wal"),
+                Path(str(project_file) + "-shm"),
+            ):
+                try:
+                    if candidate.exists():
+                        candidate.unlink()
+                except OSError:
+                    pass
+
             try:
-                if project_root.exists():
-                    shutil.rmtree(project_root)
-            except Exception:
+                runtime = project_runtime_root(project_id)
+                if runtime.exists():
+                    shutil.rmtree(runtime)
+            except OSError:
                 pass
             raise
 
@@ -90,106 +96,13 @@ class ProjectManager:
             raise ProjectError(str(exc)) from exc
 
         try:
-            if not project.database_file.exists():
-                # Project lama / database hilang: buat struktur database kosong.
-                project.database.initialize()
-            else:
-                # Tetap jalankan initialize untuk migration-safe CREATE IF NOT EXISTS.
-                project.database.initialize()
+            # initialize() is migration-safe and rejects future schemas before
+            # modifying the project file.
+            project.database.initialize()
         except DatabaseCompatibilityError as exc:
             raise ProjectError(str(exc)) from exc
 
         project.ensure_structure()
-        self.current = project
-        return project
-
-    def convert_current_to_package(self) -> Project:
-        project = self._require_project()
-
-        if project.is_package:
-            return project
-
-        project.save()
-
-        old_root = project.root
-        target = old_root.with_name(
-            old_root.name + PROJECT_PACKAGE_EXTENSION
-        )
-
-        if target.exists():
-            raise ProjectError(
-                "Target .drsp sudah ada:\n"
-                f"{target}"
-            )
-
-        original_paths = {
-            key: str(getattr(project.settings, key, "") or "")
-            for key in (
-                "project_folder",
-                "source_folder",
-                "stem_output_folder",
-                "delivery_folder",
-            )
-        }
-
-        try:
-            old_root.rename(target)
-        except OSError as exc:
-            raise ProjectError(
-                "Gagal mengubah project folder menjadi .drsp. "
-                "Pastikan folder tidak sedang dikunci aplikasi lain.\n\n"
-                f"{exc}"
-            ) from exc
-
-        try:
-            project.root = target
-
-            for key, raw in original_paths.items():
-                setattr(
-                    project.settings,
-                    key,
-                    self._rebase_project_path(
-                        raw,
-                        old_root=old_root,
-                        new_root=target,
-                    ),
-                )
-
-            project.settings.project_folder = str(target)
-            project.save()
-
-            from services.audit_service import AuditService
-
-            AuditService(project.database).record(
-                event_type="PROJECT",
-                action="CONVERT_TO_DRSP",
-                entity_type="project",
-                summary=(
-                    f"Legacy project converted to {target.name}."
-                ),
-                details={
-                    "old_root": str(old_root),
-                    "new_root": str(target),
-                },
-            )
-        except Exception:
-            # Best-effort rollback if descriptor update fails after directory
-            # rename. Do not overwrite a newly-created old path.
-            try:
-                if target.exists() and not old_root.exists():
-                    target.rename(old_root)
-                    project.root = old_root
-                    for key, raw in original_paths.items():
-                        setattr(project.settings, key, raw)
-                    project.settings.project_folder = str(old_root)
-                    try:
-                        project.save()
-                    except Exception:
-                        pass
-            except OSError:
-                pass
-            raise
-
         self.current = project
         return project
 
@@ -200,7 +113,7 @@ class ProjectManager:
         project = self._require_project()
 
         normalized = settings.normalized()
-        normalized.project_folder = str(project.root)
+        normalized.project_folder = str(project.project_file)
 
         project.settings = normalized
         project.save()
@@ -220,28 +133,7 @@ class ProjectManager:
         return self.current
 
     @staticmethod
-    def _rebase_project_path(
-        value: str,
-        *,
-        old_root: Path,
-        new_root: Path,
-    ) -> str:
-        raw = str(value or "").strip()
-        if not raw:
-            return raw
-
-        path = Path(raw).expanduser()
-        try:
-            relative = path.resolve(strict=False).relative_to(
-                old_root.resolve(strict=False)
-            )
-        except (OSError, ValueError):
-            return raw
-
-        return str(new_root / relative)
-
-    @staticmethod
-    def _safe_folder_name(value: str) -> str:
+    def _safe_file_stem(value: str) -> str:
         cleaned = "".join(
             char if char.isalnum() or char in (" ", "-", "_") else "_"
             for char in value.strip()
