@@ -47,11 +47,9 @@ def test_database_context_manager_rolls_back_and_closes_on_error(tmp_path):
     assert row is None
 
 
-def test_closed_database_context_does_not_block_project_folder_rename(tmp_path):
-    root = tmp_path / "Legacy"
-    root.mkdir()
-
-    database = Database(root / "project.db")
+def test_closed_database_context_does_not_block_smproj_file_rename(tmp_path):
+    original = tmp_path / "Legacy.smproj"
+    database = Database(original)
     database.initialize()
 
     with database.connect() as connection:
@@ -59,9 +57,8 @@ def test_closed_database_context_does_not_block_project_folder_rename(tmp_path):
             "SELECT value FROM app_meta WHERE key = 'schema_version'"
         ).fetchone()
 
-    target = tmp_path / "Legacy.drsp"
-    root.rename(target)
+    target = tmp_path / "Renamed.smproj"
+    original.rename(target)
 
-    assert not root.exists()
-    assert target.is_dir()
-    assert (target / "project.db").is_file()
+    assert not original.exists()
+    assert target.is_file()
