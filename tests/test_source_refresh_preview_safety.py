@@ -5,6 +5,7 @@ import sqlite3
 
 from openpyxl import Workbook
 
+from core.app_paths import database_backups_dir
 from core.database import Database, SCHEMA_VERSION
 from core.project import Project
 from core.project_settings import ProjectSettings
@@ -40,16 +41,16 @@ def _project(tmp_path) -> tuple[Project, object]:
     _write_source(file_path, talent="Brama")
 
     project = Project(
-        root=tmp_path / "project",
+        file_path=tmp_path / "preview-test.smproj",
         settings=ProjectSettings(
             project_name="Preview Test",
             source_folder=str(source),
             episode_before="第",
             episode_after="集",
         ),
+        project_id="preview-test",
     )
-    project.ensure_structure()
-    project.database.initialize()
+    project.save()
     return project, file_path
 
 
@@ -109,10 +110,9 @@ def test_prepare_is_read_only_then_apply_backs_up_audits_and_changes_cast(tmp_pa
 
     applied = engine.apply(project, prepared)
     assert applied.backup_path
-    backup_path = project.root / "backups" / (
-        __import__("pathlib").Path(applied.backup_path).name
-    )
+    backup_path = __import__("pathlib").Path(applied.backup_path)
     assert backup_path.exists()
+    assert backup_path.parent == project.backups_folder
 
     with project.database.connect() as connection:
         cast_after = connection.execute(
@@ -146,7 +146,8 @@ def test_schema_migration_creates_pre_migration_backup(tmp_path):
 
     database.initialize()
 
-    backups = list((tmp_path / "backups").glob("project_before_schema_*.db"))
+    backup_dir = database_backups_dir(database.path) / "Migrations"
+    backups = list(backup_dir.glob("project_before_schema_*.db"))
     assert backups
 
     connection = sqlite3.connect(backups[0])
