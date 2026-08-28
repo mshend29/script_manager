@@ -76,7 +76,6 @@ def test_keyboard_shortcuts_stage_does_not_add_later_help_features():
     ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
 
     for action in (
-        "help.check_updates",
         "help.report_problem",
         "help.about",
     ):

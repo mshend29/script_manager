@@ -19,9 +19,11 @@ from PySide6.QtWidgets import (
 
 from app.ribbon import Ribbon
 from app.source_sync_worker import SourceSyncWorker
+from app.update_check_worker import UpdateCheckWorker
 from core.app_paths import project_backups_dir
 from core.project_manager import ProjectManager
 from core.recent_projects import RecentProjectsStore
+from core.version import APP_VERSION
 from dialogs.new_project_dialog import NewProjectDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
 from dialogs.source_refresh_preview_dialog import SourceRefreshPreviewDialog
@@ -68,6 +70,8 @@ class MainWindow(QMainWindow):
         self._source_sync_operation = ""
         self._pending_source_apply_report: SourceSyncReport | None = None
         self._pending_source_apply_title = ""
+        self._update_check_thread: QThread | None = None
+        self._update_check_worker: UpdateCheckWorker | None = None
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -113,6 +117,10 @@ class MainWindow(QMainWindow):
 
         tools_page = self.pages["TOOLS"]
         tools_page.action_requested.connect(self.handle_ribbon_action)
+
+        help_page = self.pages["HELP"]
+        help_page.action_requested.connect(self.handle_ribbon_action)
+        help_page.release_requested.connect(self.open_update_release)
 
         self._init_source_sync_progress_ui()
         self._init_keyboard_shortcuts()
@@ -1532,6 +1540,96 @@ class MainWindow(QMainWindow):
         page.show_keyboard_shortcuts()
         self.statusBar().showMessage("Keyboard Shortcuts", 3000)
 
+    def check_for_updates(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+
+        if self._update_check_running():
+            self.statusBar().showMessage(
+                "Update check masih berjalan",
+                3000,
+            )
+            return
+
+        page.show_update_checking(APP_VERSION)
+        self.statusBar().showMessage("Checking for updates…")
+
+        thread = QThread(self)
+        worker = UpdateCheckWorker()
+        worker.moveToThread(thread)
+
+        thread.started.connect(worker.run)
+        worker.completed.connect(self._update_check_completed)
+        worker.failed.connect(self._update_check_failed)
+
+        worker.completed.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.completed.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(self._update_check_thread_finished)
+        thread.finished.connect(thread.deleteLater)
+
+        self._update_check_thread = thread
+        self._update_check_worker = worker
+        thread.start()
+
+    def _update_check_running(self) -> bool:
+        thread = self._update_check_thread
+        return thread is not None and thread.isRunning()
+
+    @Slot(object)
+    def _update_check_completed(self, result: object) -> None:
+        page = self.pages["HELP"]
+        page.show_update_result(result)
+
+        if getattr(result, "update_available", False):
+            latest = str(
+                getattr(result, "latest_version", "") or ""
+            )
+            self.statusBar().showMessage(
+                f"Update available: {latest}",
+                5000,
+            )
+        elif getattr(result, "has_release", False):
+            self.statusBar().showMessage(
+                "Script Manager is up to date",
+                5000,
+            )
+        else:
+            self.statusBar().showMessage(
+                "No GitHub Release published yet",
+                5000,
+            )
+
+    @Slot(object)
+    def _update_check_failed(self, exc: object) -> None:
+        self.pages["HELP"].show_update_error(
+            str(exc),
+            APP_VERSION,
+        )
+        self.statusBar().showMessage(
+            "Update check failed",
+            5000,
+        )
+
+    @Slot()
+    def _update_check_thread_finished(self) -> None:
+        self._update_check_thread = None
+        self._update_check_worker = None
+
+    def open_update_release(self, url: str) -> None:
+        target = str(url or "").strip()
+        if not target:
+            return
+
+        opened = QDesktopServices.openUrl(QUrl(target))
+        if not opened:
+            QMessageBox.warning(
+                self,
+                "Check for Updates",
+                "Sistem tidak dapat membuka halaman release.",
+            )
+
     # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
@@ -1603,6 +1701,7 @@ class MainWindow(QMainWindow):
             "help.getting_started": self.open_getting_started,
             "help.user_guide": self.open_user_guide,
             "help.keyboard_shortcuts": self.open_keyboard_shortcuts,
+            "help.check_updates": self.check_for_updates,
         }
 
         handler = handlers.get(action_id)
@@ -1617,6 +1716,16 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event) -> None:
+        if self._update_check_running():
+            event.ignore()
+            QMessageBox.information(
+                self,
+                "Check for Updates",
+                "Pemeriksaan update sedang berjalan. "
+                "Aplikasi tetap terbuka sampai pemeriksaan selesai.",
+            )
+            return
+
         if self._source_sync_running():
             event.ignore()
             QMessageBox.information(
