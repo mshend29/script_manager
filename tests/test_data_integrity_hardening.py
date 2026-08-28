@@ -119,5 +119,5 @@ def test_two_backups_with_identical_timestamp_do_not_overwrite(tmp_path, monkeyp
     assert first != second
     assert first.exists()
     assert second.exists()
-    assert first.name == "project_manual_20260824_162938_123456.db"
-    assert second.name == "project_manual_20260824_162938_123456_1.db"
+    assert first.name == "project_manual_20260824_162938_123456.smproj"
+    assert second.name == "project_manual_20260824_162938_123456_1.smproj"
