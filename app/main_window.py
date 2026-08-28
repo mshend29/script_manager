@@ -39,6 +39,7 @@ from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
 from pages.tracking_page import TrackingPage
+from services.application_info_service import ApplicationInfoService
 from services.backup_service import BackupService
 from services.problem_report_service import ProblemReportService
 from services.project_dashboard_service import ProjectDashboardService
@@ -1632,6 +1633,15 @@ class MainWindow(QMainWindow):
                 "Sistem tidak dapat membuka halaman release.",
             )
 
+    def open_about(self) -> None:
+        self.ribbon.select_tab("HELP")
+        info = ApplicationInfoService().build()
+        self.pages["HELP"].show_about(info)
+        self.statusBar().showMessage(
+            f"About {info.app_name} {info.app_version}",
+            3000,
+        )
+
     def report_problem(self) -> None:
         self.ribbon.select_tab("HELP")
         report = ProblemReportService().build()
@@ -1728,6 +1738,7 @@ class MainWindow(QMainWindow):
             "help.keyboard_shortcuts": self.open_keyboard_shortcuts,
             "help.check_updates": self.check_for_updates,
             "help.report_problem": self.report_problem,
+            "help.about": self.open_about,
         }
 
         handler = handlers.get(action_id)
