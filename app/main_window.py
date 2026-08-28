@@ -7,6 +7,7 @@ from PySide6.QtCore import QThread, Qt, QUrl, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QFileDialog,
+    QInputDialog,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -18,7 +19,9 @@ from PySide6.QtWidgets import (
 
 from app.ribbon import Ribbon
 from app.source_sync_worker import SourceSyncWorker
+from core.app_paths import project_backups_dir
 from core.project_manager import ProjectManager
+from core.recent_projects import RecentProjectsStore
 from dialogs.new_project_dialog import NewProjectDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
 from dialogs.source_refresh_preview_dialog import SourceRefreshPreviewDialog
@@ -55,6 +58,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1100, 700)
 
         self.project_manager = ProjectManager()
+        self.recent_projects = RecentProjectsStore()
         self.source_sync_engine = SourceSyncEngine()
         self._source_sync_thread: QThread | None = None
         self._source_sync_worker: SourceSyncWorker | None = None
@@ -173,6 +177,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
         )
+        self._record_recent_project(project)
         self.statusBar().showMessage(
             f"Project created: {project.project_file}",
             5000,
@@ -232,11 +237,43 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
         )
+        self._record_recent_project(project)
         self.statusBar().showMessage(
             f"Project opened: {project.project_file}",
             5000,
         )
         return True
+
+    def open_recent_project(self) -> None:
+        if self._block_project_change_during_sync("Open Recent"):
+            return
+
+        recent = self.recent_projects.list(existing_only=True)
+        if not recent:
+            QMessageBox.information(
+                self,
+                "Open Recent",
+                "Belum ada recent project yang masih tersedia.",
+            )
+            return
+
+        labels = [
+            f"{item.project_name or Path(item.file_path).stem} — {item.file_path}"
+            for item in recent
+        ]
+        selected, accepted = QInputDialog.getItem(
+            self,
+            "Open Recent",
+            "Recent Projects",
+            labels,
+            0,
+            False,
+        )
+        if not accepted or not selected:
+            return
+
+        index = labels.index(selected)
+        self.open_project_path(recent[index].file_path)
 
     def save_project(self) -> None:
         if not self.project_manager.is_open:
@@ -258,7 +295,220 @@ class MainWindow(QMainWindow):
             return
 
         self.refresh_project_page()
+        current = self.project_manager.current
+        if current is not None:
+            self._record_recent_project(current)
         self.statusBar().showMessage("Project saved", 3000)
+
+    def save_project_as(self) -> None:
+        if self._block_project_change_during_sync("Save Project As"):
+            return
+
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Save Project As",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        default_path = project.project_file.with_name(
+            f"{project.project_file.stem} Copy.smproj"
+        )
+        target, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Project As",
+            str(default_path),
+            "Script Management Project (*.smproj)",
+        )
+        if not target:
+            return
+
+        old_path = project.project_file
+        try:
+            saved = self.project_manager.save_as(target)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Save Project As",
+                f"Save As gagal.\n\n{exc}",
+            )
+            return
+
+        self.recent_projects.replace_project_path(
+            project_id=saved.project_id,
+            old_path=old_path,
+            new_path=saved.project_file,
+            project_name=saved.settings.project_name,
+        )
+        self._refresh_after_project_switch(saved)
+        self.statusBar().showMessage(
+            f"Project saved as: {saved.project_file}",
+            5000,
+        )
+
+    def duplicate_project(self) -> None:
+        if self._block_project_change_during_sync("Duplicate Project"):
+            return
+
+        project = self.project_manager.current
+        if project is None:
+            QMessageBox.information(
+                self,
+                "Duplicate Project",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        default_path = project.project_file.with_name(
+            f"{project.project_file.stem} Copy.smproj"
+        )
+        target, _ = QFileDialog.getSaveFileName(
+            self,
+            "Duplicate Project",
+            str(default_path),
+            "Script Management Project (*.smproj)",
+        )
+        if not target:
+            return
+
+        try:
+            duplicated = self.project_manager.duplicate(target)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Duplicate Project",
+                f"Duplicate gagal.\n\n{exc}",
+            )
+            return
+
+        self._record_recent_project(duplicated)
+        self._refresh_after_project_switch(duplicated)
+        self.statusBar().showMessage(
+            f"Duplicate opened: {duplicated.project_file}",
+            5000,
+        )
+
+    def recover_project(self) -> None:
+        if self._block_project_change_during_sync("Recover Project"):
+            return
+
+        recent = self.recent_projects.list(existing_only=False)
+        if not recent:
+            QMessageBox.information(
+                self,
+                "Recover Project",
+                "Belum ada project history untuk mencari backup.",
+            )
+            return
+
+        candidates = []
+        for item in recent:
+            backup_dir = project_backups_dir(item.project_id)
+            backups = sorted(
+                backup_dir.glob("*.smproj"),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            ) if backup_dir.is_dir() else []
+            if backups:
+                candidates.append((item, backups))
+
+        if not candidates:
+            QMessageBox.information(
+                self,
+                "Recover Project",
+                "Tidak ada backup .smproj yang tersedia.",
+            )
+            return
+
+        labels = [
+            (
+                f"{item.project_name or Path(item.file_path).stem} "
+                f"({len(backups)} backup)"
+            )
+            for item, backups in candidates
+        ]
+        selected, accepted = QInputDialog.getItem(
+            self,
+            "Recover Project",
+            "Project",
+            labels,
+            0,
+            False,
+        )
+        if not accepted or not selected:
+            return
+
+        item, backups = candidates[labels.index(selected)]
+        backup_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Recovery Backup",
+            str(backups[0].parent),
+            "Script Management Project Backup (*.smproj)",
+        )
+        if not backup_path:
+            return
+
+        original = Path(item.file_path).expanduser()
+        default_target = (
+            original
+            if not original.exists()
+            else original.with_name(f"{original.stem} Recovered.smproj")
+        )
+        target, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Recovered Project",
+            str(default_target),
+            "Script Management Project (*.smproj)",
+        )
+        if not target:
+            return
+
+        try:
+            recovered = self.project_manager.recover_from_backup(
+                backup_path,
+                target,
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Recover Project",
+                f"Recovery gagal.\n\n{exc}",
+            )
+            return
+
+        self._record_recent_project(recovered)
+        self._refresh_after_project_switch(recovered)
+        QMessageBox.information(
+            self,
+            "Recover Project",
+            (
+                "Project berhasil direcover.\n\n"
+                f"{recovered.project_file}"
+            ),
+        )
+
+    def _record_recent_project(self, project) -> None:
+        try:
+            self.recent_projects.add(
+                project_id=project.project_id,
+                project_name=project.settings.project_name,
+                file_path=project.project_file,
+            )
+        except Exception:
+            pass
+
+    def _refresh_after_project_switch(self, project) -> None:
+        self._clear_data_pages()
+        self.refresh_project_page()
+        self.setWindowTitle(
+            f"{project.settings.project_name} - Script Manager"
+        )
+        self.pages["TOOLS"].set_project(
+            project,
+            run_diagnostics=False,
+        )
 
     def close_project(self) -> None:
         if self._block_project_change_during_sync("Close Project"):
@@ -1227,7 +1477,11 @@ class MainWindow(QMainWindow):
         handlers = {
             "project.new": self.new_project,
             "project.open": self.open_project,
+            "project.open_recent": self.open_recent_project,
             "project.save": self.save_project,
+            "project.save_as": self.save_project_as,
+            "project.duplicate": self.duplicate_project,
+            "project.recover": self.recover_project,
             "project.settings": self.open_project_settings,
             "project.close": self.close_project,
             "client.drive": self.open_client_drive,
