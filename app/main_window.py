@@ -1239,6 +1239,11 @@ class MainWindow(QMainWindow):
 
     def handle_project_dashboard_action(self, action_key: str) -> None:
         key = str(action_key or "").strip().casefold()
+
+        if key in {"project.open_recent", "project.recover"}:
+            self.handle_ribbon_action(key)
+            return
+
         project = self.project_manager.current
         if project is None:
             return
