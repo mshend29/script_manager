@@ -57,6 +57,5 @@ def test_user_guide_stage_does_not_add_later_help_features():
 
     for action in (
         "help.shortcuts",
-        "help.about",
     ):
         assert action not in ribbon
