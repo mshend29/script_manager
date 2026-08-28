@@ -308,9 +308,8 @@ class Ribbon(QWidget):
                 ("tools.diagnostics", "Run Diagnostics"),
                 ("tools.audit", "Audit History"),
             ]),
-            ("Project Package", [
-                ("tools.convert_drsp", "Convert to .drsp"),
-                ("tools.open_project_folder", "Open Project"),
+            ("Project", [
+                ("tools.open_project_folder", "Open Project Folder"),
             ]),
             ("Database", [
                 ("tools.backup", "Create Backup"),
