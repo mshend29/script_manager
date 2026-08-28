@@ -253,7 +253,7 @@ class Ribbon(QWidget):
     action_triggered = Signal(str)
     tracking_status_change_requested = Signal(str)
 
-    TAB_ORDER = ["PROJECT", "SCRIPT", "DIALOG", "TRACKING", "DATA", "TOOLS"]
+    TAB_ORDER = ["PROJECT", "SCRIPT", "DIALOG", "TRACKING", "DATA", "TOOLS", "HELP"]
 
     TAB_GROUPS = {
         "PROJECT": [
@@ -330,6 +330,11 @@ class Ribbon(QWidget):
                 ("tools.open_main_drive", "Main Drive"),
                 ("tools.open_material_drive", "Material Drive"),
                 ("tools.open_delivery_drive", "Delivery Drive"),
+            ]),
+        ],
+        "HELP": [
+            ("Guide", [
+                ("help.getting_started", "Getting Started"),
             ]),
         ],
     }

@@ -32,6 +32,7 @@ from import_engine.source_sync import (
 )
 from pages.data_page import DataPage
 from pages.dialog_page import DialogPage
+from pages.help_page import HelpPage
 from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
@@ -48,6 +49,7 @@ class MainWindow(QMainWindow):
         "TRACKING",
         "DATA",
         "TOOLS",
+        "HELP",
     ]
 
     def __init__(self):
@@ -85,6 +87,7 @@ class MainWindow(QMainWindow):
             "TRACKING": TrackingPage(),
             "DATA": DataPage(),
             "TOOLS": ToolsPage(),
+            "HELP": HelpPage(),
         }
 
         for page_name in self.PAGE_ORDER:
@@ -1476,6 +1479,16 @@ class MainWindow(QMainWindow):
         )
 
     # ------------------------------------------------------------------
+    # HELP
+    # ------------------------------------------------------------------
+
+    def open_getting_started(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+        page.show_getting_started()
+        self.statusBar().showMessage("Getting Started", 3000)
+
+    # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
 
@@ -1543,6 +1556,7 @@ class MainWindow(QMainWindow):
             "tools.open_delivery_drive": (
                 lambda: self.open_tools_drive("delivery")
             ),
+            "help.getting_started": self.open_getting_started,
         }
 
         handler = handlers.get(action_id)
