@@ -11,12 +11,30 @@ class DatabaseCompatibilityError(RuntimeError):
     pass
 
 
+class _ManagedConnection(sqlite3.Connection):
+    """sqlite3 connection that closes when used as a context manager.
+
+    sqlite3.Connection.__exit__ only commits/rolls back; it does not close the
+    file handle. That behavior prevents directory rename/move on Windows while
+    project.db is still open.
+    """
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 class Database:
     def __init__(self, path: str | Path):
         self.path = Path(path)
 
     def connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path)
+        connection = sqlite3.connect(
+            self.path,
+            factory=_ManagedConnection,
+        )
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
