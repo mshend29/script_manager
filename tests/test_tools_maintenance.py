@@ -104,7 +104,7 @@ def test_project_diagnostics_reports_database_and_folder_health(tmp_path):
     delivery.mkdir()
 
     project = Project(
-        root=root,
+        file_path=root / "Tools Test.smproj",
         settings=ProjectSettings(
             project_name="Tools Test",
             source_folder=str(source),
@@ -112,9 +112,9 @@ def test_project_diagnostics_reports_database_and_folder_health(tmp_path):
             delivery_folder=str(delivery),
             main_drive_url="https://example.com/main",
         ),
+        project_id="tools-test",
     )
-    project.ensure_structure()
-    project.database.initialize()
+    project.save()
 
     diagnostics = ProjectDiagnosticsService(project).run()
     checks = {check.key: check for check in diagnostics.checks}
