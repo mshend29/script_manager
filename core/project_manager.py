@@ -129,6 +129,26 @@ class ProjectManager:
 
         saved = Project.load(target)
         saved.save()
+
+        try:
+            from services.audit_service import AuditService
+
+            AuditService(saved.database).record(
+                event_type="PROJECT",
+                action="SAVE_AS",
+                entity_type="project",
+                summary=(
+                    f"Project saved as {target.name}."
+                ),
+                details={
+                    "source_file": str(project.project_file),
+                    "target_file": str(target),
+                    "project_id": saved.project_id,
+                },
+            )
+        except Exception:
+            pass
+
         self.current = saved
         return saved
 
