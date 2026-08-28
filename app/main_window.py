@@ -197,15 +197,33 @@ class MainWindow(QMainWindow):
         if not project_path:
             return
 
+        self.open_project_path(project_path)
+
+    def open_project_path(
+        self,
+        project_path: str | Path,
+        *,
+        show_errors: bool = True,
+    ) -> bool:
+        if self._source_sync_running():
+            if show_errors:
+                QMessageBox.information(
+                    self,
+                    "Open Project",
+                    "Source Import/Refresh sedang berjalan.",
+                )
+            return False
+
         try:
             project = self.project_manager.open(project_path)
         except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Open Project",
-                f"Gagal membuka project.\n\n{exc}",
-            )
-            return
+            if show_errors:
+                QMessageBox.critical(
+                    self,
+                    "Open Project",
+                    f"Gagal membuka project.\n\n{exc}",
+                )
+            return False
 
         self._clear_data_pages()
         self.refresh_project_page()
@@ -216,6 +234,7 @@ class MainWindow(QMainWindow):
             f"Project opened: {project.root}",
             5000,
         )
+        return True
 
     def convert_project_to_drsp(self) -> None:
         if self._block_project_change_during_sync("Convert to .drsp"):
