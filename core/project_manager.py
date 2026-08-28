@@ -40,9 +40,15 @@ class ProjectManager:
         parent = Path(parent_folder).expanduser()
         parent.mkdir(parents=True, exist_ok=True)
 
-        folder_name = self._safe_folder_name(
-            normalized.project_code or project_name
-        )
+        raw_folder_name = normalized.project_code or project_name
+        if raw_folder_name.casefold().endswith(
+            PROJECT_PACKAGE_EXTENSION.casefold()
+        ):
+            raw_folder_name = raw_folder_name[
+                :-len(PROJECT_PACKAGE_EXTENSION)
+            ]
+
+        folder_name = self._safe_folder_name(raw_folder_name)
 
         project_root = parent / f"{folder_name}{PROJECT_PACKAGE_EXTENSION}"
 
@@ -176,6 +182,10 @@ class ProjectManager:
                     for key, raw in original_paths.items():
                         setattr(project.settings, key, raw)
                     project.settings.project_folder = str(old_root)
+                    try:
+                        project.save()
+                    except Exception:
+                        pass
             except OSError:
                 pass
             raise
