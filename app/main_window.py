@@ -469,6 +469,7 @@ class MainWindow(QMainWindow):
             recovered = self.project_manager.recover_from_backup(
                 backup_path,
                 target,
+                expected_project_id=item.project_id,
             )
         except Exception as exc:
             QMessageBox.critical(
