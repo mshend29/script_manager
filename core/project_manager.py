@@ -181,6 +181,8 @@ class ProjectManager:
         self,
         backup_file: str | Path,
         target_file: str | Path,
+        *,
+        expected_project_id: str = "",
     ) -> Project:
         backup = Path(backup_file).expanduser().resolve(strict=False)
         if not backup.is_file():
@@ -189,11 +191,17 @@ class ProjectManager:
             )
 
         try:
-            Project.load(backup)
+            backup_project = Project.load(backup)
         except (ProjectFormatError, FileNotFoundError) as exc:
             raise ProjectError(
                 f"Backup bukan .smproj yang valid: {exc}"
             ) from exc
+
+        expected_id = str(expected_project_id or "").strip()
+        if expected_id and backup_project.project_id != expected_id:
+            raise ProjectError(
+                "Backup berasal dari project yang berbeda."
+            )
 
         target = self._normalize_target_file(target_file)
         if target.exists():
