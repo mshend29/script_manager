@@ -104,6 +104,32 @@ def test_recover_from_snapshot_restores_data_to_new_smproj(tmp_path):
     assert _talents(recovered) == ["Before"]
 
 
+
+def test_recovery_rejects_backup_from_different_project(tmp_path):
+    manager = ProjectManager()
+    first = manager.create(
+        ProjectSettings(project_name="AA23"),
+        tmp_path,
+    )
+    first.save()
+    backup = tmp_path / "AA23 Snapshot.smproj"
+    _snapshot(first.project_file, backup)
+
+    manager.create(
+        ProjectSettings(project_name="BB01"),
+        tmp_path,
+    )
+
+    import pytest
+
+    with pytest.raises(Exception, match="project yang berbeda"):
+        manager.recover_from_backup(
+            backup,
+            tmp_path / "Wrong Recovery.smproj",
+            expected_project_id="different-project-id",
+        )
+
+
 def test_recent_projects_tracks_latest_path_for_same_identity(tmp_path):
     store = RecentProjectsStore(
         tmp_path / "recent_projects.json",
