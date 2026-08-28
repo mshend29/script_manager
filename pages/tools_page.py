@@ -71,14 +71,6 @@ class ToolsPage(PageShell):
             )
             context.add_widget(button)
 
-        context.add_section_title("PROJECT PACKAGE")
-        self.convert_drsp_button = QPushButton("Convert to .drsp")
-        self.convert_drsp_button.setProperty("secondary", True)
-        self.convert_drsp_button.clicked.connect(
-            lambda: self.action_requested.emit("tools.convert_drsp")
-        )
-        context.add_widget(self.convert_drsp_button)
-
         context.add_stretch()
 
         workspace = QWidget()
@@ -262,14 +254,6 @@ class ToolsPage(PageShell):
         run_diagnostics: bool = True,
     ) -> None:
         self._project = project
-        self.convert_drsp_button.setEnabled(
-            project is not None and not project.is_package
-        )
-        self.convert_drsp_button.setText(
-            "Project is .drsp"
-            if project is not None and project.is_package
-            else "Convert to .drsp"
-        )
 
         if project is None:
             self.reset_view()
@@ -401,5 +385,3 @@ class ToolsPage(PageShell):
             card.value_label.setText(value)
         self.diagnostics_table.setRowCount(0)
         self.audit_table.setRowCount(0)
-        self.convert_drsp_button.setEnabled(False)
-        self.convert_drsp_button.setText("Convert to .drsp")
