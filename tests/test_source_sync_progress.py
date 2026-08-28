@@ -33,17 +33,16 @@ def _make_project(tmp_path) -> Project:
     _write_source(source_folder / "AA23-第1集_中文.xlsx")
 
     project = Project(
-        root=tmp_path / "project",
+        file_path=tmp_path / "progress-test.smproj",
         settings=ProjectSettings(
             project_name="Progress Test",
-            project_folder=str(tmp_path / "project"),
             source_folder=str(source_folder),
             episode_before="第",
             episode_after="集",
         ),
+        project_id="progress-test",
     )
-    project.ensure_structure()
-    project.database.initialize()
+    project.save()
     return project
 
 
