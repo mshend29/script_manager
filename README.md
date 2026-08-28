@@ -112,8 +112,22 @@ Ribbon utama:
 - TRACKING
 - DATA
 - TOOLS
+- HELP
 
 Fitur yang sudah tersedia mencakup project dashboard, source import/refresh, script/dialog views, recording checkbox persistence, character/talent mapping, validation, tracking, backup/restore, diagnostics, dan audit history.
+
+## Help
+
+Tab HELP menyediakan:
+
+- Getting Started
+- User Guide
+- Keyboard Shortcuts
+- Check for Updates
+- Report a Problem
+- About Script Manager
+
+Dokumentasi utama tersedia offline. Check for Updates memeriksa GitHub Releases secara manual dan tidak mengunduh atau memasang update otomatis. Report a Problem hanya menyiapkan template GitHub Issue beserta environment teknis dasar; data project, client, source path, Drive URL, dialogue text, dan isi naskah tidak dimasukkan otomatis.
 
 ## Windows File Association
 

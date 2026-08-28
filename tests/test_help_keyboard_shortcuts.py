@@ -70,12 +70,3 @@ def test_keyboard_shortcuts_page_explains_refresh_data_semantics():
     assert "F5 bukan sekadar refresh tampilan" in content
     assert "Refresh Data" in content
     assert "source Excel" in content
-
-
-def test_keyboard_shortcuts_stage_does_not_add_later_help_features():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
-
-    for action in (
-        "help.about",
-    ):
-        assert action not in ribbon

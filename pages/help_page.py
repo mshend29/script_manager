@@ -22,6 +22,7 @@ GETTING_STARTED_FILE = HELP_ROOT / "getting_started.html"
 USER_GUIDE_FILE = HELP_ROOT / "user_guide.html"
 KEYBOARD_SHORTCUTS_FILE = HELP_ROOT / "keyboard_shortcuts.html"
 REPORT_PROBLEM_FILE = HELP_ROOT / "report_problem.html"
+ABOUT_FILE = HELP_ROOT / "about.html"
 
 
 class HelpPage(PageShell):
@@ -62,6 +63,13 @@ class HelpPage(PageShell):
             lambda: self.action_requested.emit("help.check_updates")
         )
         context.add_widget(self.check_updates_button)
+
+        self.about_button = QPushButton("About Script Manager")
+        self.about_button.setProperty("secondary", True)
+        self.about_button.clicked.connect(
+            lambda: self.action_requested.emit("help.about")
+        )
+        context.add_widget(self.about_button)
 
         context.add_section_title("SUPPORT")
         self.report_problem_button = QPushButton("Report a Problem")
@@ -131,6 +139,7 @@ class HelpPage(PageShell):
             self.keyboard_shortcuts_button,
             self.check_updates_button,
             self.report_problem_button,
+            self.about_button,
         ):
             is_active = button is active
             button.setProperty("primary", is_active)
@@ -275,6 +284,52 @@ class HelpPage(PageShell):
             f"<p>{escape(str(message))}</p>"
             "<p>Project dan data lokal tidak diubah.</p>"
         )
+
+    def show_about(self, info) -> None:
+        self._hide_release_button()
+        self._hide_problem_buttons()
+        self._set_active_button(self.about_button)
+        self.title.setText("About Script Manager")
+        self.subtitle.setText(
+            "Informasi aplikasi, project format, database schema, dan runtime."
+        )
+
+        try:
+            html = ABOUT_FILE.read_text(encoding="utf-8")
+        except OSError as exc:
+            self.browser.setPlainText(
+                "About Script Manager tidak dapat dimuat.\n\n"
+                f"{exc}"
+            )
+            return
+
+        values = {
+            "APP_NAME": getattr(info, "app_name", ""),
+            "APP_VERSION": getattr(info, "app_version", ""),
+            "PROJECT_EXTENSION": getattr(info, "project_extension", ""),
+            "PROJECT_FORMAT_NAME": getattr(info, "project_format_name", ""),
+            "PROJECT_FORMAT_ID": getattr(info, "project_format_id", ""),
+            "PROJECT_FORMAT_VERSION": getattr(
+                info, "project_format_version", ""
+            ),
+            "DATABASE_SCHEMA_VERSION": getattr(
+                info, "database_schema_version", ""
+            ),
+            "PYTHON_VERSION": getattr(info, "python_version", ""),
+            "PYSIDE6_VERSION": getattr(info, "pyside6_version", ""),
+            "OS_NAME": getattr(info, "os_name", ""),
+            "ARCHITECTURE": getattr(info, "architecture", ""),
+            "REPOSITORY": getattr(info, "repository", ""),
+        }
+
+        for key, value in values.items():
+            html = html.replace(
+                "{{" + key + "}}",
+                escape(str(value)),
+            )
+
+        self.browser.setHtml(html)
+        self.browser.verticalScrollBar().setValue(0)
 
     def show_report_problem(self, report) -> None:
         self._hide_release_button()

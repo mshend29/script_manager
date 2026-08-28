@@ -57,9 +57,3 @@ def test_report_problem_environment_is_rendered_from_service_result():
     assert 'html.replace("{{ENVIRONMENT_ROWS}}", rows)' in page
     assert 'getattr(report, "issue_url", "")' in page
     assert 'getattr(report, "body", "")' in page
-
-
-def test_report_problem_stage_does_not_add_about_yet():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
-
-    assert "help.about" not in ribbon

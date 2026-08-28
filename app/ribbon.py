@@ -340,6 +340,7 @@ class Ribbon(QWidget):
             ]),
             ("Application", [
                 ("help.check_updates", "Check for Updates"),
+                ("help.about", "About Script Manager"),
             ]),
             ("Support", [
                 ("help.report_problem", "Report a Problem"),
