@@ -1,101 +1,129 @@
 # Script Manager
 
-Fondasi baru aplikasi manajemen naskah dengan UI ribbon ala Excel.
+Aplikasi desktop untuk manajemen naskah drama pendek vertikal, recording dialogue, character/talent resolution, tracking stem, dan delivery.
 
 ## Requirement
 
 - Python 3.13
 - PySide6
-- SQLite sudah termasuk di Python standard library
+- SQLite (tersedia di Python standard library)
 
 ## Menjalankan
 
 PowerShell:
 
 ```powershell
-cd script_manager_starter
 py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-## Tahap yang sudah aktif
+Project `.smproj` juga dapat diberikan sebagai argumen:
 
-### Application Shell
+```powershell
+python main.py "D:\Projects\AA23.smproj"
+```
 
-- Ribbon PROJECT
+## Project Format
+
+Script Manager menggunakan satu file project:
+
+```text
+AA23.smproj
+```
+
+`.smproj` adalah SQLite database yang menyimpan data dan konfigurasi project. File source atau output tidak di-embed ke dalam project.
+
+Data yang berada di dalam `.smproj` meliputi antara lain:
+
+- Project Settings
+- source file metadata dan fingerprint
+- episodes dan dialogues
+- characters dan talents
+- character/talent mapping
+- dialog cast
+- recording status
+- stem/tracking status
+- validation dan audit history
+- internal format/schema metadata
+
+Referensi eksternal meliputi:
+
+- Source Script Folder
+- source Excel `.xlsx` / `.xlsm`
+- Stem / Mixdown / Export Folder
+- Setoran Folder
+- Main Drive / Material / Delivery URL
+
+## Project Lifecycle
+
+PROJECT menyediakan:
+
+- New Project
+- Open Project
+- Open Recent
+- Save
+- Save As
+- Duplicate Project
+- Recover Project
+- Project Settings
+- Close Project
+
+Aturan identitas project:
+
+- **Save As** mempertahankan `project_id`.
+- **Duplicate Project** membuat `project_id` baru.
+- **Recover Project** membuat file recovery baru dari snapshot backup.
+
+Backup project disimpan sebagai `.smproj` di application data per-user, bukan di folder tempat project berada. Logs juga disimpan di application data.
+
+## Source Import / Refresh
+
+Alur source:
+
+```text
+Source Excel
+    ↓
+Scan / fingerprint
+    ↓
+Inspect workbook
+    ↓
+Parse
+    ↓
+Normalize
+    ↓
+Character / Talent resolution
+    ↓
+Validation
+    ↓
+Commit to .smproj
+```
+
+Refresh hanya memproses file yang New / Changed / Restored. Data aplikasi seperti recording status dan downstream tracking dipertahankan sesuai aturan sinkronisasi.
+
+## Workspace
+
+Ribbon utama:
+
+- PROJECT
 - SCRIPT
 - DIALOG
 - TRACKING
 - DATA
 - TOOLS
-- Context sidebar berbeda per halaman
-- Workspace
-- Status bar
 
-### Project System
+Fitur yang sudah tersedia mencakup project dashboard, source import/refresh, script/dialog views, recording checkbox persistence, character/talent mapping, validation, tracking, backup/restore, diagnostics, dan audit history.
 
-Tombol berikut sudah berfungsi:
+## Windows File Association
 
-- New Project
-- Open Project
-- Save
-- Project Settings
-- Close
-- Open Client Drive
-
-New Project membuat:
+Fondasi association `.smproj` sudah tersedia di kode melalui spesifikasi:
 
 ```text
-PROJECT_FOLDER/
-├── project.json
-├── project.db
-├── backups/
-└── logs/
+Extension : .smproj
+Prog ID   : ScriptManager.Project
+File Type : Script Management Project
+Open      : ScriptManager.exe "%1"
 ```
 
-### project.json
-
-Menyimpan konfigurasi project:
-
-- Project Name
-- Project Code
-- Client
-- Start Date
-- Project Location
-- Source Folder
-- delimiter sebelum nomor episode
-- delimiter setelah nomor episode
-- Main Drive URL
-- Material Drive URL
-- Delivery / Setoran URL
-
-### project.db
-
-SQLite schema awal:
-
-- app_meta
-- source_files
-- episodes
-- characters
-- talents
-- character_talent
-- dialogues
-- dialog_cast
-- recording_status
-- stem_status
-
-Database ini sengaja memisahkan data source dari progress recording.
-
-## Belum aktif
-
-- Import Source
-- Refresh Data
-- Excel scanner/parser
-- auto character/talent resolution
-- data binding Script
-- recording checkbox persistence
-- Tracking calculation
-
-Tahap berikutnya: **Import / Refresh Engine**.
+Registrasi ke Windows belum dilakukan otomatis dari aplikasi. Association akan dipasang melalui installer saat packaging aplikasi sudah dibuat.
