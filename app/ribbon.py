@@ -338,6 +338,9 @@ class Ribbon(QWidget):
                 ("help.user_guide", "User Guide"),
                 ("help.keyboard_shortcuts", "Keyboard Shortcuts"),
             ]),
+            ("Application", [
+                ("help.check_updates", "Check for Updates"),
+            ]),
         ],
     }
 
