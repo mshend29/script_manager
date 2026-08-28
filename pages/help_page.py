@@ -5,6 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QApplication,
     QLabel,
     QPushButton,
     QTextBrowser,
@@ -20,11 +21,13 @@ HELP_ROOT = Path(__file__).resolve().parents[1] / "resources" / "help"
 GETTING_STARTED_FILE = HELP_ROOT / "getting_started.html"
 USER_GUIDE_FILE = HELP_ROOT / "user_guide.html"
 KEYBOARD_SHORTCUTS_FILE = HELP_ROOT / "keyboard_shortcuts.html"
+REPORT_PROBLEM_FILE = HELP_ROOT / "report_problem.html"
 
 
 class HelpPage(PageShell):
     action_requested = Signal(str)
     release_requested = Signal(str)
+    issue_requested = Signal(str)
 
     def __init__(self, parent: QWidget | None = None):
         context = ContextPanel("HELP")
@@ -59,6 +62,14 @@ class HelpPage(PageShell):
             lambda: self.action_requested.emit("help.check_updates")
         )
         context.add_widget(self.check_updates_button)
+
+        context.add_section_title("SUPPORT")
+        self.report_problem_button = QPushButton("Report a Problem")
+        self.report_problem_button.setProperty("secondary", True)
+        self.report_problem_button.clicked.connect(
+            lambda: self.action_requested.emit("help.report_problem")
+        )
+        context.add_widget(self.report_problem_button)
         context.add_stretch()
 
         workspace = QWidget()
@@ -90,7 +101,25 @@ class HelpPage(PageShell):
         )
         root.addWidget(self.open_release_button)
 
+        self.open_issue_button = QPushButton("Open GitHub Issue")
+        self.open_issue_button.setProperty("primary", True)
+        self.open_issue_button.hide()
+        self.open_issue_button.clicked.connect(
+            self._open_issue_clicked
+        )
+        root.addWidget(self.open_issue_button)
+
+        self.copy_report_button = QPushButton("Copy Report Template")
+        self.copy_report_button.setProperty("secondary", True)
+        self.copy_report_button.hide()
+        self.copy_report_button.clicked.connect(
+            self._copy_report_clicked
+        )
+        root.addWidget(self.copy_report_button)
+
         self._release_url = ""
+        self._issue_url = ""
+        self._problem_report_text = ""
 
         super().__init__(context, workspace, parent)
         self.show_getting_started()
@@ -101,6 +130,7 @@ class HelpPage(PageShell):
             self.user_guide_button,
             self.keyboard_shortcuts_button,
             self.check_updates_button,
+            self.report_problem_button,
         ):
             is_active = button is active
             button.setProperty("primary", is_active)
@@ -110,6 +140,7 @@ class HelpPage(PageShell):
 
     def show_getting_started(self) -> None:
         self._hide_release_button()
+        self._hide_problem_buttons()
         self._set_active_button(self.getting_started_button)
         self.title.setText("Getting Started")
         self.subtitle.setText(
@@ -130,6 +161,7 @@ class HelpPage(PageShell):
 
     def show_user_guide(self) -> None:
         self._hide_release_button()
+        self._hide_problem_buttons()
         self._set_active_button(self.user_guide_button)
         self.title.setText("User Guide")
         self.subtitle.setText(
@@ -150,6 +182,7 @@ class HelpPage(PageShell):
 
     def show_keyboard_shortcuts(self) -> None:
         self._hide_release_button()
+        self._hide_problem_buttons()
         self._set_active_button(self.keyboard_shortcuts_button)
         self.title.setText("Keyboard Shortcuts")
         self.subtitle.setText(
@@ -169,6 +202,7 @@ class HelpPage(PageShell):
         self.browser.verticalScrollBar().setValue(0)
 
     def show_update_checking(self, current_version: str) -> None:
+        self._hide_problem_buttons()
         self._set_active_button(self.check_updates_button)
         self._hide_release_button()
         self.check_updates_button.setEnabled(False)
@@ -183,6 +217,7 @@ class HelpPage(PageShell):
         )
 
     def show_update_result(self, result) -> None:
+        self._hide_problem_buttons()
         self._set_active_button(self.check_updates_button)
         self.check_updates_button.setEnabled(True)
 
@@ -227,6 +262,7 @@ class HelpPage(PageShell):
         self.browser.setHtml(f"<h2>{heading}</h2>{body}")
 
     def show_update_error(self, message: str, current_version: str) -> None:
+        self._hide_problem_buttons()
         self._set_active_button(self.check_updates_button)
         self.check_updates_button.setEnabled(True)
         self._hide_release_button()
@@ -239,6 +275,72 @@ class HelpPage(PageShell):
             f"<p>{escape(str(message))}</p>"
             "<p>Project dan data lokal tidak diubah.</p>"
         )
+
+    def show_report_problem(self, report) -> None:
+        self._hide_release_button()
+        self._set_active_button(self.report_problem_button)
+        self.title.setText("Report a Problem")
+        self.subtitle.setText(
+            "Buat laporan bug dengan environment info yang privacy-safe."
+        )
+
+        environment = dict(getattr(report, "environment", {}) or {})
+        rows = "".join(
+            "<tr>"
+            f"<td>{escape(str(key))}</td>"
+            f"<td>{escape(str(value))}</td>"
+            "</tr>"
+            for key, value in environment.items()
+        )
+
+        try:
+            html = REPORT_PROBLEM_FILE.read_text(encoding="utf-8")
+        except OSError as exc:
+            self.browser.setPlainText(
+                "Report a Problem tidak dapat dimuat.\n\n"
+                f"{exc}"
+            )
+            self._hide_problem_buttons()
+            return
+
+        self.browser.setHtml(
+            html.replace("{{ENVIRONMENT_ROWS}}", rows)
+        )
+        self.browser.verticalScrollBar().setValue(0)
+
+        self._issue_url = str(
+            getattr(report, "issue_url", "") or ""
+        ).strip()
+        self._problem_report_text = str(
+            getattr(report, "body", "") or ""
+        )
+
+        self.open_issue_button.setVisible(bool(self._issue_url))
+        self.copy_report_button.setVisible(
+            bool(self._problem_report_text)
+        )
+        self.copy_report_button.setText("Copy Report Template")
+
+    def _hide_problem_buttons(self) -> None:
+        self._issue_url = ""
+        self._problem_report_text = ""
+        if hasattr(self, "open_issue_button"):
+            self.open_issue_button.hide()
+        if hasattr(self, "copy_report_button"):
+            self.copy_report_button.hide()
+
+    def _open_issue_clicked(self) -> None:
+        if self._issue_url:
+            self.issue_requested.emit(self._issue_url)
+
+    def _copy_report_clicked(self) -> None:
+        if not self._problem_report_text:
+            return
+
+        QApplication.clipboard().setText(
+            self._problem_report_text
+        )
+        self.copy_report_button.setText("Copied")
 
     def _show_release_button(self, url: str) -> None:
         self._release_url = str(url or "").strip()
