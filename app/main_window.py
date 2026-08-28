@@ -1526,6 +1526,12 @@ class MainWindow(QMainWindow):
         page.show_user_guide()
         self.statusBar().showMessage("User Guide", 3000)
 
+    def open_keyboard_shortcuts(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+        page.show_keyboard_shortcuts()
+        self.statusBar().showMessage("Keyboard Shortcuts", 3000)
+
     # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
@@ -1596,6 +1602,7 @@ class MainWindow(QMainWindow):
             ),
             "help.getting_started": self.open_getting_started,
             "help.user_guide": self.open_user_guide,
+            "help.keyboard_shortcuts": self.open_keyboard_shortcuts,
         }
 
         handler = handlers.get(action_id)
