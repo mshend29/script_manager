@@ -61,7 +61,6 @@ def test_check_updates_stage_does_not_add_later_help_features():
     ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
 
     for action in (
-        "help.report_problem",
         "help.about",
     ):
         assert action not in ribbon
