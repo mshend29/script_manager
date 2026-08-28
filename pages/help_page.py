@@ -69,10 +69,9 @@ class HelpPage(PageShell):
             self.getting_started_button,
             self.user_guide_button,
         ):
-            button.setProperty(
-                "primary" if button is active else "secondary",
-                True,
-            )
+            is_active = button is active
+            button.setProperty("primary", is_active)
+            button.setProperty("secondary", not is_active)
             button.style().unpolish(button)
             button.style().polish(button)
 
