@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Report a Problem — Script Manager</title>
+<style>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #202124;
+  line-height: 1.58;
+  margin: 0;
+  padding: 8px 4px 34px 4px;
+}
+h1 { font-size: 27px; margin: 0 0 6px 0; }
+h2 {
+  font-size: 19px;
+  margin-top: 28px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e1e5ea;
+}
+p, li, td, th { font-size: 14px; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0 18px 0;
+}
+th, td {
+  border: 1px solid #d8dde5;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #f5f7fa; }
+.note, .privacy {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+.note {
+  background: #f5f7fa;
+  border: 1px solid #d8dde5;
+}
+.privacy {
+  background: #eef7f1;
+  border: 1px solid #c7dfce;
+}
+</style>
+</head>
+<body>
+<h1>Report a Problem</h1>
+<p>Gunakan halaman ini untuk menyiapkan laporan bug Script Manager ke GitHub Issues.</p>
+
+<h2>Yang akan disiapkan</h2>
+<ul>
+  <li>template Problem, Steps to reproduce, Expected result, dan Actual result;</li>
+  <li>informasi environment teknis dasar;</li>
+  <li>halaman GitHub Issue baru yang sudah terisi template.</li>
+</ul>
+
+<h2>Environment</h2>
+<table>
+<tr><th>Item</th><th>Value</th></tr>
+{{ENVIRONMENT_ROWS}}
+</table>
+
+<div class="privacy">
+<b>Privacy:</b> laporan yang dibuat aplikasi tidak menyertakan nama project, nama client, Source Folder, path file, Drive URL, dialogue text, atau isi naskah. Anda tetap perlu memeriksa laporan sebelum menekan Submit di GitHub.
+</div>
+
+<h2>Cara melaporkan</h2>
+<ol>
+  <li>Klik <b>Open GitHub Issue</b>.</li>
+  <li>Isi judul bug setelah prefix <b>[Bug]</b>.</li>
+  <li>Lengkapi langkah reproduksi, expected result, dan actual result.</li>
+  <li>Tambahkan screenshot hanya jika aman untuk dibagikan.</li>
+  <li>Periksa kembali isi laporan sebelum Submit.</li>
+</ol>
+
+<div class="note">
+Jika browser tidak dapat dibuka, gunakan <b>Copy Report Template</b>, lalu paste template tersebut secara manual ke GitHub Issues.
+</div>
+</body>
+</html>
