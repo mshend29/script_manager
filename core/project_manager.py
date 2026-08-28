@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sqlite3
 import uuid
 from pathlib import Path
 
@@ -109,6 +110,127 @@ class ProjectManager:
     def save(self) -> None:
         self._require_project().save()
 
+    def save_as(self, target_file: str | Path) -> Project:
+        project = self._require_project()
+        project.save()
+
+        target = self._normalize_target_file(target_file)
+        if target == project.project_file.resolve(strict=False):
+            project.save()
+            return project
+
+        if target.exists():
+            raise ProjectError(
+                f"Target project file sudah ada:\n{target}"
+            )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self._copy_database(project.project_file, target)
+
+        saved = Project.load(target)
+        saved.save()
+        self.current = saved
+        return saved
+
+    def duplicate(
+        self,
+        target_file: str | Path,
+    ) -> Project:
+        source = self._require_project()
+        source.save()
+
+        target = self._normalize_target_file(target_file)
+        if target.exists():
+            raise ProjectError(
+                f"Target project file sudah ada:\n{target}"
+            )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self._copy_database(source.project_file, target)
+
+        duplicate = Project.load(target)
+        duplicate.project_id = str(uuid.uuid4())
+        duplicate.created_at = ""
+        duplicate.updated_at = ""
+        duplicate.settings.project_folder = str(target)
+        duplicate.save()
+
+        try:
+            from services.audit_service import AuditService
+
+            AuditService(duplicate.database).record(
+                event_type="PROJECT",
+                action="DUPLICATE_PROJECT",
+                entity_type="project",
+                summary=(
+                    f"Project duplicated from {source.project_file.name}."
+                ),
+                details={
+                    "source_project_id": source.project_id,
+                    "source_file": str(source.project_file),
+                    "target_file": str(target),
+                },
+            )
+        except Exception:
+            pass
+
+        self.current = duplicate
+        return duplicate
+
+    def recover_from_backup(
+        self,
+        backup_file: str | Path,
+        target_file: str | Path,
+    ) -> Project:
+        backup = Path(backup_file).expanduser().resolve(strict=False)
+        if not backup.is_file():
+            raise ProjectError(
+                f"Backup file tidak ditemukan:\n{backup}"
+            )
+
+        try:
+            Project.load(backup)
+        except (ProjectFormatError, FileNotFoundError) as exc:
+            raise ProjectError(
+                f"Backup bukan .smproj yang valid: {exc}"
+            ) from exc
+
+        target = self._normalize_target_file(target_file)
+        if target.exists():
+            raise ProjectError(
+                f"Target recovery sudah ada:\n{target}"
+            )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self._copy_database(backup, target)
+
+        try:
+            recovered = self.open(target)
+        except Exception:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            raise
+
+        try:
+            from services.audit_service import AuditService
+
+            AuditService(recovered.database).record(
+                event_type="PROJECT",
+                action="RECOVER_PROJECT",
+                entity_type="project",
+                summary=f"Project recovered from {backup.name}.",
+                details={
+                    "backup_file": str(backup),
+                    "target_file": str(target),
+                },
+            )
+        except Exception:
+            pass
+
+        return recovered
+
     def update_settings(self, settings: ProjectSettings) -> None:
         project = self._require_project()
 
@@ -131,6 +253,31 @@ class ProjectManager:
         if self.current is None:
             raise ProjectError("Tidak ada project yang sedang dibuka.")
         return self.current
+
+    @staticmethod
+    def _copy_database(source: Path, target: Path) -> None:
+        source_connection = sqlite3.connect(source)
+        destination_connection = sqlite3.connect(target)
+        try:
+            source_connection.backup(destination_connection)
+        except Exception:
+            destination_connection.close()
+            source_connection.close()
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            raise
+        else:
+            destination_connection.close()
+            source_connection.close()
+
+    @staticmethod
+    def _normalize_target_file(value: str | Path) -> Path:
+        target = Path(value).expanduser()
+        if target.suffix.casefold() != PROJECT_FILE_EXTENSION.casefold():
+            target = target.with_suffix(PROJECT_FILE_EXTENSION)
+        return target.resolve(strict=False)
 
     @staticmethod
     def _safe_file_stem(value: str) -> str:
