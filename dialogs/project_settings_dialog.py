@@ -161,7 +161,7 @@ class ProjectSettingsDialog(QDialog):
             parsed_date if parsed_date.isValid() else QDate.currentDate()
         )
 
-        self.project_folder = FolderField(
+        self.project_file = FolderField(
             settings.project_folder,
             read_only=True,
         )
@@ -170,11 +170,11 @@ class ProjectSettingsDialog(QDialog):
         project_form.addRow("Project Code", self.project_code)
         project_form.addRow("Client", self.client_name)
         project_form.addRow("Start Date", self.start_date)
-        project_form.addRow("Project Location", self.project_folder)
+        project_form.addRow("Project File", self.project_file)
 
         location_note = QLabel(
-            "Project Location ditampilkan sebagai informasi. Perpindahan project "
-            "dilakukan melalui fitur Move Project."
+            "Project File hanya informasi lokasi file .smproj yang sedang dibuka. "
+            "File dapat dipindahkan saat project tidak sedang digunakan."
         )
         location_note.setWordWrap(True)
         location_note.setObjectName("PageSubtitle")
@@ -560,7 +560,7 @@ class ProjectSettingsDialog(QDialog):
             project_code=self.project_code.text(),
             client_name=self.client_name.text(),
             start_date=self.start_date.date().toString("yyyy-MM-dd"),
-            project_folder=self.project_folder.text(),
+            project_folder=self.project_file.text(),
             source_folder=self.source_folder.text(),
             stem_output_folder=self.stem_output_folder.text(),
             delivery_folder=self.delivery_folder.text(),

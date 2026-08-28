@@ -44,17 +44,16 @@ def test_byte_identical_restored_source_reactivates_dialogues(tmp_path):
     )
 
     project = Project(
-        root=tmp_path / "project",
+        file_path=tmp_path / "restore-test.smproj",
         settings=ProjectSettings(
             project_name="Restore Test",
-            project_folder=str(tmp_path / "project"),
             source_folder=str(source_folder),
             episode_before="第",
             episode_after="集",
         ),
+        project_id="restore-test",
     )
-    project.ensure_structure()
-    project.database.initialize()
+    project.save()
 
     engine = SourceSyncEngine()
     initial = engine.synchronize(project)

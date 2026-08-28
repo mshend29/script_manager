@@ -47,11 +47,10 @@ def test_database_initialize_rejects_future_schema_without_modifying_file(tmp_pa
 
 def test_project_open_rejects_future_schema_without_rewriting_database(tmp_path):
     project = Project(
-        root=tmp_path / "future-project",
+        file_path=tmp_path / "future-project.smproj",
         settings=ProjectSettings(project_name="Future Project"),
+        project_id="future-project-test",
     )
-    project.ensure_structure()
-    project.database.initialize()
     project.save()
 
     future_version = "999"

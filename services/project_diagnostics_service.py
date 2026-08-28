@@ -63,19 +63,13 @@ class ProjectDiagnosticsService:
 
         result.checks.append(
             DiagnosticCheck(
-                key="project_package",
-                label="Project Package",
-                status=STATUS_OK if self.project.is_package else STATUS_WARNING,
-                value=(
-                    self.project.package_name
-                    if self.project.is_package
-                    else "Legacy Folder"
-                ),
+                key="project_file",
+                label="Project File",
+                status=STATUS_OK,
+                value=self.project.project_file.name,
                 detail=(
-                    "Writable .drsp directory package."
-                    if self.project.is_package
-                    else "Project lama masih didukung. Gunakan TOOLS → "
-                    "Convert to .drsp untuk format project baru."
+                    "Single-file Script Management Project (.smproj).\n"
+                    + str(self.project.project_file)
                 ),
             )
         )

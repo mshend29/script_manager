@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
+from core.app_paths import database_backups_dir
 from core.database import Database, SCHEMA_VERSION
 from services.data_service import DataService
 
@@ -242,7 +243,8 @@ def test_backup_is_valid_sqlite_copy(tmp_path):
     backup_path = service.backup_database()
 
     assert backup_path.exists()
-    assert backup_path.parent.name == 'backups'
+    assert backup_path.suffix == '.smproj'
+    assert backup_path.parent == database_backups_dir(database.path)
 
     connection = sqlite3.connect(backup_path)
     try:

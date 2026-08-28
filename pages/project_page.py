@@ -76,6 +76,20 @@ class ProjectPage(PageShell):
         self.open_button.setProperty("secondary", True)
         context.add_widget(self.open_button)
 
+        self.open_recent_button = QPushButton("Open Recent")
+        self.open_recent_button.setProperty("secondary", True)
+        self.open_recent_button.clicked.connect(
+            lambda: self.action_requested.emit("project.open_recent")
+        )
+        context.add_widget(self.open_recent_button)
+
+        self.recover_button = QPushButton("Recover Project")
+        self.recover_button.setProperty("secondary", True)
+        self.recover_button.clicked.connect(
+            lambda: self.action_requested.emit("project.recover")
+        )
+        context.add_widget(self.recover_button)
+
         context.add_stretch()
 
         workspace = QWidget()

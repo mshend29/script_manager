@@ -13,7 +13,10 @@ class ProjectSettings:
     client_name: str = ""
     start_date: str = field(default_factory=lambda: date.today().isoformat())
 
+    # Runtime-only display value. For .smproj projects this contains the
+    # current project file path and is intentionally not persisted.
     project_folder: str = ""
+
     source_folder: str = ""
     stem_output_folder: str = ""
     delivery_folder: str = ""
@@ -32,6 +35,11 @@ class ProjectSettings:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def to_persistent_dict(self) -> dict[str, Any]:
+        data = self.to_dict()
+        data.pop("project_folder", None)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ProjectSettings":
