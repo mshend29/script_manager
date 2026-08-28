@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
             f"{project.settings.project_name} - Script Manager"
         )
         self.statusBar().showMessage(
-            f"Project created: {project.root}",
+            f"Project created: {project.project_file}",
             5000,
         )
 
@@ -185,13 +185,15 @@ class MainWindow(QMainWindow):
         start_dir = ""
 
         if self.project_manager.current:
-            start_dir = str(self.project_manager.current.root.parent)
+            start_dir = str(
+                self.project_manager.current.project_file.parent
+            )
 
-        project_path = QFileDialog.getExistingDirectory(
+        project_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Open Project Package (.drsp or Legacy Folder)",
+            "Open Script Management Project",
             start_dir,
-            QFileDialog.Option.ShowDirsOnly,
+            "Script Management Project (*.smproj);;All Files (*)",
         )
 
         if not project_path:
@@ -231,82 +233,10 @@ class MainWindow(QMainWindow):
             f"{project.settings.project_name} - Script Manager"
         )
         self.statusBar().showMessage(
-            f"Project opened: {project.root}",
+            f"Project opened: {project.project_file}",
             5000,
         )
         return True
-
-    def convert_project_to_drsp(self) -> None:
-        if self._block_project_change_during_sync("Convert to .drsp"):
-            return
-
-        project = self.project_manager.current
-        if project is None:
-            QMessageBox.information(
-                self,
-                "Convert to .drsp",
-                "Buka project terlebih dahulu.",
-            )
-            return
-
-        if project.is_package:
-            QMessageBox.information(
-                self,
-                "Convert to .drsp",
-                f"Project sudah menggunakan package:\n{project.root}",
-            )
-            return
-
-        target = project.root.with_name(project.root.name + ".drsp")
-        answer = QMessageBox.question(
-            self,
-            "Convert to .drsp",
-            (
-                "Project legacy akan diubah menjadi writable .drsp "
-                "directory package.\n\n"
-                f"Current:\n{project.root}\n\n"
-                f"New:\n{target}\n\n"
-                "project.json, project.db, backups, dan logs tetap berada "
-                "di dalam package. Path Source / Stem / Setoran yang berada "
-                "di luar project tidak akan dipindahkan.\n\n"
-                "Lanjutkan?"
-            ),
-            QMessageBox.StandardButton.Yes
-            | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
-            return
-
-        try:
-            converted = self.project_manager.convert_current_to_package()
-        except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Convert to .drsp",
-                f"Konversi gagal.\n\n{exc}",
-            )
-            return
-
-        self._clear_data_pages()
-        self.refresh_project_page()
-        self.pages["TOOLS"].set_project(converted)
-        self.setWindowTitle(
-            f"{converted.settings.project_name} - Script Manager"
-        )
-        self.statusBar().showMessage(
-            f"Project converted: {converted.root}",
-            5000,
-        )
-
-        QMessageBox.information(
-            self,
-            "Convert to .drsp",
-            (
-                "Project berhasil dikonversi.\n\n"
-                f"{converted.root}"
-            ),
-        )
 
     def save_project(self) -> None:
         if not self.project_manager.is_open:
@@ -479,7 +409,7 @@ class MainWindow(QMainWindow):
         project.ensure_structure()
         settings = project.settings
         paths = {
-            "project": project.root,
+            "project": project.project_file.parent,
             "source": Path(settings.source_folder)
                 if settings.source_folder.strip()
                 else None,
@@ -566,7 +496,7 @@ class MainWindow(QMainWindow):
             self,
             "Restore Database Backup",
             str(project.backups_folder),
-            "SQLite Database (*.db);;All Files (*)",
+            "Script Management Project Backup (*.smproj);;All Files (*)",
         )
         if not backup_path:
             return
@@ -1002,7 +932,7 @@ class MainWindow(QMainWindow):
             settings.project_name or "Unnamed Project"
         )
         page.project_location.setText(
-            f"Location: {project.root}"
+            f"Project file: {project.project_file}"
         )
         page.source_path.setText(
             f"Source: {settings.source_folder or '-'}"
@@ -1326,7 +1256,6 @@ class MainWindow(QMainWindow):
             "tools.audit": self.focus_tools_audit,
             "tools.backup": self.backup_database,
             "tools.restore_backup": self.restore_database_backup,
-            "tools.convert_drsp": self.convert_project_to_drsp,
             "tools.open_project_folder": (
                 lambda: self.open_tools_path("project")
             ),
