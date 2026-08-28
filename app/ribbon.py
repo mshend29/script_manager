@@ -335,6 +335,15 @@ class Ribbon(QWidget):
         "HELP": [
             ("Guide", [
                 ("help.getting_started", "Getting Started"),
+                ("help.user_guide", "User Guide"),
+                ("help.keyboard_shortcuts", "Keyboard Shortcuts"),
+            ]),
+            ("Application", [
+                ("help.check_updates", "Check for Updates"),
+                ("help.about", "About Script Manager"),
+            ]),
+            ("Support", [
+                ("help.report_problem", "Report a Problem"),
             ]),
         ],
     }

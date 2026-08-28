@@ -4,7 +4,7 @@ import webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Qt, QUrl, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
     QInputDialog,
@@ -19,9 +19,11 @@ from PySide6.QtWidgets import (
 
 from app.ribbon import Ribbon
 from app.source_sync_worker import SourceSyncWorker
+from app.update_check_worker import UpdateCheckWorker
 from core.app_paths import project_backups_dir
 from core.project_manager import ProjectManager
 from core.recent_projects import RecentProjectsStore
+from core.version import APP_VERSION
 from dialogs.new_project_dialog import NewProjectDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
 from dialogs.source_refresh_preview_dialog import SourceRefreshPreviewDialog
@@ -37,7 +39,9 @@ from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
 from pages.tracking_page import TrackingPage
+from services.application_info_service import ApplicationInfoService
 from services.backup_service import BackupService
+from services.problem_report_service import ProblemReportService
 from services.project_dashboard_service import ProjectDashboardService
 
 
@@ -68,6 +72,8 @@ class MainWindow(QMainWindow):
         self._source_sync_operation = ""
         self._pending_source_apply_report: SourceSyncReport | None = None
         self._pending_source_apply_title = ""
+        self._update_check_thread: QThread | None = None
+        self._update_check_worker: UpdateCheckWorker | None = None
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -114,10 +120,35 @@ class MainWindow(QMainWindow):
         tools_page = self.pages["TOOLS"]
         tools_page.action_requested.connect(self.handle_ribbon_action)
 
+        help_page = self.pages["HELP"]
+        help_page.action_requested.connect(self.handle_ribbon_action)
+        help_page.release_requested.connect(self.open_update_release)
+        help_page.issue_requested.connect(self.open_problem_issue)
+
         self._init_source_sync_progress_ui()
+        self._init_keyboard_shortcuts()
         self.statusBar().showMessage("Ready")
         self.set_page("PROJECT")
         self.refresh_project_page()
+
+    def _init_keyboard_shortcuts(self) -> None:
+        self._keyboard_shortcuts: list[QShortcut] = []
+
+        bindings = (
+            ("Ctrl+N", self.new_project),
+            ("Ctrl+O", self.open_project),
+            ("Ctrl+S", self.save_project),
+            ("Ctrl+Shift+S", self.save_project_as),
+            ("Ctrl+W", self.close_project),
+            ("Ctrl+F", self.open_script_search),
+            ("F5", self.refresh_source),
+            ("F1", self.open_getting_started),
+        )
+
+        for sequence, handler in bindings:
+            shortcut = QShortcut(QKeySequence(sequence), self)
+            shortcut.activated.connect(handler)
+            self._keyboard_shortcuts.append(shortcut)
 
     def set_page(self, page_name: str) -> None:
         if page_name not in self.pages:
@@ -1322,6 +1353,18 @@ class MainWindow(QMainWindow):
         page.search_edit.selectAll()
         self.statusBar().showMessage("Script search focused", 2000)
 
+    def open_script_search(self) -> None:
+        if self.project_manager.current is None:
+            QMessageBox.information(
+                self,
+                "Search Script",
+                "Buka atau buat project terlebih dahulu.",
+            )
+            return
+
+        self.ribbon.select_tab("SCRIPT")
+        self.focus_script_search()
+
     def open_dialog_source(self) -> None:
         page = self.pages["DIALOG"]
         if not page.open_source_button.isEnabled():
@@ -1488,6 +1531,140 @@ class MainWindow(QMainWindow):
         page.show_getting_started()
         self.statusBar().showMessage("Getting Started", 3000)
 
+    def open_user_guide(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+        page.show_user_guide()
+        self.statusBar().showMessage("User Guide", 3000)
+
+    def open_keyboard_shortcuts(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+        page.show_keyboard_shortcuts()
+        self.statusBar().showMessage("Keyboard Shortcuts", 3000)
+
+    def check_for_updates(self) -> None:
+        self.ribbon.select_tab("HELP")
+        page = self.pages["HELP"]
+
+        if self._update_check_running():
+            self.statusBar().showMessage(
+                "Update check masih berjalan",
+                3000,
+            )
+            return
+
+        page.show_update_checking(APP_VERSION)
+        self.statusBar().showMessage("Checking for updates…")
+
+        thread = QThread(self)
+        worker = UpdateCheckWorker()
+        worker.moveToThread(thread)
+
+        thread.started.connect(worker.run)
+        worker.completed.connect(self._update_check_completed)
+        worker.failed.connect(self._update_check_failed)
+
+        worker.completed.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.completed.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(self._update_check_thread_finished)
+        thread.finished.connect(thread.deleteLater)
+
+        self._update_check_thread = thread
+        self._update_check_worker = worker
+        thread.start()
+
+    def _update_check_running(self) -> bool:
+        thread = self._update_check_thread
+        return thread is not None and thread.isRunning()
+
+    @Slot(object)
+    def _update_check_completed(self, result: object) -> None:
+        page = self.pages["HELP"]
+        page.show_update_result(result)
+
+        if getattr(result, "update_available", False):
+            latest = str(
+                getattr(result, "latest_version", "") or ""
+            )
+            self.statusBar().showMessage(
+                f"Update available: {latest}",
+                5000,
+            )
+        elif getattr(result, "has_release", False):
+            self.statusBar().showMessage(
+                "Script Manager is up to date",
+                5000,
+            )
+        else:
+            self.statusBar().showMessage(
+                "No GitHub Release published yet",
+                5000,
+            )
+
+    @Slot(object)
+    def _update_check_failed(self, exc: object) -> None:
+        self.pages["HELP"].show_update_error(
+            str(exc),
+            APP_VERSION,
+        )
+        self.statusBar().showMessage(
+            "Update check failed",
+            5000,
+        )
+
+    @Slot()
+    def _update_check_thread_finished(self) -> None:
+        self._update_check_thread = None
+        self._update_check_worker = None
+
+    def open_update_release(self, url: str) -> None:
+        target = str(url or "").strip()
+        if not target:
+            return
+
+        opened = QDesktopServices.openUrl(QUrl(target))
+        if not opened:
+            QMessageBox.warning(
+                self,
+                "Check for Updates",
+                "Sistem tidak dapat membuka halaman release.",
+            )
+
+    def open_about(self) -> None:
+        self.ribbon.select_tab("HELP")
+        info = ApplicationInfoService().build()
+        self.pages["HELP"].show_about(info)
+        self.statusBar().showMessage(
+            f"About {info.app_name} {info.app_version}",
+            3000,
+        )
+
+    def report_problem(self) -> None:
+        self.ribbon.select_tab("HELP")
+        report = ProblemReportService().build()
+        self.pages["HELP"].show_report_problem(report)
+        self.statusBar().showMessage(
+            "Problem report template ready",
+            3000,
+        )
+
+    def open_problem_issue(self, url: str) -> None:
+        target = str(url or "").strip()
+        if not target:
+            return
+
+        opened = QDesktopServices.openUrl(QUrl(target))
+        if not opened:
+            QMessageBox.warning(
+                self,
+                "Report a Problem",
+                "Sistem tidak dapat membuka halaman GitHub Issue. "
+                "Gunakan Copy Report Template sebagai alternatif.",
+            )
+
     # ------------------------------------------------------------------
     # RIBBON
     # ------------------------------------------------------------------
@@ -1557,6 +1734,11 @@ class MainWindow(QMainWindow):
                 lambda: self.open_tools_drive("delivery")
             ),
             "help.getting_started": self.open_getting_started,
+            "help.user_guide": self.open_user_guide,
+            "help.keyboard_shortcuts": self.open_keyboard_shortcuts,
+            "help.check_updates": self.check_for_updates,
+            "help.report_problem": self.report_problem,
+            "help.about": self.open_about,
         }
 
         handler = handlers.get(action_id)
@@ -1571,6 +1753,16 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event) -> None:
+        if self._update_check_running():
+            event.ignore()
+            QMessageBox.information(
+                self,
+                "Check for Updates",
+                "Pemeriksaan update sedang berjalan. "
+                "Aplikasi tetap terbuka sampai pemeriksaan selesai.",
+            )
+            return
+
         if self._source_sync_running():
             event.ignore()
             QMessageBox.information(
