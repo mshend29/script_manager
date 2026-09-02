@@ -142,7 +142,8 @@ def test_v1_representative_operator_workflow_survives_client_revision(
     sync = SourceSyncEngine()
     initial = sync.synchronize(project)
     assert not initial.has_errors
-    assert initial.applied is True
+    assert initial.backup_path
+    assert initial.synced_at
 
     hendra = _cast_scope(project.database, "Hendra")
     joko = _cast_scope(project.database, "Joko")
@@ -183,7 +184,8 @@ def test_v1_representative_operator_workflow_survives_client_revision(
     )
     refreshed = sync.synchronize(project)
     assert not refreshed.has_errors
-    assert refreshed.applied is True
+    assert refreshed.backup_path
+    assert refreshed.synced_at
 
     hendra_after = _cast_scope(project.database, "Hendra")
     joko_after = _cast_scope(project.database, "Joko")
@@ -213,11 +215,11 @@ def test_v1_representative_operator_workflow_survives_client_revision(
     assert _chip(tracking, hendra).display_status == RECORDED
     assert _chip(tracking, joko).display_status == DELIVERED
 
-    invalidations = refreshed.synchronize_report.tracking_invalidations
+    invalidations = refreshed.tracking_invalidations
     assert len(invalidations) == 1
-    assert invalidations[0].character_name == "Hendra"
-    assert invalidations[0].talent_name == "Brama"
-    assert invalidations[0].reasons == ("SOURCE_REVISED",)
+    assert invalidations[0]["character_name"] == "Hendra"
+    assert invalidations[0]["talent_name"] == "Brama"
+    assert invalidations[0]["reasons"] == ["SOURCE_REVISED"]
 
     # Re-recording accepts the current source signature and clears the stale
     # marker without changing the persistent dialogue identity.
