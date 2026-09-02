@@ -5,10 +5,12 @@ from PySide6.QtWidgets import QApplication
 
 from app.main_window import MainWindow
 from app.theme import APP_STYLESHEET
+from core.application_logging import configure_application_logging
 from core.version import APP_VERSION
 
 
 def main():
+    configure_application_logging()
     app = QApplication(sys.argv)
     app.setApplicationName("Script Manager")
     app.setApplicationVersion(APP_VERSION)
