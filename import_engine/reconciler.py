@@ -21,6 +21,8 @@ class ExistingDialogueSnapshot:
     time_in: str = ""
     time_out: str = ""
     dialog_text: str = ""
+    episode_id: int | None = None
+    is_active: bool = True
 
 
 @dataclass(frozen=True)
