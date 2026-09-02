@@ -468,6 +468,7 @@ class DialogPage(PageShell):
         self.copy_all_button.setText("Copy All Dialog")
         self.cast_table.setRowCount(0)
         self._checkboxes.clear()
+        self._dialogue_items.clear()
         self._dialogue_rows = []
 
         self._updating_checks = True
