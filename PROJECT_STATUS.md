@@ -677,7 +677,8 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 ### Areas
 
 - [x] Windows packaging.
-- [ ] Application icon / metadata.
+- [x] Windows application version metadata.
+- [ ] Application icon.
 - [x] `.smproj` file association via installer.
 - [x] Upgrade / migration smoke test.
 - [x] Backup / recovery disaster test.
@@ -835,6 +836,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 installer: Inno Setup per-user installer builds successfully, silent install + frozen EXE + HKCU .smproj association smoke pass, and installer artifact uploads in Windows CI. |
