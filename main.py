@@ -15,8 +15,22 @@ def main():
     app.setStyleSheet(APP_STYLESHEET)
     window = MainWindow()
 
-    if len(sys.argv) > 1:
-        candidate = Path(sys.argv[1]).expanduser()
+    arguments = [str(value) for value in sys.argv[1:]]
+    if "--smoke-test" in arguments:
+        # Packaging CI uses this path to prove that the frozen executable can
+        # construct the real production MainWindow and all enhanced pages.
+        app.processEvents()
+        window.close()
+        app.processEvents()
+        return 0
+
+    project_args = [
+        value
+        for value in arguments
+        if not value.startswith("--")
+    ]
+    if project_args:
+        candidate = Path(project_args[0]).expanduser()
         if candidate.exists():
             window.open_project_path(candidate)
 
