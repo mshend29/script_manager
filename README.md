@@ -78,7 +78,7 @@ Aturan identitas project:
 
 Backup project disimpan sebagai `.smproj` di application data per-user, bukan di folder tempat project berada. Logs juga disimpan di application data.
 
-## Source Import / Refresh
+## Sync Source
 
 Alur source:
 
@@ -100,7 +100,7 @@ Validation
 Commit to .smproj
 ```
 
-Refresh hanya memproses file yang New / Changed / Restored. Data aplikasi seperti recording status dan downstream tracking dipertahankan sesuai aturan sinkronisasi.
+Sync berikutnya hanya memproses file yang New / Changed / Restored. Recording history dan mapping manual dipertahankan; downstream tracking hanya diinvalidasi pada scope yang terdampak perubahan semantic.
 
 ## Workspace
 
@@ -114,7 +114,7 @@ Ribbon utama:
 - TOOLS
 - HELP
 
-Fitur yang sudah tersedia mencakup project dashboard, source import/refresh, script/dialog views, recording checkbox persistence, character/talent mapping, validation, tracking, backup/restore, diagnostics, dan audit history.
+Fitur yang sudah tersedia mencakup project dashboard, Sync Source, script/dialog views, recording checkbox persistence, character/talent mapping, validation, tracking, backup/restore, diagnostics, audit history, dan application crash logging lokal.
 
 ## Help
 
@@ -140,4 +140,16 @@ File Type : Script Management Project
 Open      : ScriptManager.exe "%1"
 ```
 
-Registrasi ke Windows belum dilakukan otomatis dari aplikasi. Association akan dipasang melalui installer saat packaging aplikasi sudah dibuat.
+Portable ZIP dapat dijalankan tanpa instalasi dan tidak mengubah file association. Installer Windows memasang Script Manager secara per-user dan mendaftarkan `.smproj` ke `ScriptManager.Project`, sehingga double-click project membuka `ScriptManager.exe "%1"`.
+
+
+## Windows Build & Release
+
+Repository menyediakan dua jalur distribusi Windows:
+
+- **Portable ZIP** — hasil PyInstaller onedir; tidak memerlukan instalasi dan tidak mendaftarkan file association.
+- **Installer** — hasil Inno Setup; instalasi per-user di LocalAppData dan mendaftarkan `.smproj`.
+
+Build CI menjalankan smoke test terhadap executable frozen. Installer CI juga melakukan silent install, memverifikasi file association, menjalankan executable terpasang, lalu uninstall kembali.
+
+Prosedur versioning dan release tersedia di `RELEASING.md`.
