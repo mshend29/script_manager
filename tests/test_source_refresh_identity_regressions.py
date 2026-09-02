@@ -281,10 +281,6 @@ def test_duplicate_identical_source_rows_do_not_collide(tmp_path):
     assert str(rows[0]["dialog_uid"]) != str(rows[1]["dialog_uid"])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current tracking invalidation is triggered by file fingerprint change.",
-)
 def test_formatting_only_source_change_does_not_reset_tracking(tmp_path):
     project, source_file = _project(tmp_path)
     engine = SourceSyncEngine()
