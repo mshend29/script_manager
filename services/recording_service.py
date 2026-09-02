@@ -43,6 +43,7 @@ class RecordingDialogueRow:
     time_out: str
     dialogue: str
     is_recorded: bool
+    source_revised: bool = False
 
 
 class RecordingService:
@@ -278,7 +279,20 @@ class RecordingService:
                     COALESCE(d.time_in, '') AS time_in,
                     COALESCE(d.time_out, '') AS time_out,
                     d.dialog_text,
-                    COALESCE(rs.is_recorded, 0) AS is_recorded
+                    COALESCE(rs.is_recorded, 0) AS is_recorded,
+                    CASE
+                        WHEN COALESCE(rs.is_recorded, 0) = 1
+                         AND COALESCE(
+                             rs.source_signature_at_recording,
+                             ''
+                         ) <> COALESCE(
+                             d.source_signature,
+                             d.dialog_uid,
+                             ''
+                         )
+                        THEN 1
+                        ELSE 0
+                    END AS source_revised
                 FROM dialogues AS d
                 JOIN episodes AS e
                   ON e.id = d.episode_id
@@ -308,6 +322,7 @@ class RecordingService:
                 time_out=str(row["time_out"]),
                 dialogue=str(row["dialog_text"]),
                 is_recorded=bool(row["is_recorded"]),
+                source_revised=bool(row["source_revised"]),
             )
             for row in rows
         ]
@@ -344,9 +359,9 @@ class RecordingService:
         timestamp = datetime.now().isoformat(timespec="seconds")  # noqa: DTZ005
 
         with self.database.connect() as connection:
-            exists = connection.execute(
+            dialogue = connection.execute(
                 """
-                SELECT 1
+                SELECT COALESCE(source_signature, dialog_uid) AS source_signature
                 FROM dialogues
                 WHERE id = ?
                   AND is_active = 1
@@ -354,7 +369,7 @@ class RecordingService:
                 (int(dialogue_id),),
             ).fetchone()
 
-            if exists is None:
+            if dialogue is None:
                 raise ValueError(
                     f"Dialogue {dialogue_id} tidak ditemukan atau sudah inactive."
                 )
@@ -365,19 +380,27 @@ class RecordingService:
                     dialogue_id,
                     is_recorded,
                     recorded_at,
+                    source_signature_at_recording,
                     updated_at
                 )
-                VALUES(?, ?, ?, ?)
+                VALUES(?, ?, ?, ?, ?)
                 ON CONFLICT(dialogue_id)
                 DO UPDATE SET
                     is_recorded = excluded.is_recorded,
                     recorded_at = excluded.recorded_at,
+                    source_signature_at_recording =
+                        excluded.source_signature_at_recording,
                     updated_at = excluded.updated_at
                 """,
                 (
                     int(dialogue_id),
                     1 if recorded else 0,
                     timestamp if recorded else None,
+                    (
+                        str(dialogue["source_signature"] or "")
+                        if recorded
+                        else None
+                    ),
                     timestamp,
                 ),
             )
@@ -399,7 +422,9 @@ class RecordingService:
         with self.database.connect() as connection:
             active_rows = connection.execute(
                 f"""
-                SELECT id
+                SELECT
+                    id,
+                    COALESCE(source_signature, dialog_uid) AS source_signature
                 FROM dialogues
                 WHERE is_active = 1
                   AND id IN ({placeholders})
@@ -408,6 +433,10 @@ class RecordingService:
             ).fetchall()
 
             active_ids = {int(row["id"]) for row in active_rows}
+            source_signatures = {
+                int(row["id"]): str(row["source_signature"] or "")
+                for row in active_rows
+            }
 
             if active_ids != set(ids):
                 missing = sorted(set(ids) - active_ids)
@@ -422,13 +451,16 @@ class RecordingService:
                     dialogue_id,
                     is_recorded,
                     recorded_at,
+                    source_signature_at_recording,
                     updated_at
                 )
-                VALUES(?, ?, ?, ?)
+                VALUES(?, ?, ?, ?, ?)
                 ON CONFLICT(dialogue_id)
                 DO UPDATE SET
                     is_recorded = excluded.is_recorded,
                     recorded_at = excluded.recorded_at,
+                    source_signature_at_recording =
+                        excluded.source_signature_at_recording,
                     updated_at = excluded.updated_at
                 """,
                 [
@@ -436,6 +468,11 @@ class RecordingService:
                         dialogue_id,
                         1 if recorded else 0,
                         timestamp if recorded else None,
+                        (
+                            source_signatures[dialogue_id]
+                            if recorded
+                            else None
+                        ),
                         timestamp,
                     )
                     for dialogue_id in ids
