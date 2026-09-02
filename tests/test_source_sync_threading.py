@@ -197,7 +197,10 @@ def test_controller_defers_apply_until_prepare_thread_finishes() -> None:
 
     assert "self.is_running" in queue_source
     assert "self._pending_report = report" in queue_source
-    assert 'operation="apply"' in finished_source
+    assert (
+        'operation="apply"' in finished_source
+        or "operation='apply'" in finished_source
+    )
 
 
 def test_project_close_is_guarded_while_source_sync_runs() -> None:
