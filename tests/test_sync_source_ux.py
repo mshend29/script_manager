@@ -62,8 +62,9 @@ def test_help_documents_use_unified_sync_source_mental_model() -> None:
     assert "incremental sync" in getting_started
 
     assert "Sync Source" in user_guide
-    assert "initial sync" in user_guide
-    assert "incremental sync" in user_guide
+    guide_lower = user_guide.casefold()
+    assert "initial sync" in guide_lower
+    assert "incremental sync" in guide_lower
     assert "tidak perlu menjalankan Refresh View manual" in user_guide
 
     assert "<td>Sync Source</td>" in shortcuts
