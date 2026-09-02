@@ -33,13 +33,13 @@ from import_engine.source_sync import (
     SourceSyncProgress,
     SourceSyncReport,
 )
-from pages.data_page import DataPage
+from pages.data_alias_page import AliasDataPage as DataPage
 from pages.dialog_page import DialogPage
 from pages.help_page import HelpPage
 from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
-from pages.tracking_page import TrackingPage
+from pages.tracking_compact_page import CompactTrackingPage as TrackingPage
 from services.application_info_service import ApplicationInfoService
 from services.backup_service import BackupService
 from services.problem_report_service import ProblemReportService
