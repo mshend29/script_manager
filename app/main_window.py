@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
             ("Ctrl+Shift+S", self.save_project_as),
             ("Ctrl+W", self.close_project),
             ("Ctrl+F", self.open_script_search),
-            ("F5", self.refresh_source),
+            ("F5", self.sync_source),
             ("F1", self.open_getting_started),
         )
 
@@ -253,7 +253,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(
                     self,
                     "Open Project",
-                    "Source Import/Refresh sedang berjalan.",
+                    "Sync Source sedang berjalan.",
                 )
             return False
 
@@ -903,14 +903,11 @@ class MainWindow(QMainWindow):
         self._source_sync_progress_bar.show()
 
     # ------------------------------------------------------------------
-    # SOURCE IMPORT / REFRESH
+    # SOURCE SYNC
     # ------------------------------------------------------------------
 
-    def import_source(self) -> None:
-        self._run_source_sync("Import Source")
-
-    def refresh_source(self) -> None:
-        self._run_source_sync("Refresh Data")
+    def sync_source(self) -> None:
+        self._run_source_sync("Sync Source")
 
     def _run_source_sync(self, title: str) -> None:
         if self._source_sync_running():
@@ -1737,11 +1734,8 @@ class MainWindow(QMainWindow):
             "project.settings": self.open_project_settings,
             "project.close": self.close_project,
             "client.drive": self.open_client_drive,
-            "source.import": self.import_source,
-            "source.refresh": self.refresh_source,
-            "script.refresh": lambda: self.refresh_data_view("SCRIPT"),
+            "source.sync": self.sync_source,
             "script.search": self.focus_script_search,
-            "dialog.refresh": lambda: self.refresh_data_view("DIALOG"),
             "dialog.open_source": self.open_dialog_source,
             "dialog.check_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(True)
@@ -1749,9 +1743,7 @@ class MainWindow(QMainWindow):
             "dialog.uncheck_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(False)
             ),
-            "tracking.refresh": lambda: self.refresh_data_view("TRACKING"),
             "tracking.open_drive": self.open_client_drive,
-            "data.refresh": self.refresh_source,
             "data.rebuild": self.rebuild_data_indexes,
             "data.characters": lambda: self.show_data_section("characters"),
             "data.talents": lambda: self.show_data_section("talents"),
@@ -1824,7 +1816,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "Source Sync",
-                "Source Import/Refresh sedang berjalan. "
+                "Sync Source sedang berjalan. "
                 "Aplikasi tetap terbuka untuk menjaga proses database tetap aman.",
             )
             return
