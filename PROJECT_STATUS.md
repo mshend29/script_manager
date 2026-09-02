@@ -678,15 +678,15 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 - [x] Windows packaging.
 - [ ] Application icon / metadata.
-- [ ] `.smproj` file association via installer.
+- [x] `.smproj` file association via installer.
 - [x] Upgrade / migration smoke test.
 - [x] Backup / recovery disaster test.
 - [x] Crash / diagnostics logging.
-- [ ] GitHub Release pipeline.
+- [x] GitHub Release pipeline.
 - [ ] Update checker against real release.
 - [ ] User acceptance workflow using representative project.
 - [ ] Final user guide review.
-- [ ] Version bump strategy toward `1.0.0`.
+- [x] Version bump strategy toward `1.0.0`.
 
 ---
 
@@ -835,6 +835,8 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 installer: Inno Setup per-user installer builds successfully, silent install + frozen EXE + HKCU .smproj association smoke pass, and installer artifact uploads in Windows CI. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release automation: tag-gated release workflow validates tag against APP_VERSION, rebuilds portable + installer, smoke-tests assets, generates SHA-256 checksums, and is documented in RELEASING.md; no release tag has been published yet. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 crash logging: rotating local application log + unhandled main/thread exception hooks added; startup metadata excludes project/source content; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows packaging: PyInstaller onedir build, frozen EXE smoke test, portable ZIP and Actions artifact upload pass on windows-latest. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release safety: backup disaster recovery + schema v10→v11 migration smoke tests added and passing in engine CI. |
