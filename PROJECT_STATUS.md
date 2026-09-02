@@ -599,7 +599,7 @@ Setelah Source Sync berhasil, berpindah SCRIPT / DIALOG / TRACKING / DATA selalu
 
 ## PHASE 6 — Simplify Refresh UX / Ribbon
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: satu mental model untuk operator.
 
@@ -611,15 +611,15 @@ Tujuan: satu mental model untuk operator.
 
 ### Tasks
 
-- [ ] P6.1 Satukan Import Source dan Refresh Data menjadi Sync Source.
-- [ ] P6.2 Initial sync dan incremental sync memakai tombol yang sama.
-- [ ] P6.3 F5 = Sync Source.
-- [ ] P6.4 Hapus SCRIPT → Refresh View sebagai required workflow.
-- [ ] P6.5 Hapus DIALOG → Refresh View sebagai required workflow.
-- [ ] P6.6 Hapus TRACKING → Refresh View sebagai required workflow.
-- [ ] P6.7 Hapus duplicate DATA → Refresh Data.
-- [ ] P6.8 Tentukan satu lokasi ribbon yang konsisten / global untuk Sync Source.
-- [ ] P6.9 Update Getting Started, User Guide, dan Keyboard Shortcuts.
+- [x] P6.1 Satukan Import Source dan Refresh Data menjadi Sync Source.
+- [x] P6.2 Initial sync dan incremental sync memakai tombol yang sama.
+- [x] P6.3 F5 = Sync Source.
+- [x] P6.4 Hapus SCRIPT → Refresh View sebagai required workflow.
+- [x] P6.5 Hapus DIALOG → Refresh View sebagai required workflow.
+- [x] P6.6 Hapus TRACKING → Refresh View sebagai required workflow.
+- [x] P6.7 Hapus duplicate DATA → Refresh Data.
+- [x] P6.8 Tentukan satu lokasi ribbon yang konsisten / global untuk Sync Source.
+- [x] P6.9 Update Getting Started, User Guide, dan Keyboard Shortcuts.
 
 ### Exit Criteria
 
@@ -629,7 +629,7 @@ Operator hanya perlu memahami satu jenis source refresh.
 
 ## PHASE 7 — Qt Runtime CI Hardening
 
-**Status: AFTER Source Refresh correctness**
+**Status: IN PROGRESS**
 
 Current GitHub Actions lightweight environment hanya memasang `pytest` dan `openpyxl`. PySide6 runtime tests dapat skip ketika PySide6 tidak tersedia.
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 6 — Simplify Refresh UX / Ribbon
+PHASE 7 — Qt Runtime CI Hardening
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 6 complete: ribbon/source UX unified to one Sync Source action, F5 routes to same command, redundant per-page refresh actions removed, Help updated, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 5 complete: project_data_changed revision signal + dirty-page lazy refresh keeps SCRIPT/DIALOG/TRACKING/DATA current without manual Refresh View; mutation events refresh sibling workspaces and dashboard; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 4 complete: Tracking invalidation is semantic and scoped to Episode + Talent + Character; formatting-only changes preserve downstream state; invalidation reasons are audited; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 3 complete: schema v11 records source signature at recording, revised recordings retain history and show Source Revised, bulk recording semantics tested, CI green. |
