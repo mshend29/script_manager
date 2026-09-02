@@ -684,8 +684,8 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 - [x] Crash / diagnostics logging.
 - [x] GitHub Release pipeline.
 - [ ] Update checker against real release.
-- [ ] User acceptance workflow using representative project.
-- [ ] Final user guide review.
+- [x] User acceptance workflow using representative project.
+- [x] Final user guide review.
 - [x] Version bump strategy toward `1.0.0`.
 
 ---
@@ -835,6 +835,8 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 installer: Inno Setup per-user installer builds successfully, silent install + frozen EXE + HKCU .smproj association smoke pass, and installer artifact uploads in Windows CI. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release automation: tag-gated release workflow validates tag against APP_VERSION, rebuilds portable + installer, smoke-tests assets, generates SHA-256 checksums, and is documented in RELEASING.md; no release tag has been published yet. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 crash logging: rotating local application log + unhandled main/thread exception hooks added; startup metadata excludes project/source content; engine + Qt runtime CI green. |
