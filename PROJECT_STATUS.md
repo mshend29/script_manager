@@ -679,8 +679,8 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 - [ ] Windows packaging.
 - [ ] Application icon / metadata.
 - [ ] `.smproj` file association via installer.
-- [ ] Upgrade / migration smoke test.
-- [ ] Backup / recovery disaster test.
+- [x] Upgrade / migration smoke test.
+- [x] Backup / recovery disaster test.
 - [ ] Crash / diagnostics logging.
 - [ ] GitHub Release pipeline.
 - [ ] Update checker against real release.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release safety: backup disaster recovery + schema v10→v11 migration smoke tests added and passing in engine CI. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 final verification complete: runtime monkey-patching removed, MainWindow imports AliasDataPage/CompactTrackingPage explicitly, alias-aware DATA validation stays behind DataWorkspaceController, and engine + production Qt runtime CI are green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 previously reached green baseline: SourceSyncController owns async source lifecycle, existing ProjectManager retained as the correct lifecycle boundary, DATA domain service graph extracted into DataWorkspaceController. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 7 complete: dedicated PySide6/offscreen CI job added alongside fast engine job; Qt system libraries installed; MainWindow + major pages construct and project-open/source-commit/page-reload smoke flow passes in runtime CI. |
