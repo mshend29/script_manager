@@ -380,7 +380,7 @@ Kerjakan **berurutan**.
 
 ## PHASE 0 — Baseline Regression Safety
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: membuat bug / behavior yang akan diperbaiki terlihat jelas lewat test sebelum mengubah implementation.
 
@@ -422,7 +422,7 @@ Semua scenario target mempunyai regression test yang jelas. Test untuk behavior 
 
 ## PHASE 1 — Dialogue Reconciliation Model
 
-**Status: BLOCKED by Phase 0**
+**Status: IN PROGRESS**
 
 Tujuan: memisahkan persistent identity dari source content signature.
 
@@ -804,9 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 0 — Baseline Regression Safety
-→ verify regression baseline in CI
-→ then PHASE 1 — Dialogue Reconciliation Model
+PHASE 1 — Dialogue Reconciliation Model
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
