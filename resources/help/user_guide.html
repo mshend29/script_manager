@@ -304,7 +304,17 @@ Recording status disimpan di project dan dipakai oleh TRACKING untuk menghitung 
 Restore dan Recover adalah dua operasi berbeda. Restore bekerja pada project aktif, sedangkan Recover menghasilkan file project hasil pemulihan.
 </div>
 
-<h2>10. Workflow kerja yang direkomendasikan</h2>
+<h2>10. Instalasi, Portable Build, dan File Association</h2>
+<p>Distribusi Windows tersedia dalam dua bentuk:</p>
+<ul>
+  <li><b>Portable ZIP</b> — dapat diekstrak dan dijalankan langsung. Mode ini tidak mendaftarkan <code>.smproj</code> ke Windows.</li>
+  <li><b>Installer</b> — memasang Script Manager untuk user aktif dan mendaftarkan <code>.smproj</code> sebagai <b>Script Management Project</b>. Setelah instalasi, double-click file project akan membuka Script Manager.</li>
+</ul>
+<div class="note">
+Installer bekerja per-user dan tidak memerlukan instalasi system-wide. File source Excel dan project <code>.smproj</code> tidak dipindahkan oleh installer.
+</div>
+
+<h2>11. Workflow kerja yang direkomendasikan</h2>
 <ol>
   <li>Buat atau buka project <code>.smproj</code>.</li>
   <li>Periksa Project Settings, Source Folder, delimiter episode, dan folder output.</li>
@@ -321,6 +331,6 @@ Restore dan Recover adalah dua operasi berbeda. Restore bekerja pada project akt
 Gunakan Getting Started untuk panduan singkat. Gunakan User Guide ini saat membutuhkan penjelasan per area aplikasi.
 </div>
 
-<p class="small">Dokumentasi ini mengikuti fitur yang tersedia pada build Script Manager saat ini. Fitur Help lainnya akan ditambahkan bertahap.</p>
+<p class="small">Dokumentasi ini mengikuti workflow dan fitur yang tersedia pada build Script Manager saat ini.</p>
 </body>
 </html>
