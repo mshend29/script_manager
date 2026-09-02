@@ -649,7 +649,7 @@ Critical Qt runtime behavior benar-benar diuji di CI, bukan hanya AST/source ass
 
 ## PHASE 8 — Architecture Refactor
 
-**Status: IN PROGRESS — production entrypoint composition correction**
+**Status: COMPLETE**
 
 Beberapa file sudah besar:
 
@@ -672,7 +672,7 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 ## PHASE 9 — v1 Release Readiness
 
-**Status: BLOCKED by Phase 8 production composition verification**
+**Status: IN PROGRESS**
 
 ### Areas
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 8 — verify production entrypoint composition, then resume Phase 9
+PHASE 9 — Windows packaging + release safety
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,7 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
-| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 reopened briefly after release-readiness audit found main.py runtime monkey-patching AliasDataPage/CompactTrackingPage; production page composition is being made explicit and Qt smoke coverage updated before Phase 9 continues. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 final verification complete: runtime monkey-patching removed, MainWindow imports AliasDataPage/CompactTrackingPage explicitly, alias-aware DATA validation stays behind DataWorkspaceController, and engine + production Qt runtime CI are green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 previously reached green baseline: SourceSyncController owns async source lifecycle, existing ProjectManager retained as the correct lifecycle boundary, DATA domain service graph extracted into DataWorkspaceController. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 7 complete: dedicated PySide6/offscreen CI job added alongside fast engine job; Qt system libraries installed; MainWindow + major pages construct and project-open/source-commit/page-reload smoke flow passes in runtime CI. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 6 complete: ribbon/source UX unified to one Sync Source action, F5 routes to same command, redundant per-page refresh actions removed, Help updated, CI green. |
