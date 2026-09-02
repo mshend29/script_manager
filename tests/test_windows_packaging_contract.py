@@ -18,6 +18,11 @@ def test_pyinstaller_spec_builds_production_entrypoint_with_help_resources() -> 
     assert 'project_root / "resources"' in spec
     assert 'name="ScriptManager"' in spec
     assert "console=False" in spec
+    assert "VSVersionInfo(" in spec
+    assert "from core.version import APP_NAME, APP_VERSION" in spec
+    assert 'StringStruct("FileVersion", APP_VERSION)' in spec
+    assert 'StringStruct("ProductVersion", APP_VERSION)' in spec
+    assert "version=version_info" in spec
     assert "COLLECT(" in spec
 
 
