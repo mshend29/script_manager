@@ -3,7 +3,7 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Qt, QUrl, Slot
+from PySide6.QtCore import QThread, Qt, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.project_data_state import DATA_PAGE_NAMES, ProjectDataRevisionState
 from app.ribbon import Ribbon
 from app.source_sync_worker import SourceSyncWorker
 from app.update_check_worker import UpdateCheckWorker
@@ -46,6 +47,8 @@ from services.project_dashboard_service import ProjectDashboardService
 
 
 class MainWindow(QMainWindow):
+    project_data_changed = Signal(int)
+
     PAGE_ORDER = [
         "PROJECT",
         "SCRIPT",
@@ -66,6 +69,7 @@ class MainWindow(QMainWindow):
         self.project_manager = ProjectManager()
         self.recent_projects = RecentProjectsStore()
         self.source_sync_engine = SourceSyncEngine()
+        self._project_data_state = ProjectDataRevisionState()
         self._source_sync_thread: QThread | None = None
         self._source_sync_worker: SourceSyncWorker | None = None
         self._source_sync_title = ""
@@ -117,6 +121,18 @@ class MainWindow(QMainWindow):
         data_page = self.pages["DATA"]
         data_page.tracking_navigation_requested.connect(self.open_tracking_scope)
 
+        for page_name in ("DIALOG", "TRACKING", "DATA"):
+            page = self.pages[page_name]
+            if hasattr(page, "data_changed"):
+                page.data_changed.connect(
+                    lambda page_name=page_name:
+                        self._workspace_data_changed(page_name)
+                )
+
+        self.project_data_changed.connect(
+            self._project_data_revision_changed
+        )
+
         tools_page = self.pages["TOOLS"]
         tools_page.action_requested.connect(self.handle_ribbon_action)
 
@@ -155,24 +171,9 @@ class MainWindow(QMainWindow):
             return
 
         project = self.project_manager.current
-        database = project.database if project is not None else None
 
-        if page_name == "SCRIPT":
-            self.pages["SCRIPT"].set_database(database)
-
-        elif page_name == "DIALOG":
-            self.pages["DIALOG"].set_database(database)
-
-        elif page_name == "TRACKING":
-            tracking_page = self.pages["TRACKING"]
-            if hasattr(tracking_page, "configure_track_files"):
-                tracking_page.configure_track_files(
-                    project.settings if project is not None else None
-                )
-            tracking_page.set_database(database)
-
-        elif page_name == "DATA":
-            self.pages["DATA"].set_database(database)
+        if page_name in DATA_PAGE_NAMES:
+            self._refresh_data_page_if_needed(page_name, project)
 
         elif page_name == "TOOLS":
             self.pages["TOOLS"].set_project(project)
@@ -207,6 +208,7 @@ class MainWindow(QMainWindow):
             return
 
         self._clear_data_pages()
+        self._project_data_state.reset(mark_dirty=True)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -267,6 +269,7 @@ class MainWindow(QMainWindow):
             return False
 
         self._clear_data_pages()
+        self._project_data_state.reset(mark_dirty=True)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -536,6 +539,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_after_project_switch(self, project) -> None:
         self._clear_data_pages()
+        self._project_data_state.reset(mark_dirty=True)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -573,6 +577,7 @@ class MainWindow(QMainWindow):
         self.pages["TRACKING"].set_database(None)
         self.pages["DATA"].set_database(None)
         self.pages["TOOLS"].set_project(None)
+        self._project_data_state.reset(mark_dirty=False)
 
     def open_project_settings(self) -> None:
         if self._block_project_change_during_sync("Project Settings"):
@@ -1087,8 +1092,8 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.refresh_project_page()
-        self._refresh_current_data_page(project)
+        revision = self._project_data_state.mark_changed()
+        self.project_data_changed.emit(revision)
 
         backup_text = (
             f"\n\nSafety backup:\n{report.backup_path}"
@@ -1143,23 +1148,73 @@ class MainWindow(QMainWindow):
                 report=pending_report,
             )
 
-    def _refresh_current_data_page(self, project) -> None:
+    def _current_page_name(self) -> str:
         current_page = self.page_stack.currentWidget()
+        for page_name, page in self.pages.items():
+            if page is current_page:
+                return page_name
+        return ""
 
-        if current_page is self.pages["SCRIPT"]:
-            self.pages["SCRIPT"].set_database(project.database)
+    def _refresh_data_page_if_needed(
+        self,
+        page_name: str,
+        project,
+        *,
+        force: bool = False,
+    ) -> None:
+        if page_name not in DATA_PAGE_NAMES:
+            return
 
-        elif current_page is self.pages["DIALOG"]:
-            self.pages["DIALOG"].set_database(project.database)
+        page = self.pages[page_name]
+        if project is None:
+            page.set_database(None)
+            self._project_data_state.mark_clean(page_name)
+            return
 
-        elif current_page is self.pages["TRACKING"]:
-            tracking_page = self.pages["TRACKING"]
-            if hasattr(tracking_page, "configure_track_files"):
-                tracking_page.configure_track_files(project.settings)
-            tracking_page.set_database(project.database)
+        if not force and not self._project_data_state.is_dirty(page_name):
+            return
 
-        elif current_page is self.pages["DATA"]:
-            self.pages["DATA"].set_database(project.database)
+        if (
+            page_name == "TRACKING"
+            and hasattr(page, "configure_track_files")
+        ):
+            page.configure_track_files(project.settings)
+
+        if hasattr(page, "refresh_from_database"):
+            page.refresh_from_database(project.database)
+        else:
+            page.set_database(project.database)
+
+        self._project_data_state.mark_clean(page_name)
+
+    @Slot(int)
+    def _project_data_revision_changed(self, revision: int) -> None:
+        project = self.project_manager.current
+        if project is None:
+            return
+
+        # Project dashboard is small and should always reflect the latest
+        # committed application state immediately.
+        self.refresh_project_page()
+
+        current_page_name = self._current_page_name()
+        if current_page_name in DATA_PAGE_NAMES:
+            self._refresh_data_page_if_needed(
+                current_page_name,
+                project,
+            )
+
+    def _workspace_data_changed(self, source_page_name: str) -> None:
+        project = self.project_manager.current
+        if project is None:
+            return
+
+        revision = self._project_data_state.mark_changed()
+
+        # The emitting page has already updated its own UI after committing the
+        # change. Keep it clean while all sibling workspaces stay lazy-dirty.
+        self._project_data_state.mark_clean(source_page_name)
+        self.project_data_changed.emit(revision)
 
     def _show_source_sync_errors(
         self,
@@ -1338,13 +1393,14 @@ class MainWindow(QMainWindow):
             return
 
         page = self.pages.get(page_name)
-        if page is None or not hasattr(page, "set_database"):
+        if page is None or page_name not in DATA_PAGE_NAMES:
             return
 
-        if page_name == "TRACKING" and hasattr(page, "configure_track_files"):
-            page.configure_track_files(project.settings)
-
-        page.set_database(project.database)
+        self._refresh_data_page_if_needed(
+            page_name,
+            project,
+            force=True,
+        )
         self.statusBar().showMessage(f"{page_name.title()} view refreshed", 3000)
 
     def focus_script_search(self) -> None:
