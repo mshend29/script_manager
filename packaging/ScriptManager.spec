@@ -23,6 +23,10 @@ from core.version import APP_NAME, APP_VERSION
 version_parts = [int(part) for part in APP_VERSION.split(".")[:4]]
 version_parts.extend([0] * (4 - len(version_parts)))
 version_tuple = tuple(version_parts[:4])
+icon_file = project_root / "resources" / "app.ico"
+exe_options = {}
+if icon_file.is_file():
+    exe_options["icon"] = str(icon_file)
 
 version_info = VSVersionInfo(
     ffi=FixedFileInfo(
@@ -87,6 +91,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     version=version_info,
+    **exe_options,
 )
 
 coll = COLLECT(
