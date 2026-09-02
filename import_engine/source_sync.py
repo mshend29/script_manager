@@ -74,6 +74,9 @@ class SourceSyncReport:
     dialogues_deactivated: int = 0
     auto_locked: int = 0
     unresolved_cast: int = 0
+    tracking_invalidations: list[dict[str, object]] = field(
+        default_factory=list
+    )
 
     problems: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -122,6 +125,7 @@ class SourceSyncReport:
             f"Dialogues Deactivated: {self.dialogues_deactivated}\n"
             f"Auto Locked Cast: {self.auto_locked}\n"
             f"Unresolved Cast: {self.unresolved_cast}\n"
+            f"Tracking Invalidated: {len(self.tracking_invalidations)}\n"
             f"Warnings: {len(self.warnings)}"
         )
 
@@ -317,6 +321,18 @@ class SourceSyncEngine:
         report.dialogues_deactivated = sync_report.dialogues_deactivated
         report.auto_locked = sync_report.auto_locked
         report.unresolved_cast = sync_report.unresolved_cast
+        report.tracking_invalidations = [
+            {
+                "episode_id": item.episode_id,
+                "episode_number": item.episode_number,
+                "talent_id": item.talent_id,
+                "talent_name": item.talent_name,
+                "character_id": item.character_id,
+                "character_name": item.character_name,
+                "reasons": list(item.reasons),
+            }
+            for item in sync_report.tracking_invalidations
+        ]
         report.warnings.extend(sync_report.warnings)
 
         preview = report.preview or SourceChangePreview()
@@ -341,6 +357,7 @@ class SourceSyncEngine:
                 "cast_changed": preview.cast_changed,
                 "recording_affected": preview.recording_affected,
                 "tracking_affected": preview.tracking_affected,
+                "tracking_invalidations": report.tracking_invalidations,
                 "backup_path": report.backup_path,
             },
             created_at=now,
