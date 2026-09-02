@@ -25,8 +25,9 @@ from PySide6.QtWidgets import (
 )
 
 from core.database import Database
-from services.data_service import DataService, UnresolvedCastRow
-from services.review_service import ReviewService, ReviewedDialogueRow
+from pages.data_workspace_controller import DataWorkspaceController
+from services.data_service import UnresolvedCastRow
+from services.review_service import ReviewedDialogueRow
 from services.validation_service import (
     ACTION_REVIEW,
     ACTION_SOURCES,
@@ -37,7 +38,6 @@ from services.validation_service import (
     WARNING,
     WORKFLOW,
     ValidationIssue,
-    ValidationService,
 )
 from widgets.context_panel import ContextPanel
 from widgets.page_shell import PageShell
@@ -65,9 +65,7 @@ class DataPage(PageShell):
 
     def __init__(self, parent=None):
         self._database: Database | None = None
-        self._service: DataService | None = None
-        self._review_service: ReviewService | None = None
-        self._validation_service: ValidationService | None = None
+        self._controller = DataWorkspaceController()
         self._loading = False
         self._unresolved_rows: list[UnresolvedCastRow] = []
         self._reviewed_rows: list[ReviewedDialogueRow] = []
@@ -376,20 +374,16 @@ class DataPage(PageShell):
 
     def set_database(self, database: Database | None) -> None:
         self._database = database
-        self._service = DataService(database) if database is not None else None
-        self._review_service = ReviewService(database) if database is not None else None
-        self._validation_service = (
-            ValidationService(database) if database is not None else None
-        )
+        self._controller.bind_database(database)
 
-        if self._service is None:
+        if not self._controller.is_bound:
             self.clear_data()
             return
 
         self.reload()
 
     def refresh_from_database(self, database: Database | None) -> None:
-        if database is not self._database or self._service is None:
+        if database is not self._database or not self._controller.is_bound:
             self.set_database(database)
             return
 
@@ -401,9 +395,7 @@ class DataPage(PageShell):
 
     def clear_data(self) -> None:
         self._database = None
-        self._service = None
-        self._review_service = None
-        self._validation_service = None
+        self._controller.bind_database(None)
         self._unresolved_rows = []
         self._reviewed_rows = []
         self._validation_issues = []
@@ -433,7 +425,7 @@ class DataPage(PageShell):
         self._update_cast_mapping_visibility()
 
     def reload(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             self.clear_data()
             return
 
@@ -455,27 +447,17 @@ class DataPage(PageShell):
         self._update_cast_mapping_visibility()
 
     def _load_review_data(self) -> None:
-        if self._service is None or self._review_service is None:
-            self._unresolved_rows = []
-            self._reviewed_rows = []
-            self._populate_unresolved_table()
-            return
-
-        reviewed_ids = self._review_service.get_active_non_dialogue_ids()
-        self._unresolved_rows = [
-            row
-            for row in self._service.get_unresolved_cast()
-            if row.dialogue_id not in reviewed_ids
-        ]
-        self._reviewed_rows = self._review_service.get_non_dialogues()
+        rows = self._controller.get_review_rows()
+        self._unresolved_rows = list(rows.unresolved)
+        self._reviewed_rows = list(rows.reviewed)
         self._populate_unresolved_table()
 
     def _load_overview(self) -> None:
-        if self._service is None or self._validation_service is None:
+        if not self._controller.is_bound:
             return
 
-        overview = self._service.get_overview()
-        summary = self._validation_service.summarize(self._validation_issues)
+        overview = self._controller.get_overview()
+        summary = self._controller.summarize(self._validation_issues)
         needs_review = len({row.dialogue_id for row in self._unresolved_rows})
         values = {
             "active_sources": overview.active_sources,
@@ -504,14 +486,10 @@ class DataPage(PageShell):
             self.health_label.setText("✓ Project data healthy.")
 
     def _load_characters(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
-        reviewed_count = (
-            self._review_service.get_active_non_dialogue_count()
-            if self._review_service is not None
-            else 0
-        )
-        rows = self._service.get_characters()
+        reviewed_count = self._controller.get_active_non_dialogue_count()
+        rows = self._controller.get_characters()
         display_rows: list[tuple[object, int, int]] = []
         for row in rows:
             active_dialogues = row.active_dialogues
@@ -573,9 +551,9 @@ class DataPage(PageShell):
                 )
 
     def _load_talents(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
-        rows = self._service.get_talents()
+        rows = self._controller.get_talents()
         self.talents_table.setRowCount(len(rows))
         for row_index, row in enumerate(rows):
             talent_item = QTableWidgetItem(row.name)
@@ -589,9 +567,9 @@ class DataPage(PageShell):
             )
 
     def _load_sources(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
-        rows = self._service.get_sources()
+        rows = self._controller.get_sources()
         self._source_rows = rows
         self.sources_table.setRowCount(len(rows))
         for row_index, row in enumerate(rows):
@@ -610,12 +588,12 @@ class DataPage(PageShell):
                 self.sources_table.setItem(row_index, column, item)
 
     def _load_talent_combo(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
         current = self.mapping_talent_combo.currentData()
         self.mapping_talent_combo.clear()
         self.mapping_talent_combo.addItem("Pilih talent", None)
-        for talent_id, name in self._service.get_talent_options():
+        for talent_id, name in self._controller.get_talent_options():
             self.mapping_talent_combo.addItem(name, talent_id)
         index = self.mapping_talent_combo.findData(current)
         self.mapping_talent_combo.setCurrentIndex(index if index >= 0 else 0)
@@ -777,7 +755,7 @@ class DataPage(PageShell):
         if answer != QMessageBox.StandardButton.Yes:
             return
         try:
-            self._review_service.mark_non_dialogue(row.dialogue_id)
+            self._controller.mark_non_dialogue(row.dialogue_id)
         except Exception as exc:
             QMessageBox.critical(self, "Manual Review", str(exc))
             return
@@ -789,7 +767,7 @@ class DataPage(PageShell):
         if self._review_service is None:
             return
         try:
-            self._review_service.restore_to_review(row.dialogue_id)
+            self._controller.restore_to_review(row.dialogue_id)
         except Exception as exc:
             QMessageBox.critical(self, "Manual Review", str(exc))
             return
@@ -810,8 +788,10 @@ class DataPage(PageShell):
         if not accepted or not name.strip():
             return
         try:
-            character_id = self._service.ensure_character(name)
-            self._service.assign_missing_character(row.dialogue_id, character_id)
+            character_id = self._controller.add_missing_character(
+                row.dialogue_id,
+                name,
+            )
         except Exception as exc:
             QMessageBox.critical(self, "Add Character", str(exc))
             return
@@ -831,8 +811,10 @@ class DataPage(PageShell):
         if not accepted or not name.strip():
             return
         try:
-            talent_id = self._service.ensure_talent(name)
-            self._service.set_locked_mapping(row.character_id, talent_id)
+            talent_id = self._controller.add_talent_and_lock(
+                row.character_id,
+                name,
+            )
         except Exception as exc:
             QMessageBox.critical(self, "Add Talent", str(exc))
             return
@@ -989,7 +971,10 @@ class DataPage(PageShell):
         if answer != QMessageBox.StandardButton.Yes:
             return
         try:
-            self._service.set_locked_mapping(character_id, int(talent_id))
+            self._controller.set_locked_mapping(
+                character_id,
+                int(talent_id),
+            )
         except Exception as exc:
             QMessageBox.critical(self, "Cast Mapping", str(exc))
             return
@@ -1004,7 +989,7 @@ class DataPage(PageShell):
         if character_id is None:
             return
         try:
-            self._service.unlock_mapping(character_id)
+            self._controller.unlock_mapping(character_id)
         except Exception as exc:
             QMessageBox.critical(self, "Cast Mapping", str(exc))
             return
@@ -1054,11 +1039,11 @@ class DataPage(PageShell):
     # ------------------------------------------------------------------
 
     def _refresh_validation(self) -> None:
-        if self._validation_service is None:
+        if not self._controller.is_bound:
             self._validation_issues = []
             return
-        self._validation_issues = self._validation_service.validate()
-        summary = self._validation_service.summarize(self._validation_issues)
+        self._validation_issues = self._controller.validate()
+        summary = self._controller.summarize(self._validation_issues)
         self.validation_system_label.setText(f"System {summary.system_errors}")
         self.validation_review_label.setText(f"Review {summary.needs_review}")
         self.validation_workflow_label.setText(
