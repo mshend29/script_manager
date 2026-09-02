@@ -159,7 +159,8 @@ def test_changed_source_invalidates_delivered_status_before_new_line_is_recorded
     assert during.downstream_status == NOT_READY
     assert during.display_status == IN_PROGRESS
     assert any(
-        "status tracking downstream direset karena source berubah" in warning
+        "tracking downstream Hendra / Brama direset" in warning
+        and "DIALOG_ADDED" in warning
         for warning in report.warnings
     )
 
