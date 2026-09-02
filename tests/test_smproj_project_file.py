@@ -142,7 +142,8 @@ def test_project_ui_uses_smproj_file_picker_and_no_drsp_conversion():
     assert "tools.convert_drsp" not in ribbon
     assert "(.smproj)" in new_dialog
 
-    assert "len(sys.argv) > 1" in main_py
+    assert "project_args = [" in main_py
+    assert "if project_args:" in main_py
     assert "window.open_project_path(candidate)" in main_py
 
 
