@@ -505,7 +505,7 @@ Preview dan committed result tidak dapat berbeda dalam keputusan identity / add 
 
 ## PHASE 3 — Recording Revision Semantics
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: recording history dipertahankan tetapi source revision tetap terlihat.
 
@@ -530,12 +530,12 @@ bukan kehilangan checkbox dan bukan diam-diam dianggap selesai.
 
 ### Tasks
 
-- [ ] P3.1 Finalisasi status model source revision untuk recording.
-- [ ] P3.2 Simpan source signature saat line ditandai recorded.
-- [ ] P3.3 Deteksi stale recording setelah source revision.
-- [ ] P3.4 Tampilkan revision indicator di Dialog.
-- [ ] P3.5 Tentukan behavior Check All / Uncheck All terhadap revised lines.
-- [ ] P3.6 Pastikan old recording history tetap tersedia di audit / database.
+- [x] P3.1 Finalisasi status model source revision untuk recording.
+- [x] P3.2 Simpan source signature saat line ditandai recorded.
+- [x] P3.3 Deteksi stale recording setelah source revision.
+- [x] P3.4 Tampilkan revision indicator di Dialog.
+- [x] P3.5 Tentukan behavior Check All / Uncheck All terhadap revised lines.
+- [x] P3.6 Pastikan old recording history tetap tersedia di audit / database.
 
 ### Exit Criteria
 
@@ -545,7 +545,7 @@ Recorded line yang direvisi client tetap memiliki lineage dan history, tetapi op
 
 ## PHASE 4 — Semantic Tracking Invalidation
 
-**Status: BLOCKED by Phase 2; integrates with Phase 3**
+**Status: IN PROGRESS**
 
 Tujuan: downstream tracking hanya direset jika semantic source change memang mempengaruhi scope tersebut.
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 3 — Recording Revision Semantics
+PHASE 4 — Semantic Tracking Invalidation
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 3 complete: schema v11 records source signature at recording, revised recordings retain history and show Source Revised, bulk recording semantics tested, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 2 complete: immutable SourceChangePlan drives Preview + Apply, stale source/database guards added, dialogue lineage regressions promoted to required tests, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 1 complete: schema v10 adds source_signature, conservative reconciler added, migration ordering fixed, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 0 regression baseline added. Expected legacy failures recorded with strict xfail before reconciliation implementation. |
