@@ -676,7 +676,7 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 ### Areas
 
-- [ ] Windows packaging.
+- [x] Windows packaging.
 - [ ] Application icon / metadata.
 - [ ] `.smproj` file association via installer.
 - [x] Upgrade / migration smoke test.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows packaging: PyInstaller onedir build, frozen EXE smoke test, portable ZIP and Actions artifact upload pass on windows-latest. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release safety: backup disaster recovery + schema v10→v11 migration smoke tests added and passing in engine CI. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 final verification complete: runtime monkey-patching removed, MainWindow imports AliasDataPage/CompactTrackingPage explicitly, alias-aware DATA validation stays behind DataWorkspaceController, and engine + production Qt runtime CI are green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 previously reached green baseline: SourceSyncController owns async source lifecycle, existing ProjectManager retained as the correct lifecycle boundary, DATA domain service graph extracted into DataWorkspaceController. |
