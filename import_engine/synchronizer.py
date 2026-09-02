@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import uuid
 
 from core.database import Database
-from import_engine.parser import ScriptParseResult
+from import_engine.parser import ParsedDialogueRow, ScriptParseResult
 from import_engine.resolver import CharacterTalentResolver
 from import_engine.scanner import SourceScanResult
+from import_engine.source_change_plan import (
+    SourceChangePlan,
+    SourceChangePlanBuilder,
+)
 
 
 @dataclass
@@ -22,7 +27,7 @@ class DialogueSyncReport:
 
 
 class DialogueSynchronizer:
-    """Synchronize source metadata and parsed dialogues in one SQLite transaction."""
+    """Apply an already-reconciled source plan in one SQLite transaction."""
 
     def synchronize(
         self,
@@ -31,11 +36,34 @@ class DialogueSynchronizer:
         scan: SourceScanResult,
         parse_results: dict[str, ScriptParseResult],
         synced_at: str,
+        plan: SourceChangePlan | None = None,
     ) -> DialogueSyncReport:
         report = DialogueSyncReport()
+
+        if plan is None:
+            plan = SourceChangePlanBuilder(database).build(
+                scan=scan,
+                parse_results=parse_results,
+            )
+
+        if plan.has_ambiguities:
+            raise RuntimeError(
+                "Source refresh memiliki dialogue lineage ambigu:\n"
+                + "\n".join(plan.ambiguity_messages)
+            )
+
         scanned_by_path = {item.file_path: item for item in scan.files}
 
         with database.connect() as connection:
+            current_token = SourceChangePlanBuilder.compute_database_token(
+                connection
+            )
+            if current_token != plan.database_token:
+                raise RuntimeError(
+                    "Database berubah setelah Source Change Plan dibuat. "
+                    "Jalankan Source Sync lagi."
+                )
+
             existing_source_rows = connection.execute(
                 """
                 SELECT
@@ -51,37 +79,27 @@ class DialogueSynchronizer:
             }
 
             # -------------------------------------------------
-            # SOURCES THAT DISAPPEARED
+            # SOURCES THAT DISAPPEARED — EXACTLY AS PLANNED
             # -------------------------------------------------
 
-            missing_paths = set(existing_by_path) - set(scanned_by_path)
-
-            for file_path in missing_paths:
-                source_row = existing_by_path[file_path]
-                source_file_id = int(source_row["id"])
-
-                active_dialogues = connection.execute(
-                    """
-                    SELECT COUNT(*) AS total
-                    FROM dialogues
-                    WHERE source_file_id = ? AND is_active = 1
-                    """,
-                    (source_file_id,),
-                ).fetchone()
-                report.dialogues_deactivated += int(
-                    active_dialogues["total"] if active_dialogues else 0
-                )
-
-                connection.execute(
-                    """
-                    UPDATE dialogues
-                    SET is_active = 0,
-                        updated_at = ?
-                    WHERE source_file_id = ?
-                      AND is_active = 1
-                    """,
-                    (synced_at, source_file_id),
-                )
+            for missing in plan.missing_sources:
+                if missing.active_dialogue_ids:
+                    placeholders = ",".join(
+                        "?" for _ in missing.active_dialogue_ids
+                    )
+                    connection.execute(
+                        f"""
+                        UPDATE dialogues
+                        SET is_active = 0,
+                            updated_at = ?
+                        WHERE id IN ({placeholders})
+                          AND is_active = 1
+                        """,
+                        (synced_at, *missing.active_dialogue_ids),
+                    )
+                    report.dialogues_deactivated += len(
+                        missing.active_dialogue_ids
+                    )
 
                 connection.execute(
                     """
@@ -90,7 +108,7 @@ class DialogueSynchronizer:
                         last_seen_at = ?
                     WHERE id = ?
                     """,
-                    (synced_at, source_file_id),
+                    (synced_at, missing.source_file_id),
                 )
 
                 connection.execute(
@@ -99,7 +117,7 @@ class DialogueSynchronizer:
                     SET is_active = 0
                     WHERE source_file_id = ?
                     """,
-                    (source_file_id,),
+                    (missing.source_file_id,),
                 )
 
             # -------------------------------------------------
@@ -214,11 +232,12 @@ class DialogueSynchronizer:
                 )
 
                 if changed:
-                    changed_episode_numbers[episode_id] = item.episode_number
+                    changed_episode_numbers[episode_id] = (
+                        item.episode_number
+                    )
 
-            # A changed source invalidates downstream approval for that episode.
-            # Recording checkboxes remain untouched. REVISION is deliberately
-            # preserved because it already represents work that needs attention.
+            # Phase 4 will replace this coarse fingerprint invalidation with
+            # semantic invalidation derived from SourceChangePlan.
             for episode_id, episode_number in changed_episode_numbers.items():
                 cursor = connection.execute(
                     """
@@ -250,112 +269,106 @@ class DialogueSynchronizer:
             report.warnings.extend(resolver_report.warnings)
 
             # -------------------------------------------------
-            # DIALOGUES FOR NEW / CHANGED FILES ONLY
+            # DIALOGUES — EXECUTE THE APPROVED PLAN
             # -------------------------------------------------
 
-            for file_path, parse_result in parse_results.items():
+            for file_path, file_plan in plan.file_plans.items():
                 source_file_id, episode_id = source_context[file_path]
 
-                existing_dialogues = connection.execute(
-                    """
-                    SELECT id, dialog_uid, is_active
-                    FROM dialogues
-                    WHERE source_file_id = ?
-                       OR episode_id = ?
-                    """,
-                    (source_file_id, episode_id),
-                ).fetchall()
-                existing_by_uid = {
-                    str(row["dialog_uid"]): row for row in existing_dialogues
-                }
-                current_uids = {row.dialog_uid for row in parse_result.rows}
-
-                for existing_dialogue in existing_dialogues:
-                    uid = str(existing_dialogue["dialog_uid"])
-                    if uid in current_uids:
+                for old in file_plan.removals:
+                    if not old.is_active:
                         continue
-                    if int(existing_dialogue["is_active"] or 0) != 1:
-                        continue
-
-                    connection.execute(
+                    cursor = connection.execute(
                         """
                         UPDATE dialogues
                         SET is_active = 0,
                             updated_at = ?
                         WHERE id = ?
+                          AND is_active = 1
                         """,
-                        (synced_at, int(existing_dialogue["id"])),
+                        (synced_at, old.dialogue_id),
                     )
-                    report.dialogues_deactivated += 1
+                    if int(cursor.rowcount or 0) > 0:
+                        report.dialogues_deactivated += 1
 
-                for parsed_row in parse_result.rows:
-                    existing_dialogue = existing_by_uid.get(parsed_row.dialog_uid)
+                work_rows: list[tuple[int, ParsedDialogueRow]] = []
 
-                    if existing_dialogue is None:
-                        cursor = connection.execute(
-                            """
-                            INSERT INTO dialogues(
-                                dialog_uid,
-                                episode_id,
-                                source_file_id,
-                                time_in,
-                                time_out,
-                                dialog_text,
-                                source_row,
-                                is_active,
-                                created_at,
-                                updated_at
-                            )
-                            VALUES(?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-                            """,
-                            (
-                                parsed_row.dialog_uid,
-                                episode_id,
-                                source_file_id,
-                                parsed_row.time_in,
-                                parsed_row.time_out,
-                                parsed_row.dialogue,
-                                parsed_row.source_row,
-                                synced_at,
-                                synced_at,
-                            ),
+                for match in file_plan.matches:
+                    parsed_row = match.parsed
+                    dialogue_id = int(match.existing.dialogue_id)
+                    was_active = bool(match.existing.is_active)
+
+                    connection.execute(
+                        """
+                        UPDATE dialogues
+                        SET source_signature = ?,
+                            episode_id = ?,
+                            source_file_id = ?,
+                            time_in = ?,
+                            time_out = ?,
+                            dialog_text = ?,
+                            source_row = ?,
+                            is_active = 1,
+                            updated_at = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            parsed_row.source_signature,
+                            episode_id,
+                            source_file_id,
+                            parsed_row.time_in,
+                            parsed_row.time_out,
+                            parsed_row.dialogue,
+                            parsed_row.source_row,
+                            synced_at,
+                            dialogue_id,
+                        ),
+                    )
+                    report.dialogues_updated += 1
+                    if not was_active:
+                        report.dialogues_reactivated += 1
+                    work_rows.append((dialogue_id, parsed_row))
+
+                for parsed_row in file_plan.additions:
+                    dialog_uid = self._allocate_dialog_uid(
+                        connection,
+                        parsed_row.source_signature,
+                    )
+                    cursor = connection.execute(
+                        """
+                        INSERT INTO dialogues(
+                            dialog_uid,
+                            source_signature,
+                            episode_id,
+                            source_file_id,
+                            time_in,
+                            time_out,
+                            dialog_text,
+                            source_row,
+                            is_active,
+                            created_at,
+                            updated_at
                         )
-                        dialogue_id = int(cursor.lastrowid)
-                        report.dialogues_added += 1
-                    else:
-                        dialogue_id = int(existing_dialogue["id"])
-                        was_active = int(existing_dialogue["is_active"] or 0) == 1
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                        """,
+                        (
+                            dialog_uid,
+                            parsed_row.source_signature,
+                            episode_id,
+                            source_file_id,
+                            parsed_row.time_in,
+                            parsed_row.time_out,
+                            parsed_row.dialogue,
+                            parsed_row.source_row,
+                            synced_at,
+                            synced_at,
+                        ),
+                    )
+                    dialogue_id = int(cursor.lastrowid)
+                    report.dialogues_added += 1
+                    work_rows.append((dialogue_id, parsed_row))
 
-                        connection.execute(
-                            """
-                            UPDATE dialogues
-                            SET episode_id = ?,
-                                source_file_id = ?,
-                                time_in = ?,
-                                time_out = ?,
-                                dialog_text = ?,
-                                source_row = ?,
-                                is_active = 1,
-                                updated_at = ?
-                            WHERE id = ?
-                            """,
-                            (
-                                episode_id,
-                                source_file_id,
-                                parsed_row.time_in,
-                                parsed_row.time_out,
-                                parsed_row.dialogue,
-                                parsed_row.source_row,
-                                synced_at,
-                                dialogue_id,
-                            ),
-                        )
-                        report.dialogues_updated += 1
-                        if not was_active:
-                            report.dialogues_reactivated += 1
-
-                    # Recording state is intentionally insert-only.
-                    # Existing rows keep their checkbox state across Refresh.
+                for dialogue_id, parsed_row in work_rows:
                     connection.execute(
                         """
                         INSERT OR IGNORE INTO recording_status(
@@ -369,104 +382,15 @@ class DialogueSynchronizer:
                         (dialogue_id, synced_at),
                     )
 
-                    # Rebuild source provenance, effective cast and alias
-                    # provenance together. dialog_source_cast intentionally
-                    # ignores manual Character Mapping so Unlock can restore
-                    # the latest source/resolver baseline.
-                    connection.execute(
-                        "DELETE FROM character_alias_dialogue WHERE dialogue_id = ?",
-                        (dialogue_id,),
-                    )
-                    connection.execute(
-                        "DELETE FROM dialog_source_cast WHERE dialogue_id = ?",
-                        (dialogue_id,),
-                    )
-                    connection.execute(
-                        """
-                        DELETE FROM dialog_cast
-                        WHERE dialogue_id = ?
-                        """,
-                        (dialogue_id,),
-                    )
-
-                    source_cast, _source_warnings = resolver.resolve_row(
-                        parsed_row,
+                    self._rebuild_cast(
+                        connection=connection,
+                        resolver=resolver,
+                        dialogue_id=dialogue_id,
+                        parsed_row=parsed_row,
+                        episode_number=file_plan.episode_number,
                         timestamp=synced_at,
-                        apply_manual_overrides=False,
+                        report=report,
                     )
-                    for position, cast_member in enumerate(source_cast):
-                        connection.execute(
-                            """
-                            INSERT INTO dialog_source_cast(
-                                dialogue_id,
-                                character_id,
-                                talent_id,
-                                position,
-                                resolution_source
-                            )
-                            VALUES(?, ?, ?, ?, ?)
-                            """,
-                            (
-                                dialogue_id,
-                                cast_member.character_id,
-                                cast_member.talent_id,
-                                position,
-                                cast_member.source,
-                            ),
-                        )
-
-                    resolved_cast, cast_warnings = resolver.resolve_row(
-                        parsed_row,
-                        timestamp=synced_at,
-                        apply_manual_overrides=True,
-                    )
-                    report.warnings.extend(
-                        f"Episode {parse_result.episode_number} row "
-                        f"{parsed_row.source_row}: {warning}"
-                        for warning in cast_warnings
-                    )
-
-                    for position, cast_member in enumerate(resolved_cast):
-                        connection.execute(
-                            """
-                            INSERT INTO dialog_cast(
-                                dialogue_id,
-                                character_id,
-                                talent_id,
-                                position
-                            )
-                            VALUES(?, ?, ?, ?)
-                            """,
-                            (
-                                dialogue_id,
-                                cast_member.character_id,
-                                cast_member.talent_id,
-                                position,
-                            ),
-                        )
-
-                        for alias_id in cast_member.alias_ids:
-                            connection.execute(
-                                """
-                                INSERT INTO character_alias_dialogue(
-                                    alias_id,
-                                    dialogue_id,
-                                    talent_id,
-                                    position,
-                                    created_canonical
-                                ) VALUES(?, ?, ?, ?, 1)
-                                """,
-                                (
-                                    int(alias_id),
-                                    dialogue_id,
-                                    cast_member.talent_id,
-                                    position,
-                                ),
-                            )
-
-                        report.cast_links += 1
-                        if cast_member.talent_id is None:
-                            report.unresolved_cast += 1
 
             connection.execute(
                 """
@@ -479,3 +403,128 @@ class DialogueSynchronizer:
             )
 
         return report
+
+    @staticmethod
+    def _allocate_dialog_uid(connection, source_signature: str) -> str:
+        preferred = str(source_signature or "").strip()
+        if not preferred:
+            preferred = f"dlg-{uuid.uuid4().hex}"
+
+        exists = connection.execute(
+            "SELECT 1 FROM dialogues WHERE dialog_uid = ?",
+            (preferred,),
+        ).fetchone()
+        if exists is None:
+            return preferred
+
+        while True:
+            candidate = f"{preferred}:{uuid.uuid4().hex[:12]}"
+            exists = connection.execute(
+                "SELECT 1 FROM dialogues WHERE dialog_uid = ?",
+                (candidate,),
+            ).fetchone()
+            if exists is None:
+                return candidate
+
+    @staticmethod
+    def _rebuild_cast(
+        *,
+        connection,
+        resolver: CharacterTalentResolver,
+        dialogue_id: int,
+        parsed_row: ParsedDialogueRow,
+        episode_number: int,
+        timestamp: str,
+        report: DialogueSyncReport,
+    ) -> None:
+        connection.execute(
+            "DELETE FROM character_alias_dialogue WHERE dialogue_id = ?",
+            (dialogue_id,),
+        )
+        connection.execute(
+            "DELETE FROM dialog_source_cast WHERE dialogue_id = ?",
+            (dialogue_id,),
+        )
+        connection.execute(
+            "DELETE FROM dialog_cast WHERE dialogue_id = ?",
+            (dialogue_id,),
+        )
+
+        source_cast, _source_warnings = resolver.resolve_row(
+            parsed_row,
+            timestamp=timestamp,
+            apply_manual_overrides=False,
+        )
+        for position, cast_member in enumerate(source_cast):
+            connection.execute(
+                """
+                INSERT INTO dialog_source_cast(
+                    dialogue_id,
+                    character_id,
+                    talent_id,
+                    position,
+                    resolution_source
+                )
+                VALUES(?, ?, ?, ?, ?)
+                """,
+                (
+                    dialogue_id,
+                    cast_member.character_id,
+                    cast_member.talent_id,
+                    position,
+                    cast_member.source,
+                ),
+            )
+
+        resolved_cast, cast_warnings = resolver.resolve_row(
+            parsed_row,
+            timestamp=timestamp,
+            apply_manual_overrides=True,
+        )
+        report.warnings.extend(
+            f"Episode {episode_number} row "
+            f"{parsed_row.source_row}: {warning}"
+            for warning in cast_warnings
+        )
+
+        for position, cast_member in enumerate(resolved_cast):
+            connection.execute(
+                """
+                INSERT INTO dialog_cast(
+                    dialogue_id,
+                    character_id,
+                    talent_id,
+                    position
+                )
+                VALUES(?, ?, ?, ?)
+                """,
+                (
+                    dialogue_id,
+                    cast_member.character_id,
+                    cast_member.talent_id,
+                    position,
+                ),
+            )
+
+            for alias_id in cast_member.alias_ids:
+                connection.execute(
+                    """
+                    INSERT INTO character_alias_dialogue(
+                        alias_id,
+                        dialogue_id,
+                        talent_id,
+                        position,
+                        created_canonical
+                    ) VALUES(?, ?, ?, ?, 1)
+                    """,
+                    (
+                        int(alias_id),
+                        dialogue_id,
+                        cast_member.talent_id,
+                        position,
+                    ),
+                )
+
+            report.cast_links += 1
+            if cast_member.talent_id is None:
+                report.unresolved_cast += 1
