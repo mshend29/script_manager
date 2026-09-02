@@ -146,5 +146,13 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert dialog_page.talent_combo.findText("Brama") >= 0
     assert dialog_page.talent_combo.findText("Dika") >= 0
 
+    window.set_page("DATA")
+    qapp.processEvents()
+
+    data_page = window.pages["DATA"]
+    assert data_page._controller.is_bound is True
+    assert data_page.overview_values["active_dialogues"].text() == "2"
+    assert window._project_data_state.is_dirty("DATA") is False
+
     window.close()
     qapp.processEvents()
