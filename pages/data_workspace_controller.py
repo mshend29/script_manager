@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from core.database import Database
 from services.data_service import (
@@ -33,11 +34,21 @@ class DataWorkspaceController:
     This controller owns the service graph and all DATA-domain reads/writes.
     """
 
-    def __init__(self, database: Database | None = None) -> None:
+    def __init__(
+        self,
+        database: Database | None = None,
+        *,
+        validation_factory: Callable[[Database], object] | None = None,
+    ) -> None:
         self.database: Database | None = None
         self.data: DataService | None = None
         self.review: ReviewService | None = None
-        self.validation: ValidationService | None = None
+        self.validation = None
+        self._validation_factory = (
+            validation_factory
+            if validation_factory is not None
+            else ValidationService
+        )
         self.bind_database(database)
 
     @property
@@ -49,7 +60,9 @@ class DataWorkspaceController:
         self.data = DataService(database) if database is not None else None
         self.review = ReviewService(database) if database is not None else None
         self.validation = (
-            ValidationService(database) if database is not None else None
+            self._validation_factory(database)
+            if database is not None
+            else None
         )
 
     def get_review_rows(self) -> ReviewWorkspaceRows:
