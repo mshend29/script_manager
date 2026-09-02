@@ -54,23 +54,23 @@ Project disimpan sebagai satu file <code>.smproj</code>. File ini menyimpan data
   <li>File source dapat berupa <code>.xlsx</code> atau <code>.xlsm</code> sesuai dukungan import yang tersedia.</li>
 </ul>
 
-<h2>3. Import Source</h2>
+<h2>3. Sync Source</h2>
 <ol>
-  <li>Pada tab <b>PROJECT</b>, pilih <b>Import Source</b>.</li>
+  <li>Pada tab <b>PROJECT</b>, pilih <b>Sync Source</b>.</li>
   <li>Script Manager akan scan file, inspect workbook, parse, normalize, resolve character/talent, lalu melakukan validation.</li>
-  <li>Periksa preview jika ditampilkan.</li>
-  <li>Terapkan import jika hasilnya sesuai.</li>
+  <li>Periksa preview perubahan yang akan diterapkan.</li>
+  <li>Terapkan sync jika hasilnya sesuai.</li>
 </ol>
-<p>Setelah import, halaman SCRIPT, DIALOG, TRACKING, dan DATA membaca data dari <code>.smproj</code>, bukan membuka ulang seluruh Excel setiap saat.</p>
+<p>Sync pertama mengisi project dari source. Sync berikutnya hanya memproses perubahan yang relevan. Setelah commit berhasil, SCRIPT, DIALOG, TRACKING, dan DATA otomatis membaca state terbaru dari <code>.smproj</code>.</p>
 
-<h2>4. Refresh Saat Client Mengubah Naskah</h2>
-<p>Jika client mengirim revisi Excel, ganti atau perbarui file di Source Script Folder lalu pilih <b>Refresh Data</b>.</p>
+<h2>4. Sync Saat Client Mengubah Naskah</h2>
+<p>Jika client mengirim revisi Excel, ganti atau perbarui file di Source Script Folder lalu pilih <b>Sync Source</b> lagi. Tombol yang sama digunakan untuk initial sync dan incremental sync.</p>
 <div class="note">
-Refresh memproses source yang New, Changed, atau Restored. Recording status, mapping yang sudah dikunci, dan downstream tracking dipertahankan sesuai aturan sinkronisasi project.
+Sync memproses source yang New, Changed, atau Restored. Recording history dan mapping manual dipertahankan. Tracking downstream hanya diinvalidasi pada scope Episode + Talent + Character yang benar-benar terdampak perubahan semantic.
 </div>
 
 <h2>5. Recording Dialogue</h2>
-<p>Buka tab <b>DIALOG</b>. Gunakan checkbox recording pada dialog yang sudah selesai direkam. Status ini disimpan langsung di <code>.smproj</code> dan menjadi dasar perhitungan progress recording di TRACKING.</p>
+<p>Buka tab <b>DIALOG</b>. Gunakan checkbox recording pada dialog yang sudah selesai direkam. Status ini disimpan langsung di <code>.smproj</code> dan menjadi dasar perhitungan progress recording di TRACKING. Jika source berubah setelah recording, baris tetap tercatat recorded dan diberi indikator <b>Source Revised</b> sampai operator menerima hasil re-recording terbaru.</p>
 
 <h2>6. Tracking</h2>
 <p>Tab <b>TRACKING</b> merangkum progress per talent, character, dan episode. Status recording berasal dari dialog. Status lanjutan seperti stem, delivery, dan revision dikelola sebagai workflow project.</p>
