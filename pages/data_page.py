@@ -683,7 +683,7 @@ class DataPage(PageShell):
         return None, None
 
     def _unresolved_cell_clicked(self, row_index: int, column: int) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
         kind, row = self._current_review_row(row_index)
         if row is None:
@@ -741,7 +741,7 @@ class DataPage(PageShell):
         return menu.exec(position)
 
     def _mark_non_dialogue(self, row: UnresolvedCastRow) -> None:
-        if self._review_service is None or row.character_id is not None:
+        if not self._controller.is_bound or row.character_id is not None:
             return
         answer = QMessageBox.question(
             self,
@@ -764,7 +764,7 @@ class DataPage(PageShell):
         self.data_changed.emit()
 
     def _restore_to_review(self, row: ReviewedDialogueRow) -> None:
-        if self._review_service is None:
+        if not self._controller.is_bound:
             return
         try:
             self._controller.restore_to_review(row.dialogue_id)
@@ -778,7 +778,7 @@ class DataPage(PageShell):
         self.data_changed.emit()
 
     def _add_character_to_unresolved(self, row: UnresolvedCastRow) -> None:
-        if self._service is None or row.character_id is not None:
+        if not self._controller.is_bound or row.character_id is not None:
             return
         name, accepted = QInputDialog.getText(
             self,
@@ -801,7 +801,7 @@ class DataPage(PageShell):
         self.data_changed.emit()
 
     def _add_talent_to_unresolved(self, row: UnresolvedCastRow) -> None:
-        if self._service is None or row.character_id is None:
+        if not self._controller.is_bound or row.character_id is None:
             return
         name, accepted = QInputDialog.getText(
             self,
@@ -926,7 +926,7 @@ class DataPage(PageShell):
     def _set_mapping_enabled(self, enabled: bool) -> None:
         active = (
             enabled
-            and self._service is not None
+            and self._controller.is_bound
             and self.tabs.currentIndex() == self.TAB_INDEX["characters"]
         )
         self.mapping_talent_combo.setEnabled(active)
@@ -946,7 +946,7 @@ class DataPage(PageShell):
             self._set_mapping_enabled(False)
 
     def _lock_selected_mapping(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
         character_id = self._selected_character_id()
         talent_id = self.mapping_talent_combo.currentData()
@@ -983,7 +983,7 @@ class DataPage(PageShell):
         self.data_changed.emit()
 
     def _unlock_selected_mapping(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
         character_id = self._selected_character_id()
         if character_id is None:
@@ -1181,7 +1181,7 @@ class DataPage(PageShell):
             self.tabs.setCurrentIndex(index)
 
     def run_validation(self) -> list[ValidationIssue]:
-        if self._validation_service is None:
+        if not self._controller.is_bound:
             return []
         self._refresh_validation()
         self._load_overview()
@@ -1189,14 +1189,14 @@ class DataPage(PageShell):
         return list(self._validation_issues)
 
     def backup_database(self) -> Path:
-        if self._service is None:
+        if not self._controller.is_bound:
             raise RuntimeError("Belum ada project yang dibuka.")
-        return self._service.backup_database()
+        return self._controller.backup_database()
 
     def rebuild_indexes(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             raise RuntimeError("Belum ada project yang dibuka.")
-        self._service.rebuild_indexes()
+        self._controller.rebuild_indexes()
         self.reload()
 
     @staticmethod
