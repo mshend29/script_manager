@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from html import escape
-from pathlib import Path
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -13,11 +12,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.resource_paths import resource_path
 from widgets.context_panel import ContextPanel
 from widgets.page_shell import PageShell
 
 
-HELP_ROOT = Path(__file__).resolve().parents[1] / "resources" / "help"
+HELP_ROOT = resource_path("resources", "help")
 GETTING_STARTED_FILE = HELP_ROOT / "getting_started.html"
 USER_GUIDE_FILE = HELP_ROOT / "user_guide.html"
 KEYBOARD_SHORTCUTS_FILE = HELP_ROOT / "keyboard_shortcuts.html"
