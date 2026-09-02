@@ -14,6 +14,25 @@ from import_engine.source_change_plan import (
 )
 
 
+@dataclass(frozen=True)
+class TrackingScope:
+    episode_id: int
+    episode_number: int
+    talent_id: int
+    character_id: int
+
+
+@dataclass(frozen=True)
+class TrackingInvalidation:
+    episode_id: int
+    episode_number: int
+    talent_id: int
+    talent_name: str
+    character_id: int
+    character_name: str
+    reasons: tuple[str, ...]
+
+
 @dataclass
 class DialogueSyncReport:
     dialogues_added: int = 0
@@ -23,6 +42,9 @@ class DialogueSyncReport:
     cast_links: int = 0
     auto_locked: int = 0
     unresolved_cast: int = 0
+    tracking_invalidations: list[TrackingInvalidation] = field(
+        default_factory=list
+    )
     warnings: list[str] = field(default_factory=list)
 
 
@@ -52,8 +74,6 @@ class DialogueSynchronizer:
                 + "\n".join(plan.ambiguity_messages)
             )
 
-        scanned_by_path = {item.file_path: item for item in scan.files}
-
         with database.connect() as connection:
             current_token = SourceChangePlanBuilder.compute_database_token(
                 connection
@@ -63,6 +83,8 @@ class DialogueSynchronizer:
                     "Database berubah setelah Source Change Plan dibuat. "
                     "Jalankan Source Sync lagi."
                 )
+
+            pending_tracking: dict[TrackingScope, set[str]] = {}
 
             existing_source_rows = connection.execute(
                 """
@@ -83,6 +105,17 @@ class DialogueSynchronizer:
             # -------------------------------------------------
 
             for missing in plan.missing_sources:
+                old_scopes = self._dialogue_scopes(
+                    connection,
+                    missing.active_dialogue_ids,
+                )
+                for scopes in old_scopes.values():
+                    self._queue_tracking_invalidation(
+                        pending_tracking,
+                        scopes,
+                        "SOURCE_MISSING",
+                    )
+
                 if missing.active_dialogue_ids:
                     placeholders = ",".join(
                         "?" for _ in missing.active_dialogue_ids
@@ -125,7 +158,6 @@ class DialogueSynchronizer:
             # -------------------------------------------------
 
             source_context: dict[str, tuple[int, int]] = {}
-            changed_episode_numbers: dict[int, int] = {}
 
             for item in scan.files:
                 existing = existing_by_path.get(item.file_path)
@@ -231,29 +263,6 @@ class DialogueSynchronizer:
                     episode_id,
                 )
 
-                if changed:
-                    changed_episode_numbers[episode_id] = (
-                        item.episode_number
-                    )
-
-            # Phase 4 will replace this coarse fingerprint invalidation with
-            # semantic invalidation derived from SourceChangePlan.
-            for episode_id, episode_number in changed_episode_numbers.items():
-                cursor = connection.execute(
-                    """
-                    DELETE FROM stem_status
-                    WHERE episode_id = ?
-                      AND status IN ('READY_TO_STEM', 'STEMMED', 'DELIVERED')
-                    """,
-                    (episode_id,),
-                )
-                invalidated = max(int(cursor.rowcount or 0), 0)
-                if invalidated:
-                    report.warnings.append(
-                        f"Episode {episode_number}: {invalidated} status tracking "
-                        "downstream direset karena source berubah."
-                    )
-
             # -------------------------------------------------
             # RESOLVER PREPARATION + AUTO-LOCK LEARNING
             # -------------------------------------------------
@@ -275,7 +284,25 @@ class DialogueSynchronizer:
             for file_path, file_plan in plan.file_plans.items():
                 source_file_id, episode_id = source_context[file_path]
 
+                old_ids = [
+                    int(match.existing.dialogue_id)
+                    for match in file_plan.matches
+                ] + [
+                    int(old.dialogue_id)
+                    for old in file_plan.removals
+                ]
+                old_scopes = self._dialogue_scopes(
+                    connection,
+                    old_ids,
+                )
+
                 for old in file_plan.removals:
+                    dialogue_id = int(old.dialogue_id)
+                    self._queue_tracking_invalidation(
+                        pending_tracking,
+                        old_scopes.get(dialogue_id, set()),
+                        "DIALOG_REMOVED",
+                    )
                     if not old.is_active:
                         continue
                     cursor = connection.execute(
@@ -286,12 +313,14 @@ class DialogueSynchronizer:
                         WHERE id = ?
                           AND is_active = 1
                         """,
-                        (synced_at, old.dialogue_id),
+                        (synced_at, dialogue_id),
                     )
                     if int(cursor.rowcount or 0) > 0:
                         report.dialogues_deactivated += 1
 
                 work_rows: list[tuple[int, ParsedDialogueRow]] = []
+                matched_rows: list[tuple[int, object]] = []
+                added_ids: list[int] = []
 
                 for match in file_plan.matches:
                     parsed_row = match.parsed
@@ -328,6 +357,7 @@ class DialogueSynchronizer:
                     if not was_active:
                         report.dialogues_reactivated += 1
                     work_rows.append((dialogue_id, parsed_row))
+                    matched_rows.append((dialogue_id, match))
 
                 for parsed_row in file_plan.additions:
                     dialog_uid = self._allocate_dialog_uid(
@@ -367,6 +397,7 @@ class DialogueSynchronizer:
                     dialogue_id = int(cursor.lastrowid)
                     report.dialogues_added += 1
                     work_rows.append((dialogue_id, parsed_row))
+                    added_ids.append(dialogue_id)
 
                 for dialogue_id, parsed_row in work_rows:
                     connection.execute(
@@ -392,6 +423,48 @@ class DialogueSynchronizer:
                         report=report,
                     )
 
+                new_ids = [
+                    dialogue_id for dialogue_id, _match in matched_rows
+                ] + added_ids
+                new_scopes = self._dialogue_scopes(
+                    connection,
+                    new_ids,
+                )
+
+                for dialogue_id in added_ids:
+                    self._queue_tracking_invalidation(
+                        pending_tracking,
+                        new_scopes.get(dialogue_id, set()),
+                        "DIALOG_ADDED",
+                    )
+
+                for dialogue_id, match in matched_rows:
+                    before = old_scopes.get(dialogue_id, set())
+                    after = new_scopes.get(dialogue_id, set())
+                    signature_changed = (
+                        match.existing.source_signature
+                        != match.parsed.source_signature
+                    )
+
+                    if signature_changed:
+                        self._queue_tracking_invalidation(
+                            pending_tracking,
+                            before | after,
+                            "SOURCE_REVISED",
+                        )
+                    elif before != after:
+                        self._queue_tracking_invalidation(
+                            pending_tracking,
+                            before | after,
+                            "CAST_CHANGED",
+                        )
+
+            self._apply_tracking_invalidations(
+                connection,
+                pending_tracking,
+                report,
+            )
+
             connection.execute(
                 """
                 INSERT INTO app_meta(key, value)
@@ -403,6 +476,126 @@ class DialogueSynchronizer:
             )
 
         return report
+
+    @staticmethod
+    def _queue_tracking_invalidation(
+        pending: dict[TrackingScope, set[str]],
+        scopes: set[TrackingScope],
+        reason: str,
+    ) -> None:
+        for scope in scopes:
+            pending.setdefault(scope, set()).add(str(reason))
+
+    @staticmethod
+    def _dialogue_scopes(
+        connection,
+        dialogue_ids,
+    ) -> dict[int, set[TrackingScope]]:
+        ids = sorted({int(value) for value in dialogue_ids})
+        if not ids:
+            return {}
+
+        placeholders = ",".join("?" for _ in ids)
+        rows = connection.execute(
+            f"""
+            SELECT DISTINCT
+                d.id AS dialogue_id,
+                e.id AS episode_id,
+                e.episode_number,
+                dc.talent_id,
+                dc.character_id
+            FROM dialogues AS d
+            JOIN episodes AS e ON e.id = d.episode_id
+            JOIN dialog_cast AS dc ON dc.dialogue_id = d.id
+            WHERE d.id IN ({placeholders})
+              AND dc.talent_id IS NOT NULL
+            """,
+            ids,
+        ).fetchall()
+
+        result: dict[int, set[TrackingScope]] = {}
+        for row in rows:
+            dialogue_id = int(row["dialogue_id"])
+            result.setdefault(dialogue_id, set()).add(
+                TrackingScope(
+                    episode_id=int(row["episode_id"]),
+                    episode_number=int(row["episode_number"]),
+                    talent_id=int(row["talent_id"]),
+                    character_id=int(row["character_id"]),
+                )
+            )
+        return result
+
+    @staticmethod
+    def _apply_tracking_invalidations(
+        connection,
+        pending: dict[TrackingScope, set[str]],
+        report: DialogueSyncReport,
+    ) -> None:
+        for scope, reasons in sorted(
+            pending.items(),
+            key=lambda item: (
+                item[0].episode_number,
+                item[0].talent_id,
+                item[0].character_id,
+            ),
+        ):
+            cursor = connection.execute(
+                """
+                DELETE FROM stem_status
+                WHERE episode_id = ?
+                  AND talent_id = ?
+                  AND character_id = ?
+                  AND status IN ('READY_TO_STEM', 'STEMMED', 'DELIVERED')
+                """,
+                (
+                    scope.episode_id,
+                    scope.talent_id,
+                    scope.character_id,
+                ),
+            )
+            if int(cursor.rowcount or 0) <= 0:
+                continue
+
+            labels = connection.execute(
+                """
+                SELECT
+                    c.name AS character_name,
+                    t.name AS talent_name
+                FROM characters AS c
+                JOIN talents AS t ON t.id = ?
+                WHERE c.id = ?
+                """,
+                (scope.talent_id, scope.character_id),
+            ).fetchone()
+
+            character_name = (
+                str(labels["character_name"])
+                if labels is not None
+                else f"Character {scope.character_id}"
+            )
+            talent_name = (
+                str(labels["talent_name"])
+                if labels is not None
+                else f"Talent {scope.talent_id}"
+            )
+            reason_tuple = tuple(sorted(reasons))
+            report.tracking_invalidations.append(
+                TrackingInvalidation(
+                    episode_id=scope.episode_id,
+                    episode_number=scope.episode_number,
+                    talent_id=scope.talent_id,
+                    talent_name=talent_name,
+                    character_id=scope.character_id,
+                    character_name=character_name,
+                    reasons=reason_tuple,
+                )
+            )
+            report.warnings.append(
+                f"Episode {scope.episode_number}: tracking downstream "
+                f"{character_name} / {talent_name} direset "
+                f"({', '.join(reason_tuple)})."
+            )
 
     @staticmethod
     def _allocate_dialog_uid(connection, source_signature: str) -> str:
