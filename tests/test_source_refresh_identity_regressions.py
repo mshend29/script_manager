@@ -131,10 +131,6 @@ def _set_delivered(project: Project, dialogue_id: int) -> tuple[int, int, int]:
         return values
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current content-derived dialog_uid changes when dialogue text changes.",
-)
 def test_recorded_dialogue_text_revision_preserves_lineage(tmp_path):
     project, source_file = _project(tmp_path)
     engine = SourceSyncEngine()
@@ -157,10 +153,6 @@ def test_recorded_dialogue_text_revision_preserves_lineage(tmp_path):
     assert int(after["is_recorded"]) == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current content-derived dialog_uid changes when timecode changes.",
-)
 def test_recorded_dialogue_timecode_revision_preserves_lineage(tmp_path):
     project, source_file = _project(tmp_path)
     engine = SourceSyncEngine()
@@ -184,10 +176,6 @@ def test_recorded_dialogue_timecode_revision_preserves_lineage(tmp_path):
     assert int(after["is_recorded"]) == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Current content-derived dialog_uid changes when character spelling changes.",
-)
 def test_character_spelling_revision_preserves_dialogue_lineage(tmp_path):
     project, source_file = _project(tmp_path)
     engine = SourceSyncEngine()
@@ -263,10 +251,6 @@ def test_moved_row_with_same_content_keeps_lineage(tmp_path):
     assert int(after["source_row"]) != int(before["source_row"])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Two identical source rows currently generate the same unique dialog_uid.",
-)
 def test_duplicate_identical_source_rows_do_not_collide(tmp_path):
     project, source_file = _project(tmp_path)
     engine = SourceSyncEngine()
