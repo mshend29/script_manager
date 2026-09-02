@@ -649,7 +649,7 @@ Critical Qt runtime behavior benar-benar diuji di CI, bukan hanya AST/source ass
 
 ## PHASE 8 — Architecture Refactor
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Beberapa file sudah besar:
 
@@ -662,17 +662,17 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 ### Tasks
 
-- [ ] P8.1 Extract source sync orchestration dari MainWindow.
-- [ ] P8.2 Extract project lifecycle orchestration bila mengurangi coupling.
-- [ ] P8.3 Pisahkan large page workspace menjadi focused components/controllers.
-- [ ] P8.4 Jangan mengubah business behavior tanpa regression test.
-- [ ] P8.5 Hindari refactor kosmetik yang tidak mengurangi complexity nyata.
+- [x] P8.1 Extract source sync orchestration dari MainWindow.
+- [x] P8.2 Extract project lifecycle orchestration bila mengurangi coupling.
+- [x] P8.3 Pisahkan large page workspace menjadi focused components/controllers.
+- [x] P8.4 Jangan mengubah business behavior tanpa regression test.
+- [x] P8.5 Hindari refactor kosmetik yang tidak mengurangi complexity nyata.
 
 ---
 
 ## PHASE 9 — v1 Release Readiness
 
-**Status: FUTURE**
+**Status: IN PROGRESS**
 
 ### Areas
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 8 — Architecture Refactor
+PHASE 9 — v1 Release Readiness
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 complete: SourceSyncController owns async source lifecycle, existing ProjectManager retained as the correct lifecycle boundary, DATA domain service graph extracted into DataWorkspaceController, behavior protected by engine + Qt runtime regression coverage; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 7 complete: dedicated PySide6/offscreen CI job added alongside fast engine job; Qt system libraries installed; MainWindow + major pages construct and project-open/source-commit/page-reload smoke flow passes in runtime CI. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 6 complete: ribbon/source UX unified to one Sync Source action, F5 routes to same command, redundant per-page refresh actions removed, Help updated, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 5 complete: project_data_changed revision signal + dirty-page lazy refresh keeps SCRIPT/DIALOG/TRACKING/DATA current without manual Refresh View; mutation events refresh sibling workspaces and dashboard; CI green. |
