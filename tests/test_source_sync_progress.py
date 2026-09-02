@@ -122,6 +122,9 @@ def test_worker_and_main_window_wire_progress_with_queued_delivery():
     main_source = (
         ROOT / "app" / "main_window.py"
     ).read_text(encoding="utf-8")
+    controller_source = (
+        ROOT / "app" / "source_sync_controller.py"
+    ).read_text(encoding="utf-8")
 
     assert "progress = Signal(object)" in worker_source
     assert "progress_callback=self.progress.emit" in worker_source.replace(
@@ -129,9 +132,11 @@ def test_worker_and_main_window_wire_progress_with_queued_delivery():
     ).replace(" ", "")
 
     assert "QProgressBar" in main_source
-    assert "worker.progress.connect(" in main_source
+    assert "worker.progress.connect(" in controller_source
+    assert "self._forward_progress" in controller_source
+    assert "Qt.ConnectionType.QueuedConnection" in controller_source
+    assert "self.source_sync_controller.progress.connect(" in main_source
     assert "self._source_sync_progress" in main_source
-    assert "Qt.ConnectionType.QueuedConnection" in main_source
     assert "Inspecting workbooks" in (
         ROOT / "import_engine" / "source_sync.py"
     ).read_text(encoding="utf-8")
