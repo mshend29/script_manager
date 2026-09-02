@@ -23,6 +23,8 @@ if PYSIDE_AVAILABLE:
     from PySide6.QtWidgets import QApplication
 
     from app.main_window import MainWindow
+    from pages.data_alias_page import AliasDataPage
+    from pages.tracking_compact_page import CompactTrackingPage
 
 
 @pytest.fixture(scope="module")
@@ -89,6 +91,9 @@ def test_main_window_constructs_all_major_pages(qapp) -> None:
 
     for page_name in window.PAGE_ORDER:
         assert window.pages[page_name] is not None
+
+    assert isinstance(window.pages["DATA"], AliasDataPage)
+    assert isinstance(window.pages["TRACKING"], CompactTrackingPage)
 
     window.close()
     qapp.processEvents()
