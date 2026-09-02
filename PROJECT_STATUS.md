@@ -380,20 +380,39 @@ Kerjakan **berurutan**.
 
 ## PHASE 0 — Baseline Regression Safety
 
-**Status: NEXT**
+**Status: IN PROGRESS**
 
 Tujuan: membuat bug / behavior yang akan diperbaiki terlihat jelas lewat test sebelum mengubah implementation.
 
 ### Tasks
 
-- [ ] P0.1 Tambah regression test: recorded dialogue + client mengubah dialog text.
-- [ ] P0.2 Tambah regression test: recorded dialogue + timecode berubah.
-- [ ] P0.3 Tambah regression test: character spelling berubah.
-- [ ] P0.4 Tambah regression test: row baru disisipkan di atas existing dialogue.
-- [ ] P0.5 Tambah regression test: row dipindahkan tetapi content sama.
-- [ ] P0.6 Tambah regression test: duplicate identical source rows tidak collision.
-- [ ] P0.7 Tambah regression test: source formatting/fingerprint berubah tetapi parsed semantics sama → tracking tidak reset.
-- [ ] P0.8 Catat current expected failures sebelum implementation.
+- [x] P0.1 Tambah regression test: recorded dialogue + client mengubah dialog text.
+- [x] P0.2 Tambah regression test: recorded dialogue + timecode berubah.
+- [x] P0.3 Tambah regression test: character spelling berubah.
+- [x] P0.4 Tambah regression test: row baru disisipkan di atas existing dialogue.
+- [x] P0.5 Tambah regression test: row dipindahkan tetapi content sama.
+- [x] P0.6 Tambah regression test: duplicate identical source rows tidak collision.
+- [x] P0.7 Tambah regression test: source formatting/fingerprint berubah tetapi parsed semantics sama → tracking tidak reset.
+- [x] P0.8 Catat current expected failures sebelum implementation.
+
+### Baseline Result
+
+Regression baseline dibuat di `tests/test_source_refresh_identity_regressions.py`.
+
+Expected current failures yang dicatat sebagai `xfail(strict=True)`:
+
+- recorded dialogue + text revision kehilangan lineage;
+- recorded dialogue + timecode revision kehilangan lineage;
+- character spelling revision kehilangan lineage;
+- duplicate identical rows collision pada unique `dialog_uid`;
+- formatting-only workbook change mereset downstream tracking karena fingerprint berubah.
+
+Existing behavior yang diharapkan sudah lolos:
+
+- insert row di atas existing dialogue mempertahankan lineage karena content-derived UID tidak memakai source row;
+- move row dengan content sama mempertahankan lineage.
+
+`xfail` marker harus dihapus satu per satu ketika phase implementation membuat scenario tersebut lulus.
 
 ### Exit Criteria
 
@@ -786,6 +805,8 @@ Current next action:
 
 ```text
 PHASE 0 — Baseline Regression Safety
+→ verify regression baseline in CI
+→ then PHASE 1 — Dialogue Reconciliation Model
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -816,6 +837,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 0 regression baseline added. Expected legacy failures recorded with strict xfail before reconciliation implementation. |
 | 2026-09-02 | Reviewed main at `ebdd920f887cfec3ee5f88af395bfc98a8ec834d` | Source Refresh + Dialogue Identity audit started. Found refresh UX duplication, Preview/Apply identity mismatch, content-derived dialog UID risk, and fingerprint-based Tracking invalidation. Roadmap established. |
 
 Add new rows above/below as development progresses. Keep entries concise; detailed implementation belongs in commit / PR history.
