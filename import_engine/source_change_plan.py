@@ -266,8 +266,104 @@ class SourceChangePlanBuilder:
                 """
             ).fetchall()
         ]
+        characters = [
+            tuple(row)
+            for row in connection.execute(
+                """
+                SELECT
+                    id,
+                    normalized_name,
+                    COALESCE(base_normalized_name, ''),
+                    identity_talent_id,
+                    is_active,
+                    COALESCE(updated_at, '')
+                FROM characters
+                ORDER BY id
+                """
+            ).fetchall()
+        ]
+        talents = [
+            tuple(row)
+            for row in connection.execute(
+                """
+                SELECT
+                    id,
+                    normalized_name,
+                    is_active,
+                    COALESCE(updated_at, '')
+                FROM talents
+                ORDER BY id
+                """
+            ).fetchall()
+        ]
+        mappings = [
+            tuple(row)
+            for row in connection.execute(
+                """
+                SELECT
+                    id,
+                    character_id,
+                    talent_id,
+                    is_locked,
+                    COALESCE(source, ''),
+                    COALESCE(updated_at, '')
+                FROM character_talent
+                ORDER BY id
+                """
+            ).fetchall()
+        ]
+        aliases = [
+            tuple(row)
+            for row in connection.execute(
+                """
+                SELECT
+                    id,
+                    normalized_alias,
+                    canonical_character_id,
+                    source_character_id,
+                    source_locked_talent_id,
+                    COALESCE(updated_at, '')
+                FROM character_alias
+                ORDER BY id
+                """
+            ).fetchall()
+        ]
+        effective_cast = [
+            tuple(row)
+            for row in connection.execute(
+                """
+                SELECT dialogue_id, character_id, talent_id, position
+                FROM dialog_cast
+                ORDER BY dialogue_id, position, id
+                """
+            ).fetchall()
+        ]
+        source_cast = [
+            tuple(row)
+            for row in connection.execute(
+                """
+                SELECT
+                    dialogue_id,
+                    character_id,
+                    talent_id,
+                    position,
+                    COALESCE(resolution_source, '')
+                FROM dialog_source_cast
+                ORDER BY dialogue_id, position, id
+                """
+            ).fetchall()
+        ]
         payload = json.dumps(
-            {"sources": sources, "dialogues": dialogues},
+            {
+                "sources": sources,
+                "dialogues": dialogues,
+                "characters": characters,
+                "talents": talents,
+                "mappings": mappings,
+                "aliases": aliases,
+                "effective_cast": effective_cast,
+                "source_cast": source_cast,
+            },
             ensure_ascii=False,
             separators=(",", ":"),
         )
