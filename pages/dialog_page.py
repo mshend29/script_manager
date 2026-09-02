@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QUrl, Qt
+from PySide6.QtCore import QTimer, QUrl, Qt, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -27,6 +27,8 @@ from widgets.page_shell import PageShell
 
 
 class DialogPage(PageShell):
+    data_changed = Signal()
+
     def __init__(self, parent=None):
         self._database: Database | None = None
         self._service: RecordingService | None = None
@@ -164,6 +166,25 @@ class DialogPage(PageShell):
         self._service = RecordingService(database) if database is not None else None
 
         if self._service is None:
+            self.clear_data()
+            return
+
+        self.reload(
+            preferred_talent_id=selected_talent,
+            preferred_character_id=selected_character,
+            preferred_episode=selected_episode,
+        )
+
+    def refresh_from_database(self, database: Database | None) -> None:
+        selected_talent = self.talent_combo.currentData()
+        selected_character = self.character_combo.currentData()
+        selected_episode = self.episode_combo.currentData()
+
+        if database is not self._database or self._service is None:
+            self.set_database(database)
+            return
+
+        if database is None:
             self.clear_data()
             return
 
@@ -617,6 +638,7 @@ class DialogPage(PageShell):
 
         self._clear_source_revision_marker(int(dialogue_id))
         self._update_selection_info()
+        self.data_changed.emit()
 
     def set_all_checked(self, checked: bool) -> None:
         if self._service is None or not self._checkboxes:
@@ -651,6 +673,7 @@ class DialogPage(PageShell):
             self._clear_source_revision_marker(dialogue_id)
 
         self._update_selection_info()
+        self.data_changed.emit()
 
     def _update_selection_info(self) -> None:
         talent_name = self.talent_combo.currentText()
