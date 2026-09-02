@@ -629,17 +629,17 @@ Operator hanya perlu memahami satu jenis source refresh.
 
 ## PHASE 7 — Qt Runtime CI Hardening
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Current GitHub Actions lightweight environment hanya memasang `pytest` dan `openpyxl`. PySide6 runtime tests dapat skip ketika PySide6 tidak tersedia.
 
 ### Tasks
 
-- [ ] P7.1 Tambah CI job khusus Qt/PySide6.
-- [ ] P7.2 Gunakan offscreen platform untuk runtime smoke tests.
-- [ ] P7.3 Construct MainWindow dan semua major pages.
-- [ ] P7.4 Smoke-test project open → source sync mock → page reload.
-- [ ] P7.5 Pertahankan fast engine-only job jika diperlukan untuk feedback cepat.
+- [x] P7.1 Tambah CI job khusus Qt/PySide6.
+- [x] P7.2 Gunakan offscreen platform untuk runtime smoke tests.
+- [x] P7.3 Construct MainWindow dan semua major pages.
+- [x] P7.4 Smoke-test project open → source sync mock → page reload.
+- [x] P7.5 Pertahankan fast engine-only job jika diperlukan untuk feedback cepat.
 
 ### Exit Criteria
 
@@ -649,7 +649,7 @@ Critical Qt runtime behavior benar-benar diuji di CI, bukan hanya AST/source ass
 
 ## PHASE 8 — Architecture Refactor
 
-**Status: AFTER correctness baseline stabil**
+**Status: IN PROGRESS**
 
 Beberapa file sudah besar:
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 7 — Qt Runtime CI Hardening
+PHASE 8 — Architecture Refactor
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 7 complete: dedicated PySide6/offscreen CI job added alongside fast engine job; Qt system libraries installed; MainWindow + major pages construct and project-open/source-commit/page-reload smoke flow passes in runtime CI. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 6 complete: ribbon/source UX unified to one Sync Source action, F5 routes to same command, redundant per-page refresh actions removed, Help updated, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 5 complete: project_data_changed revision signal + dirty-page lazy refresh keeps SCRIPT/DIALOG/TRACKING/DATA current without manual Refresh View; mutation events refresh sibling workspaces and dashboard; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 4 complete: Tracking invalidation is semantic and scoped to Episode + Talent + Character; formatting-only changes preserve downstream state; invalidation reasons are audited; CI green. |
