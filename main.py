@@ -1,11 +1,13 @@
 import sys
 from pathlib import Path
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from app.main_window import MainWindow
 from app.theme import APP_STYLESHEET
 from core.application_logging import configure_application_logging
+from core.resource_paths import application_icon_path
 from core.version import APP_VERSION
 
 
@@ -14,6 +16,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Script Manager")
     app.setApplicationVersion(APP_VERSION)
+    icon_path = application_icon_path()
+    if icon_path.is_file():
+        app.setWindowIcon(QIcon(str(icon_path)))
     app.setStyleSheet(APP_STYLESHEET)
     window = MainWindow()
 
