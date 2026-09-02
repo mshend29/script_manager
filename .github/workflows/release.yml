@@ -126,3 +126,7 @@ jobs:
             "$env:PORTABLE_ZIP" `
             "$env:INSTALLER_EXE" `
             "$env:CHECKSUM_FILE"
+
+      - name: Verify published release through updater
+        run: |
+          python scripts/verify_published_release.py
