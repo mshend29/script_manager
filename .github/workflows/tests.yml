@@ -31,3 +31,29 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+
+  qt-runtime:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Qt runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run Qt runtime smoke tests
+        run: |
+          python -m pytest -q \
+            tests/test_script_page_runtime.py \
+            tests/test_qt_runtime_smoke.py
