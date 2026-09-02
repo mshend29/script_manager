@@ -422,7 +422,7 @@ Semua scenario target mempunyai regression test yang jelas. Test untuk behavior 
 
 ## PHASE 1 — Dialogue Reconciliation Model
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: memisahkan persistent identity dari source content signature.
 
@@ -446,10 +446,10 @@ boleh berubah mengikuti source.
 
 ### Tasks
 
-- [ ] P1.1 Tentukan schema tambahan untuk source signature / reconciliation metadata.
-- [ ] P1.2 Tambah safe schema migration + pre-migration backup coverage.
-- [ ] P1.3 Buat reconciliation data model.
-- [ ] P1.4 Definisikan match levels, misalnya:
+- [x] P1.1 Tentukan schema tambahan untuk source signature / reconciliation metadata.
+- [x] P1.2 Tambah safe schema migration + pre-migration backup coverage.
+- [x] P1.3 Buat reconciliation data model.
+- [x] P1.4 Definisikan match levels, misalnya:
   - exact persistent/source match,
   - exact semantic match,
   - safe row continuity,
@@ -457,8 +457,8 @@ boleh berubah mengikuti source.
   - ambiguous,
   - new,
   - removed.
-- [ ] P1.5 Pastikan ambiguous match tidak ditebak diam-diam.
-- [ ] P1.6 Pastikan duplicate identical rows dapat memperoleh persistent identity berbeda.
+- [x] P1.5 Pastikan ambiguous match tidak ditebak diam-diam.
+- [x] P1.6 Pastikan duplicate identical rows dapat memperoleh persistent identity berbeda.
 
 ### Exit Criteria
 
@@ -468,7 +468,7 @@ Dialogue yang sama secara lineage dapat dipertahankan walaupun mutable source co
 
 ## PHASE 2 — SourceChangePlan: Preview = Apply
 
-**Status: BLOCKED by Phase 1**
+**Status: IN PROGRESS**
 
 Tujuan: reconciliation dilakukan satu kali.
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 1 — Dialogue Reconciliation Model
+PHASE 2 — SourceChangePlan: Preview = Apply
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 1 complete: schema v10 adds source_signature, conservative reconciler added, migration ordering fixed, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 0 regression baseline added. Expected legacy failures recorded with strict xfail before reconciliation implementation. |
 | 2026-09-02 | Reviewed main at `ebdd920f887cfec3ee5f88af395bfc98a8ec834d` | Source Refresh + Dialogue Identity audit started. Found refresh UX duplication, Preview/Apply identity mismatch, content-derived dialog UID risk, and fingerprint-based Tracking invalidation. Roadmap established. |
 
