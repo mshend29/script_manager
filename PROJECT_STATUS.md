@@ -545,21 +545,21 @@ Recorded line yang direvisi client tetap memiliki lineage dan history, tetapi op
 
 ## PHASE 4 — Semantic Tracking Invalidation
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: downstream tracking hanya direset jika semantic source change memang mempengaruhi scope tersebut.
 
 ### Tasks
 
-- [ ] P4.1 Hapus policy `fingerprint changed = reset entire episode downstream`.
-- [ ] P4.2 Derive affected Episode + Talent + Character dari SourceChangePlan.
-- [ ] P4.3 Dialog added → invalidate affected scope.
-- [ ] P4.4 Dialog removed → invalidate affected scope.
-- [ ] P4.5 Text/timecode revision → invalidate affected scope.
-- [ ] P4.6 Cast change → invalidate old + new affected scope.
-- [ ] P4.7 Formatting-only source change → no downstream invalidation.
-- [ ] P4.8 Preserve explicit REVISION semantics sesuai business rules.
-- [ ] P4.9 Tambah audit entry yang menjelaskan scope yang diinvalidasi dan alasannya.
+- [x] P4.1 Hapus policy `fingerprint changed = reset entire episode downstream`.
+- [x] P4.2 Derive affected Episode + Talent + Character dari SourceChangePlan.
+- [x] P4.3 Dialog added → invalidate affected scope.
+- [x] P4.4 Dialog removed → invalidate affected scope.
+- [x] P4.5 Text/timecode revision → invalidate affected scope.
+- [x] P4.6 Cast change → invalidate old + new affected scope.
+- [x] P4.7 Formatting-only source change → no downstream invalidation.
+- [x] P4.8 Preserve explicit REVISION semantics sesuai business rules.
+- [x] P4.9 Tambah audit entry yang menjelaskan scope yang diinvalidasi dan alasannya.
 
 ### Exit Criteria
 
@@ -569,7 +569,7 @@ Tidak ada status STEMMED / DELIVERED yang reset hanya karena file Excel berubah 
 
 ## PHASE 5 — Unified Application Data Change Notification
 
-**Status: BLOCKED by correctness Phases 0–4**
+**Status: IN PROGRESS**
 
 Tujuan: pengguna tidak perlu Refresh View manual.
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 4 — Semantic Tracking Invalidation
+PHASE 5 — Unified Application Data Change Notification
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 4 complete: Tracking invalidation is semantic and scoped to Episode + Talent + Character; formatting-only changes preserve downstream state; invalidation reasons are audited; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 3 complete: schema v11 records source signature at recording, revised recordings retain history and show Source Revised, bulk recording semantics tested, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 2 complete: immutable SourceChangePlan drives Preview + Apply, stale source/database guards added, dialogue lineage regressions promoted to required tests, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 1 complete: schema v10 adds source_signature, conservative reconciler added, migration ordering fixed, CI green. |
