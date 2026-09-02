@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from app.project_data_state import DATA_PAGE_NAMES, ProjectDataRevisionState
 from app.ribbon import Ribbon
-from app.source_sync_worker import SourceSyncWorker
+from app.source_sync_controller import SourceSyncController
 from app.update_check_worker import UpdateCheckWorker
 from core.app_paths import project_backups_dir
 from core.project_manager import ProjectManager
@@ -69,13 +69,11 @@ class MainWindow(QMainWindow):
         self.project_manager = ProjectManager()
         self.recent_projects = RecentProjectsStore()
         self.source_sync_engine = SourceSyncEngine()
+        self.source_sync_controller = SourceSyncController(
+            self.source_sync_engine,
+            self,
+        )
         self._project_data_state = ProjectDataRevisionState()
-        self._source_sync_thread: QThread | None = None
-        self._source_sync_worker: SourceSyncWorker | None = None
-        self._source_sync_title = ""
-        self._source_sync_operation = ""
-        self._pending_source_apply_report: SourceSyncReport | None = None
-        self._pending_source_apply_title = ""
         self._update_check_thread: QThread | None = None
         self._update_check_worker: UpdateCheckWorker | None = None
 
@@ -140,6 +138,22 @@ class MainWindow(QMainWindow):
         help_page.action_requested.connect(self.handle_ribbon_action)
         help_page.release_requested.connect(self.open_update_release)
         help_page.issue_requested.connect(self.open_problem_issue)
+
+        self.source_sync_controller.progress.connect(
+            self._source_sync_progress
+        )
+        self.source_sync_controller.prepared.connect(
+            self._source_sync_prepared
+        )
+        self.source_sync_controller.applied.connect(
+            self._source_sync_applied
+        )
+        self.source_sync_controller.failed.connect(
+            self._source_sync_failed
+        )
+        self.source_sync_controller.phase_started.connect(
+            self._source_sync_phase_started
+        )
 
         self._init_source_sync_progress_ui()
         self._init_keyboard_shortcuts()
@@ -844,8 +858,7 @@ class MainWindow(QMainWindow):
         )
 
     def _source_sync_running(self) -> bool:
-        thread = self._source_sync_thread
-        return thread is not None and thread.isRunning()
+        return self.source_sync_controller.is_running
 
     def _block_project_change_during_sync(self, action_title: str) -> bool:
         if not self._source_sync_running():
@@ -854,7 +867,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             action_title,
-            "Source Import/Refresh sedang berjalan. "
+            "Sync Source sedang berjalan. "
             "Project tidak dapat diganti sampai proses selesai.",
         )
         return True
@@ -911,8 +924,9 @@ class MainWindow(QMainWindow):
 
     def _run_source_sync(self, title: str) -> None:
         if self._source_sync_running():
+            active_title = self.source_sync_controller.title or "Source Sync"
             self.statusBar().showMessage(
-                f"{self._source_sync_title or 'Source sync'} masih berjalan",
+                f"{active_title} masih berjalan",
                 3000,
             )
             return
@@ -938,79 +952,32 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self._start_source_sync_worker(
+        self.source_sync_controller.start_prepare(
+            project,
             title=title,
-            operation="prepare",
         )
 
-    def _start_source_sync_worker(
+    @Slot(str, str)
+    def _source_sync_phase_started(
         self,
-        *,
         title: str,
         operation: str,
-        report: SourceSyncReport | None = None,
     ) -> None:
-        project = self.project_manager.current
-        if project is None:
-            return
-
-        thread = QThread(self)
-        worker = SourceSyncWorker(
-            self.source_sync_engine,
-            project,
-            operation=operation,
-            report=report,
-        )
-        worker.moveToThread(thread)
-
-        thread.started.connect(worker.run)
-        worker.progress.connect(
-            self._source_sync_progress,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        if operation == "prepare":
-            worker.completed.connect(
-                self._source_sync_prepared,
-                Qt.ConnectionType.QueuedConnection,
-            )
-        else:
-            worker.completed.connect(
-                self._source_sync_applied,
-                Qt.ConnectionType.QueuedConnection,
-            )
-        worker.failed.connect(
-            self._source_sync_failed,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(self._source_sync_thread_finished)
-
-        self._source_sync_thread = thread
-        self._source_sync_worker = worker
-        self._source_sync_title = title
-        self._source_sync_operation = operation
-
         phase_text = (
             "preparing preview"
             if operation == "prepare"
             else "applying changes"
         )
-        self._source_sync_progress(
-            SourceSyncProgress(
-                stage="starting",
-                message=f"{title}: {phase_text}...",
-            )
-        )
         self.statusBar().showMessage(
             f"{title} — {phase_text}; aplikasi tetap dapat digunakan"
         )
-        thread.start()
 
-    @Slot(object)
-    def _source_sync_prepared(self, report: SourceSyncReport) -> None:
-        title = self._source_sync_title or "Source Sync"
+    @Slot(str, object)
+    def _source_sync_prepared(
+        self,
+        title: str,
+        report: SourceSyncReport,
+    ) -> None:
         project = self.project_manager.current
         self._hide_source_sync_progress()
 
@@ -1059,18 +1026,22 @@ class MainWindow(QMainWindow):
             )
             return
 
-        # The prepare worker may still be unwinding its Qt thread after this
-        # queued slot. Defer the apply worker until thread.finished.
-        self._pending_source_apply_report = report
-        self._pending_source_apply_title = title
+        self.source_sync_controller.apply_after_prepare(
+            project,
+            report,
+            title=title,
+        )
         self.statusBar().showMessage(
             "Preview disetujui — menunggu apply phase...",
             3000,
         )
 
-    @Slot(object)
-    def _source_sync_applied(self, report: SourceSyncReport) -> None:
-        title = self._source_sync_title or "Source Sync"
+    @Slot(str, object)
+    def _source_sync_applied(
+        self,
+        title: str,
+        report: SourceSyncReport,
+    ) -> None:
         project = self.project_manager.current
         self._hide_source_sync_progress()
 
@@ -1110,10 +1081,13 @@ class MainWindow(QMainWindow):
             5000,
         )
 
-    @Slot(object)
-    def _source_sync_failed(self, exc: object) -> None:
-        title = self._source_sync_title or "Source Sync"
-        operation = self._source_sync_operation or "source sync"
+    @Slot(str, str, object)
+    def _source_sync_failed(
+        self,
+        title: str,
+        operation: str,
+        exc: object,
+    ) -> None:
         self._hide_source_sync_progress()
         QMessageBox.critical(
             self,
@@ -1121,29 +1095,6 @@ class MainWindow(QMainWindow):
             f"Gagal pada phase {operation}.\n\n{exc}",
         )
         self.statusBar().showMessage(f"{title} gagal", 5000)
-        self._pending_source_apply_report = None
-        self._pending_source_apply_title = ""
-
-    @Slot()
-    def _source_sync_thread_finished(self) -> None:
-        self._hide_source_sync_progress()
-
-        pending_report = self._pending_source_apply_report
-        pending_title = self._pending_source_apply_title
-
-        self._source_sync_thread = None
-        self._source_sync_worker = None
-        self._source_sync_title = ""
-        self._source_sync_operation = ""
-        self._pending_source_apply_report = None
-        self._pending_source_apply_title = ""
-
-        if pending_report is not None:
-            self._start_source_sync_worker(
-                title=pending_title or "Source Sync",
-                operation="apply",
-                report=pending_report,
-            )
 
     def _current_page_name(self) -> str:
         current_page = self.page_stack.currentWidget()
