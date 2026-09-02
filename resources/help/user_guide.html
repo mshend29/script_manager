@@ -75,7 +75,7 @@ th { background: #f5f7fa; }
 <ol>
   <li>Memahami Project <code>.smproj</code></li>
   <li>PROJECT dan Project Settings</li>
-  <li>Source Excel, Import Source, dan Refresh Data</li>
+  <li>Source Excel dan Sync Source</li>
   <li>SCRIPT</li>
   <li>DIALOG dan Recording</li>
   <li>TRACKING</li>
@@ -153,16 +153,15 @@ Memindahkan file <code>.smproj</code> tidak otomatis memindahkan source Excel at
   <li>Sample Rate, Bit Depth, dan Channels.</li>
 </ul>
 
-<h2>3. Source Excel, Import Source, dan Refresh Data</h2>
-<h3>Import Source</h3>
-<p><b>Import Source</b> digunakan untuk memasukkan source naskah ke project. Alur internalnya mencakup scan/fingerprint, workbook inspection, parsing, normalization, character/talent resolution, validation, lalu commit ke <code>.smproj</code>.</p>
+<h2>3. Source Excel dan Sync Source</h2>
+<h3>Sync Source</h3>
+<p><b>Sync Source</b> adalah satu-satunya tindakan untuk memasukkan dan memperbarui source naskah. Initial sync dan incremental sync memakai tombol yang sama. Alur internalnya mencakup scan/fingerprint, workbook inspection, parsing, normalization, character/talent resolution, validation, read-only preview, safety backup, transactional apply, lalu audit.</p>
 
 <div class="warning">
-Jika ditemukan masalah yang membuat import tidak aman—misalnya duplicate episode atau file yang tidak dapat diproses—aplikasi dapat menghentikan commit agar database tidak berubah sebagian.
+Jika ditemukan masalah yang membuat sync tidak aman—misalnya duplicate episode, file yang tidak dapat diproses, atau dialogue lineage yang ambigu—aplikasi menghentikan commit agar database tidak berubah sebagian.
 </div>
 
-<h3>Refresh Data</h3>
-<p><b>Refresh Data</b> digunakan saat source Excel berubah setelah import awal. Sistem membandingkan fingerprint source dan memproses perubahan yang diperlukan.</p>
+<p>Setelah sync pertama, sistem hanya memproses source yang perlu diperbarui:</p>
 <ul>
   <li><b>New</b> — file source baru.</li>
   <li><b>Changed</b> — source yang berubah.</li>
@@ -171,7 +170,11 @@ Jika ditemukan masalah yang membuat import tidak aman—misalnya duplicate episo
 </ul>
 
 <div class="note">
-Status recording dan data workflow aplikasi dipertahankan sesuai aturan sinkronisasi. Source yang hilang tidak langsung dianggap sebagai alasan untuk menghapus seluruh history project.
+Persistent dialogue identity dipisahkan dari source signature. Recording history dan mapping manual tetap dipertahankan ketika source direvisi. Jika recording lama tidak lagi sesuai source terbaru, DIALOG menampilkan <b>Source Revised</b>. Tracking downstream hanya diinvalidasi pada scope Episode + Talent + Character yang benar-benar terkena perubahan semantic.
+</div>
+
+<div class="tip">
+Setelah Apply berhasil, PROJECT dashboard dan workspace aktif langsung membaca data terbaru. SCRIPT, DIALOG, TRACKING, dan DATA yang belum dibuka ditandai dirty dan otomatis reload saat dibuka. Pengguna tidak perlu menjalankan Refresh View manual.
 </div>
 
 <h2>4. SCRIPT</h2>
@@ -181,11 +184,11 @@ Status recording dan data workflow aplikasi dipertahankan sesuai aturan sinkroni
 <ul>
   <li><b>Episode</b> — pilih episode tertentu atau All.</li>
   <li><b>Search</b> — cari isi yang ditampilkan pada view Script.</li>
-  <li><b>Refresh View</b> — muat ulang data view dari project aktif.</li>
+
 </ul>
 
 <div class="tip">
-SCRIPT membaca data yang sudah diimport ke <code>.smproj</code>. Mengubah Excel tidak otomatis mengubah view sampai source diproses melalui Refresh Data.
+SCRIPT membaca data yang sudah di-commit ke <code>.smproj</code>. Mengubah Excel tidak mengubah database sampai source diproses melalui Sync Source. Setelah Apply berhasil, view otomatis mengikuti project revision terbaru.
 </div>
 
 <h2>5. DIALOG dan Recording</h2>
@@ -305,12 +308,12 @@ Restore dan Recover adalah dua operasi berbeda. Restore bekerja pada project akt
 <ol>
   <li>Buat atau buka project <code>.smproj</code>.</li>
   <li>Periksa Project Settings, Source Folder, delimiter episode, dan folder output.</li>
-  <li>Jalankan Import Source untuk source awal.</li>
+  <li>Jalankan Sync Source untuk source awal.</li>
   <li>Periksa DATA → Unresolved / Validation jika ada issue.</li>
   <li>Gunakan SCRIPT untuk membaca naskah hasil import.</li>
   <li>Gunakan DIALOG untuk proses recording dan checkbox progress.</li>
   <li>Pantau TRACKING untuk recording, revision, stem, delivery, dan output health.</li>
-  <li>Jika client merevisi Excel, perbarui source lalu jalankan Refresh Data.</li>
+  <li>Jika client merevisi Excel, perbarui source lalu jalankan Sync Source lagi.</li>
   <li>Buat backup pada milestone penting atau sebelum operasi maintenance.</li>
 </ol>
 
