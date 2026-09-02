@@ -468,7 +468,7 @@ Dialogue yang sama secara lineage dapat dipertahankan walaupun mutable source co
 
 ## PHASE 2 — SourceChangePlan: Preview = Apply
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: reconciliation dilakukan satu kali.
 
@@ -490,12 +490,12 @@ SourceChangePlan
 
 ### Tasks
 
-- [ ] P2.1 Buat `SourceChangePlan` / equivalent immutable apply plan.
-- [ ] P2.2 Move dialogue matching keluar dari Preview-only logic.
-- [ ] P2.3 Preview hanya merender plan.
-- [ ] P2.4 Synchronizer hanya mengeksekusi approved plan.
-- [ ] P2.5 Tambah guard agar stale plan tidak diaplikasikan jika source/project berubah antara Prepare dan Apply.
-- [ ] P2.6 Audit details mengambil data dari plan yang sama.
+- [x] P2.1 Buat `SourceChangePlan` / equivalent immutable apply plan.
+- [x] P2.2 Move dialogue matching keluar dari Preview-only logic.
+- [x] P2.3 Preview hanya merender plan.
+- [x] P2.4 Synchronizer hanya mengeksekusi approved plan.
+- [x] P2.5 Tambah guard agar stale plan tidak diaplikasikan jika source/project berubah antara Prepare dan Apply.
+- [x] P2.6 Audit details mengambil data dari plan yang sama.
 
 ### Exit Criteria
 
@@ -505,7 +505,7 @@ Preview dan committed result tidak dapat berbeda dalam keputusan identity / add 
 
 ## PHASE 3 — Recording Revision Semantics
 
-**Status: BLOCKED by Phase 2**
+**Status: IN PROGRESS**
 
 Tujuan: recording history dipertahankan tetapi source revision tetap terlihat.
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 2 — SourceChangePlan: Preview = Apply
+PHASE 3 — Recording Revision Semantics
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 2 complete: immutable SourceChangePlan drives Preview + Apply, stale source/database guards added, dialogue lineage regressions promoted to required tests, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 1 complete: schema v10 adds source_signature, conservative reconciler added, migration ordering fixed, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 0 regression baseline added. Expected legacy failures recorded with strict xfail before reconciliation implementation. |
 | 2026-09-02 | Reviewed main at `ebdd920f887cfec3ee5f88af395bfc98a8ec834d` | Source Refresh + Dialogue Identity audit started. Found refresh UX duplication, Preview/Apply identity mismatch, content-derived dialog UID risk, and fingerprint-based Tracking invalidation. Roadmap established. |
