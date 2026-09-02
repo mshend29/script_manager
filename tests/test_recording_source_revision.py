@@ -75,6 +75,33 @@ def _scope(project: Project):
     )
 
 
+def _set_delivered_for_dialogue(project: Project, dialogue_id: int) -> None:
+    with project.database.connect() as connection:
+        scope = connection.execute(
+            """
+            SELECT d.episode_id, dc.talent_id, dc.character_id
+            FROM dialogues AS d
+            JOIN dialog_cast AS dc ON dc.dialogue_id = d.id
+            WHERE d.id = ?
+            LIMIT 1
+            """,
+            (int(dialogue_id),),
+        ).fetchone()
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id, talent_id, character_id, status, note
+            )
+            VALUES(?, ?, ?, 'DELIVERED', 'auto:file-inventory')
+            """,
+            (
+                int(scope["episode_id"]),
+                int(scope["talent_id"]),
+                int(scope["character_id"]),
+            ),
+        )
+
+
 def test_recorded_line_becomes_source_revised_without_losing_history(tmp_path):
     project, source_file = _project(tmp_path)
     engine = SourceSyncEngine()
@@ -84,6 +111,7 @@ def test_recorded_line_becomes_source_revised_without_losing_history(tmp_path):
     dialogue_id, character_id, talent_id = _scope(project)
     service = RecordingService(project.database)
     service.set_recorded(dialogue_id, True)
+    _set_delivered_for_dialogue(project, dialogue_id)
 
     with project.database.connect() as connection:
         before = connection.execute(
@@ -145,6 +173,11 @@ def test_recorded_line_becomes_source_revised_without_losing_history(tmp_path):
     audit = AuditService(project.database).recent(1)
     assert audit
     assert audit[0].action == "REFRESH_APPLIED"
+    invalidations = audit[0].details["tracking_invalidations"]
+    assert len(invalidations) == 1
+    assert invalidations[0]["character_name"] == "Hendra"
+    assert invalidations[0]["talent_name"] == "Brama"
+    assert invalidations[0]["reasons"] == ["SOURCE_REVISED"]
 
 
 def test_rerecord_or_bulk_check_accepts_current_source_signature(tmp_path):
