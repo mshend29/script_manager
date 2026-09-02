@@ -293,9 +293,6 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_dialogues_episode
                     ON dialogues(episode_id);
 
-                CREATE INDEX IF NOT EXISTS idx_dialogues_source_signature
-                    ON dialogues(source_file_id, source_signature);
-
                 CREATE INDEX IF NOT EXISTS idx_dialog_cast_dialogue
                     ON dialog_cast(dialogue_id);
 
@@ -355,6 +352,9 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_stem_status_character
                     ON stem_status(character_id);
+
+                CREATE INDEX IF NOT EXISTS idx_dialogues_source_signature
+                    ON dialogues(source_file_id, source_signature);
                 """
             )
 
