@@ -569,7 +569,7 @@ Tidak ada status STEMMED / DELIVERED yang reset hanya karena file Excel berubah 
 
 ## PHASE 5 — Unified Application Data Change Notification
 
-**Status: IN PROGRESS**
+**Status: COMPLETE**
 
 Tujuan: pengguna tidak perlu Refresh View manual.
 
@@ -583,13 +583,13 @@ project_data_changed(revision)
 
 ### Tasks
 
-- [ ] P5.1 Buat application-level project data revision / change event.
-- [ ] P5.2 Current page reload langsung.
-- [ ] P5.3 Hidden data pages ditandai dirty.
-- [ ] P5.4 Saat dirty page dibuka, reload otomatis.
-- [ ] P5.5 Preserve current filter / selected talent / character / episode jika masih valid.
-- [ ] P5.6 Project dashboard ikut reload.
-- [ ] P5.7 Tools / diagnostics hanya reload bila memang relevan; hindari expensive automatic work yang tidak diperlukan.
+- [x] P5.1 Buat application-level project data revision / change event.
+- [x] P5.2 Current page reload langsung.
+- [x] P5.3 Hidden data pages ditandai dirty.
+- [x] P5.4 Saat dirty page dibuka, reload otomatis.
+- [x] P5.5 Preserve current filter / selected talent / character / episode jika masih valid.
+- [x] P5.6 Project dashboard ikut reload.
+- [x] P5.7 Tools / diagnostics hanya reload bila memang relevan; hindari expensive automatic work yang tidak diperlukan.
 
 ### Exit Criteria
 
@@ -599,7 +599,7 @@ Setelah Source Sync berhasil, berpindah SCRIPT / DIALOG / TRACKING / DATA selalu
 
 ## PHASE 6 — Simplify Refresh UX / Ribbon
 
-**Status: BLOCKED by Phase 5**
+**Status: IN PROGRESS**
 
 Tujuan: satu mental model untuk operator.
 
@@ -804,7 +804,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 5 — Unified Application Data Change Notification
+PHASE 6 — Simplify Refresh UX / Ribbon
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -835,6 +835,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 5 complete: project_data_changed revision signal + dirty-page lazy refresh keeps SCRIPT/DIALOG/TRACKING/DATA current without manual Refresh View; mutation events refresh sibling workspaces and dashboard; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 4 complete: Tracking invalidation is semantic and scoped to Episode + Talent + Character; formatting-only changes preserve downstream state; invalidation reasons are audited; CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 3 complete: schema v11 records source signature at recording, revised recordings retain history and show Source Revised, bulk recording semantics tested, CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 2 complete: immutable SourceChangePlan drives Preview + Apply, stale source/database guards added, dialogue lineage regressions promoted to required tests, CI green. |
