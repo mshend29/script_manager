@@ -45,6 +45,7 @@ from widgets.page_shell import PageShell
 
 class DataPage(PageShell):
     tracking_navigation_requested = Signal(int, int, int)
+    data_changed = Signal()
 
     TAB_INDEX = {
         "overview": 0,
@@ -382,6 +383,17 @@ class DataPage(PageShell):
         )
 
         if self._service is None:
+            self.clear_data()
+            return
+
+        self.reload()
+
+    def refresh_from_database(self, database: Database | None) -> None:
+        if database is not self._database or self._service is None:
+            self.set_database(database)
+            return
+
+        if database is None:
             self.clear_data()
             return
 
@@ -771,6 +783,7 @@ class DataPage(PageShell):
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
+        self.data_changed.emit()
 
     def _restore_to_review(self, row: ReviewedDialogueRow) -> None:
         if self._review_service is None:
@@ -784,6 +797,7 @@ class DataPage(PageShell):
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
         self._select_unresolved_dialogue(row.dialogue_id)
+        self.data_changed.emit()
 
     def _add_character_to_unresolved(self, row: UnresolvedCastRow) -> None:
         if self._service is None or row.character_id is not None:
@@ -804,6 +818,7 @@ class DataPage(PageShell):
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
         self._select_unresolved_dialogue(row.dialogue_id)
+        self.data_changed.emit()
 
     def _add_talent_to_unresolved(self, row: UnresolvedCastRow) -> None:
         if self._service is None or row.character_id is None:
@@ -823,6 +838,7 @@ class DataPage(PageShell):
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
+        self.data_changed.emit()
 
     def _select_unresolved_dialogue(self, dialogue_id: int) -> None:
         self.unresolved_view_combo.setCurrentIndex(0)
@@ -979,6 +995,7 @@ class DataPage(PageShell):
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])
+        self.data_changed.emit()
 
     def _unlock_selected_mapping(self) -> None:
         if self._service is None:
@@ -993,6 +1010,7 @@ class DataPage(PageShell):
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])
+        self.data_changed.emit()
 
     # ------------------------------------------------------------------
     # SOURCES
