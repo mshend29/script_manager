@@ -8,7 +8,7 @@ from typing import Any
 from core.app_paths import database_backups_dir
 
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -140,6 +140,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS dialogues (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     dialog_uid TEXT NOT NULL UNIQUE,
+                    source_signature TEXT,
                     episode_id INTEGER NOT NULL,
                     source_file_id INTEGER,
                     time_in TEXT,
@@ -292,6 +293,9 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_dialogues_episode
                     ON dialogues(episode_id);
 
+                CREATE INDEX IF NOT EXISTS idx_dialogues_source_signature
+                    ON dialogues(source_file_id, source_signature);
+
                 CREATE INDEX IF NOT EXISTS idx_dialog_cast_dialogue
                     ON dialog_cast(dialogue_id);
 
@@ -339,6 +343,7 @@ class Database:
 
             self._migrate_stem_status_v3(connection)
             self._migrate_character_identity_v6(connection)
+            self._migrate_dialogue_source_signature_v10(connection)
 
             connection.executescript(
                 """
@@ -426,6 +431,35 @@ class Database:
             source.close()
 
         return target
+
+    @staticmethod
+    def _migrate_dialogue_source_signature_v10(
+        connection: sqlite3.Connection,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(dialogues)"
+            ).fetchall()
+        }
+
+        if "source_signature" not in columns:
+            connection.execute(
+                "ALTER TABLE dialogues "
+                "ADD COLUMN source_signature TEXT"
+            )
+
+        # Before schema v10, dialog_uid itself was the parser's content-derived
+        # signature. Preserve that value as the initial source signature while
+        # allowing dialog_uid to become a persistent application identity.
+        connection.execute(
+            """
+            UPDATE dialogues
+            SET source_signature = dialog_uid
+            WHERE source_signature IS NULL
+               OR TRIM(source_signature) = ''
+            """
+        )
 
     @staticmethod
     def _migrate_character_identity_v6(
