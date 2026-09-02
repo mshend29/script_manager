@@ -8,7 +8,7 @@ from typing import Any
 from core.app_paths import database_backups_dir
 
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 
 class DatabaseCompatibilityError(RuntimeError):
@@ -250,6 +250,7 @@ class Database:
                     dialogue_id INTEGER PRIMARY KEY,
                     is_recorded INTEGER NOT NULL DEFAULT 0,
                     recorded_at TEXT,
+                    source_signature_at_recording TEXT,
                     updated_at TEXT,
                     FOREIGN KEY (dialogue_id)
                         REFERENCES dialogues(id)
@@ -341,6 +342,7 @@ class Database:
             self._migrate_stem_status_v3(connection)
             self._migrate_character_identity_v6(connection)
             self._migrate_dialogue_source_signature_v10(connection)
+            self._migrate_recording_source_signature_v11(connection)
 
             connection.executescript(
                 """
@@ -431,6 +433,42 @@ class Database:
             source.close()
 
         return target
+
+    @staticmethod
+    def _migrate_recording_source_signature_v11(
+        connection: sqlite3.Connection,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in connection.execute(
+                "PRAGMA table_info(recording_status)"
+            ).fetchall()
+        }
+
+        if "source_signature_at_recording" not in columns:
+            connection.execute(
+                "ALTER TABLE recording_status "
+                "ADD COLUMN source_signature_at_recording TEXT"
+            )
+
+        # Existing recorded rows predate source revision awareness. Treat the
+        # active source at migration time as their baseline instead of marking
+        # every historical recording stale immediately after upgrade.
+        connection.execute(
+            """
+            UPDATE recording_status
+            SET source_signature_at_recording = (
+                SELECT COALESCE(d.source_signature, d.dialog_uid)
+                FROM dialogues AS d
+                WHERE d.id = recording_status.dialogue_id
+            )
+            WHERE is_recorded = 1
+              AND (
+                  source_signature_at_recording IS NULL
+                  OR TRIM(source_signature_at_recording) = ''
+              )
+            """
+        )
 
     @staticmethod
     def _migrate_dialogue_source_signature_v10(
