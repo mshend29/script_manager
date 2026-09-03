@@ -81,8 +81,8 @@ def test_tracking_episode_popup_is_fixed_custom_popup():
     assert 'popup.move(x, y)' in tracking
     assert 'view.setVerticalScrollBarPolicy(' in tracking
     assert "super().showPopup()" not in tracking
-    assert '"TrackingEpisodePopup"' in theme
-    assert '"TrackingEpisodePopupList"' in theme
+    assert "#TrackingEpisodePopup" in theme
+    assert "#TrackingEpisodePopupList" in theme
     assert "self.episode_combo = TrackingEpisodeComboBox()" in tracking
 
 
