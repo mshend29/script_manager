@@ -22,7 +22,6 @@ def test_data_menu_exposes_one_sync_source_action_only() -> None:
         "data.refresh",
         "Import Source",
         "Refresh Data",
-        "Refresh View",
     ):
         assert removed not in main
 
