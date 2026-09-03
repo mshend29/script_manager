@@ -19,37 +19,37 @@ from services.tracking_service import (
 STATUS_PALETTE = {
     NOT_STARTED: (
         COLORS["neutral_soft"],
-        COLORS["text_secondary"],
+        COLORS["neutral_text"],
         COLORS["neutral"],
     ),
     IN_PROGRESS: (
         COLORS["attention_soft"],
-        COLORS["attention"],
+        COLORS["attention_text"],
         COLORS["attention"],
     ),
     RECORDED: (
         COLORS["recorded_soft"],
-        COLORS["recorded"],
+        COLORS["recorded_text"],
         COLORS["recorded"],
     ),
     READY_TO_STEM: (
         COLORS["ready_to_stem_soft"],
-        COLORS["ready_to_stem"],
+        COLORS["ready_to_stem_text"],
         COLORS["ready_to_stem"],
     ),
     STEMMED: (
         COLORS["stemmed_soft"],
-        COLORS["stemmed"],
+        COLORS["stemmed_text"],
         COLORS["stemmed"],
     ),
     DELIVERED: (
         COLORS["delivered_soft"],
-        COLORS["delivered"],
+        COLORS["delivered_text"],
         COLORS["delivered"],
     ),
     REVISION: (
         COLORS["revision_soft"],
-        COLORS["revision"],
+        COLORS["revision_text"],
         COLORS["revision"],
     ),
 }
