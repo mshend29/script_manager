@@ -126,7 +126,7 @@ def test_project_ui_uses_smproj_file_picker_and_no_drsp_conversion():
     tools_page = (root / "pages" / "tools_page.py").read_text(
         encoding="utf-8"
     )
-    ribbon = (root / "app" / "ribbon.py").read_text(
+    header = (root / "widgets" / "page_header.py").read_text(
         encoding="utf-8"
     )
     new_dialog = (root / "dialogs" / "new_project_dialog.py").read_text(
