@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QHBoxLayout,
     QLabel,
+    QListView,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -50,32 +51,128 @@ STATUS_ORDER = (
 
 
 class TrackingEpisodeComboBox(QComboBox):
-    """Compact episode popup with a bounded vertical list."""
+    """Episode selector with a fully controlled compact popup."""
 
     MAX_VISIBLE_EPISODES = 8
     MAX_POPUP_HEIGHT = 250
+    MIN_ROW_HEIGHT = 28
+    MIN_POPUP_WIDTH = 150
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMaxVisibleItems(self.MAX_VISIBLE_EPISODES)
+        self._episode_popup: QFrame | None = None
+        self._episode_popup_view: QListView | None = None
 
-    def showPopup(self) -> None:
-        view = self.view()
-        row_height = max(view.sizeHintForRow(0), 28)
-        visible_rows = min(
-            max(self.count(), 1),
-            self.MAX_VISIBLE_EPISODES,
+    def _ensure_popup(self) -> None:
+        if self._episode_popup is not None:
+            return
+
+        popup = QFrame(
+            None,
+            Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint,
         )
-        view.setMaximumHeight(
-            min(
-                row_height * visible_rows + 8,
-                self.MAX_POPUP_HEIGHT,
-            )
+        popup.setObjectName("TrackingEpisodePopup")
+        popup_layout = QVBoxLayout(popup)
+        popup_layout.setContentsMargins(1, 1, 1, 1)
+        popup_layout.setSpacing(0)
+
+        view = QListView(popup)
+        view.setObjectName("TrackingEpisodePopupList")
+        view.setModel(self.model())
+        view.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        view.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        view.setVerticalScrollMode(
+            QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
+        view.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         view.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
-        super().showPopup()
+        view.setUniformItemSizes(True)
+        view.clicked.connect(self._popup_index_clicked)
+        view.activated.connect(self._popup_index_clicked)
+        popup_layout.addWidget(view)
+
+        self._episode_popup = popup
+        self._episode_popup_view = view
+
+    def showPopup(self) -> None:
+        self._ensure_popup()
+        popup = self._episode_popup
+        view = self._episode_popup_view
+        if popup is None or view is None:
+            return
+
+        # The combo's model can be cleared/repopulated when Talent changes.
+        # Keep the popup view bound to the current model explicitly.
+        if view.model() is not self.model():
+            view.setModel(self.model())
+
+        count = max(self.count(), 1)
+        visible_rows = min(count, self.MAX_VISIBLE_EPISODES)
+        row_height = max(
+            view.sizeHintForRow(0),
+            self.MIN_ROW_HEIGHT,
+        )
+        popup_height = min(
+            row_height * visible_rows + 4,
+            self.MAX_POPUP_HEIGHT,
+        )
+
+        screen = self.screen().availableGeometry()
+        popup_width = min(
+            max(self.width(), self.MIN_POPUP_WIDTH),
+            max(self.MIN_POPUP_WIDTH, screen.width() - 8),
+        )
+
+        below = self.mapToGlobal(QPoint(0, self.height()))
+        above_y = self.mapToGlobal(QPoint(0, 0)).y() - popup_height
+
+        x = min(
+            max(below.x(), screen.left() + 4),
+            max(screen.left() + 4, screen.right() - popup_width + 1),
+        )
+        if below.y() + popup_height <= screen.bottom() + 1:
+            y = below.y()
+        else:
+            y = max(screen.top() + 4, above_y)
+
+        popup.setFixedSize(popup_width, popup_height)
+        popup.move(x, y)
+
+        current = self.currentIndex()
+        if current >= 0:
+            index = self.model().index(
+                current,
+                self.modelColumn(),
+                self.rootModelIndex(),
+            )
+            view.setCurrentIndex(index)
+            view.scrollTo(
+                index,
+                QAbstractItemView.ScrollHint.PositionAtCenter,
+            )
+
+        popup.show()
+        popup.raise()
+        view.setFocus(Qt.FocusReason.PopupFocusReason)
+
+    def hidePopup(self) -> None:
+        if self._episode_popup is not None:
+            self._episode_popup.hide()
+
+    def _popup_index_clicked(self, index) -> None:
+        row = index.row()
+        if 0 <= row < self.count():
+            self.setCurrentIndex(row)
+        self.hidePopup()
 
 
 class TrackingPage(PageShell):
