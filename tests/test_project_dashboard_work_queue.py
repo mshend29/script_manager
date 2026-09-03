@@ -137,7 +137,7 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     assert "handle_project_dashboard_action" in main
     assert 'page.show_section("Unresolved")' in main
     assert 'page.show_section("Validation")' in main
-    assert 'self.ribbon.select_tab("TRACKING")' in main
+    assert 'self.sidebar.select_tab("TRACKING")' in main
 
 
 def test_source_preview_dialog_is_read_only_until_apply():
