@@ -395,6 +395,176 @@ QProgressBar::chunk {{
     border-radius: 5px;
 }}
 
+/* ------------------------------------------------------------------
+   Phase 10 PROJECT workspace
+   ------------------------------------------------------------------ */
+
+#ProjectWorkspace,
+#ProjectScrollArea,
+#ProjectScrollArea > QWidget > QWidget,
+#ProjectBody {
+    background: ${COLORS["app_background"]};
+}
+
+#ProjectIdentityCard,
+#ProjectPanel,
+#ProjectMetricCard,
+#ProjectEmptyActions {
+    background: ${COLORS["surface"]};
+    border: 1px solid ${COLORS["border"]};
+    border-radius: ${RADII["lg"]}px;
+}
+
+#ProjectIdentityName {
+    color: ${COLORS["text_primary"]};
+    font-size: 16pt;
+    font-weight: 700;
+}
+
+#ProjectIdentityMeta {
+    color: ${COLORS["text_secondary"]};
+    font-size: 9pt;
+}
+
+#ProjectMetaKey {
+    color: ${COLORS["text_muted"]};
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+#ProjectMetaValue {
+    color: ${COLORS["text_secondary"]};
+    font-size: 9pt;
+}
+
+#ProjectSectionTitle {
+    color: ${COLORS["text_primary"]};
+    font-size: 9pt;
+    font-weight: 800;
+    padding: 0px;
+}
+
+#ProjectSectionHelper,
+#ProjectEmptyHint {
+    color: ${COLORS["text_secondary"]};
+    font-size: 9pt;
+}
+
+#ProjectMetricCard {
+    min-width: 118px;
+}
+
+#ProjectMetricValue {
+    color: ${COLORS["text_primary"]};
+    font-size: 21pt;
+    font-weight: 700;
+}
+
+#ProjectMetricLabel {
+    color: ${COLORS["text_secondary"]};
+    font-size: 9pt;
+    font-weight: 650;
+}
+
+#ProjectMetricDetail {
+    color: ${COLORS["text_muted"]};
+    font-size: 8pt;
+}
+
+#ProjectHealthBadge {
+    border-radius: 10px;
+    padding: 4px 9px;
+    font-size: 8pt;
+    font-weight: 800;
+}
+
+#ProjectHealthBadge[healthState="NEUTRAL"] {
+    background: ${COLORS["neutral_soft"]};
+    color: ${COLORS["text_secondary"]};
+}
+
+#ProjectHealthBadge[healthState="HEALTHY"] {
+    background: ${COLORS["recorded_soft"]};
+    color: ${COLORS["recorded"]};
+}
+
+#ProjectHealthBadge[healthState="ATTENTION"] {
+    background: ${COLORS["attention_soft"]};
+    color: ${COLORS["attention"]};
+}
+
+#ProjectHealthBadge[healthState="ERROR"] {
+    background: ${COLORS["error_soft"]};
+    color: ${COLORS["error"]};
+}
+
+#ProjectHealthBanner {
+    background: ${COLORS["surface_subtle"]};
+    border: 1px solid ${COLORS["border"]};
+    border-radius: ${RADII["md"]}px;
+}
+
+#ProjectHealthTitle {
+    color: ${COLORS["text_primary"]};
+    font-weight: 700;
+}
+
+#ProjectHealthText {
+    color: ${COLORS["text_secondary"]};
+    font-size: 9pt;
+}
+
+QPushButton[attentionAction="true"] {
+    background: ${COLORS["surface_subtle"]};
+    color: ${COLORS["text_primary"]};
+    border: 1px solid ${COLORS["border"]};
+    border-left: 4px solid ${COLORS["neutral"]};
+    border-radius: ${RADII["md"]}px;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+}
+
+QPushButton[attentionAction="true"]:hover {
+    background: ${COLORS["accent_soft"]};
+    border-color: ${COLORS["focus"]};
+}
+
+QPushButton[attentionAction="true"][dashboardSeverity="ERROR"] {
+    border-left-color: ${COLORS["error"]};
+}
+
+QPushButton[attentionAction="true"][dashboardSeverity="WARNING"] {
+    border-left-color: ${COLORS["attention"]};
+}
+
+QPushButton[attentionAction="true"][dashboardSeverity="INFO"] {
+    border-left-color: ${COLORS["delivered"]};
+}
+
+#ProjectCleanState {
+    background: ${COLORS["recorded_soft"]};
+    color: ${COLORS["recorded"]};
+    border-radius: ${RADII["md"]}px;
+    padding: 10px 12px;
+    font-weight: 700;
+}
+
+#ProjectActivityRow {
+    border-bottom: 1px solid ${COLORS["border"]};
+}
+
+#ProjectActivitySummary {
+    color: ${COLORS["text_primary"]};
+    font-size: 9pt;
+    font-weight: 600;
+}
+
+#ProjectActivityMeta {
+    color: ${COLORS["text_muted"]};
+    font-size: 8pt;
+}
+
 /* Legacy ribbon selectors retained only while page-local references/tests are
    migrated during Phase 10. The production MainWindow no longer uses Ribbon. */
 #RibbonRoot,
