@@ -565,6 +565,102 @@ QPushButton[attentionAction="true"][dashboardSeverity="INFO"] {{
     font-size: 8pt;
 }}
 
+/* ------------------------------------------------------------------
+   Phase 10 DIALOG recording workspace
+   ------------------------------------------------------------------ */
+
+#DialogWorkspace {{
+    background: {COLORS["app_background"]};
+}}
+
+#DialogFilterBar,
+#DialogSessionFooter {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+}}
+
+#DialogFilterLabel,
+#DialogFooterLabel {{
+    color: {COLORS["text_secondary"]};
+    font-size: 8pt;
+    font-weight: 700;
+}}
+
+#DialogTalentFilter,
+#DialogCharacterFilter,
+#DialogEpisodeFilter,
+#DialogSearch {{
+    min-height: {COMPACT_CONTROL_HEIGHT}px;
+    max-height: {COMPACT_CONTROL_HEIGHT}px;
+}}
+
+QPushButton[dialogNav="true"] {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_secondary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    border-radius: {RADII["sm"]}px;
+    min-height: {COMPACT_CONTROL_HEIGHT}px;
+    max-height: {COMPACT_CONTROL_HEIGHT}px;
+    padding: 0px 9px;
+    font-weight: 600;
+}}
+
+QPushButton[dialogNav="true"]:hover {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+    border-color: {COLORS["focus"]};
+}}
+
+QPushButton[dialogNav="true"]:disabled {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_muted"]};
+    border-color: {COLORS["border"]};
+}}
+
+#DialogTable {{
+    background: {COLORS["surface"]};
+    alternate-background-color: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+    selection-background-color: {COLORS["accent_soft"]};
+    selection-color: {COLORS["text_primary"]};
+}}
+
+#DialogTable::item {{
+    border-bottom: 1px solid {COLORS["border"]};
+    padding: 5px 8px;
+}}
+
+#DialogTable::item:selected {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["text_primary"]};
+}}
+
+#DialogTable QCheckBox[source_revised="true"] {{
+    background: {COLORS["source_revised_soft"]};
+    border: 1px solid {COLORS["source_revised"]};
+    border-radius: {RADII["sm"]}px;
+}}
+
+#DialogSessionSummary {{
+    color: {COLORS["text_primary"]};
+    font-size: 9pt;
+    font-weight: 650;
+}}
+
+#DialogCastTable {{
+    background: {COLORS["surface_subtle"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["md"]}px;
+    gridline-color: transparent;
+}}
+
+#DialogCastTable::item {{
+    border-bottom: 1px solid {COLORS["border"]};
+    padding: 3px 7px;
+}}
+
 /* Legacy ribbon selectors retained only while page-local references/tests are
    migrated during Phase 10. The production MainWindow no longer uses Ribbon. */
 #RibbonRoot,
