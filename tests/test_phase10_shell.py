@@ -50,10 +50,12 @@ def test_bottom_navigation_contains_production_workspaces_only() -> None:
         encoding="utf-8"
     )
 
-    for page in ("PROJECT", "SCRIPT", "DIALOG", "TRACKING", "DATA"):
+    for page in ("PROJECT", "SCRIPT", "DIALOG", "TRACKING", "DELIVERY"):
         assert f'("{page}",' in source
 
-    assert "TOOLS" not in source.split("WORKSPACES =", 1)[1].split(")", 1)[0]
+    nav_block = source.split("WORKSPACES =", 1)[1].split(")", 1)[0]
+    assert "DATA" not in nav_block
+    assert "TOOLS" not in nav_block
     assert "HELP" not in source.split("WORKSPACES =", 1)[1].split(")", 1)[0]
 
 

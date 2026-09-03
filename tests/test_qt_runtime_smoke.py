@@ -24,6 +24,7 @@ if PYSIDE_AVAILABLE:
 
     from app.main_window import MainWindow
     from pages.data_alias_page import AliasDataPage
+    from pages.delivery_page import DeliveryPage
     from pages.tracking_compact_page import CompactTrackingPage
 
 
@@ -85,6 +86,7 @@ def test_main_window_constructs_all_major_pages(qapp) -> None:
         "SCRIPT",
         "DIALOG",
         "TRACKING",
+        "DELIVERY",
         "DATA",
         "TOOLS",
         "HELP",
@@ -97,6 +99,7 @@ def test_main_window_constructs_all_major_pages(qapp) -> None:
 
     assert isinstance(window.pages["DATA"], AliasDataPage)
     assert isinstance(window.pages["TRACKING"], CompactTrackingPage)
+    assert isinstance(window.pages["DELIVERY"], DeliveryPage)
 
     assert window.workspace_nav is not None
     assert window.workspace_nav._buttons["PROJECT"].isChecked()
@@ -166,6 +169,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     # Hidden data workspaces stay dirty until opened.
     assert window._project_data_state.is_dirty("DIALOG") is True
     assert window._project_data_state.is_dirty("TRACKING") is True
+    assert window._project_data_state.is_dirty("DELIVERY") is True
     assert window._project_data_state.is_dirty("DATA") is True
 
     window.set_page("DIALOG")
@@ -215,6 +219,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert tracking_page.character_table.maximumHeight() > 112
     assert tracking_page.status_legend_widget is not None
     assert tracking_page.tracking_workspace_stack.currentIndex() == 0
+    assert tracking_page.episode_combo.parent() is not None
 
     talent_index = tracking_page.talent_combo.findText("Brama")
     assert talent_index > 0
@@ -251,6 +256,15 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert dialog_page.talent_combo.currentText() == "Brama"
     assert dialog_page.character_combo.currentText() == "Hendra"
     assert dialog_page.episode_combo.currentData() == 1
+
+    window.set_page("DELIVERY")
+    qapp.processEvents()
+
+    delivery_page = window.pages["DELIVERY"]
+    assert window._project_data_state.is_dirty("DELIVERY") is False
+    assert delivery_page.delivery_workspace_stack.currentIndex() == 0
+    assert delivery_page.track_name_scroll is not None
+    assert delivery_page.track_files_table.columnCount() == 3
 
     window.set_page("DATA")
     qapp.processEvents()

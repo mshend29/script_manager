@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QStackedWidget,
     QTableWidget,
@@ -62,10 +63,6 @@ WORKSPACE_OUTPUT_HEALTH = "output_health"
 class CompactTrackingPage(TrackingPage):
     """Tracking with dedicated Tracking, Track Files and Output Health workspaces."""
 
-    TRACK_NAMES_PER_COLUMN = 5
-    TRACK_NAME_COLUMNS = 3
-    TRACK_NAMES_PER_PAGE = TRACK_NAMES_PER_COLUMN * TRACK_NAME_COLUMNS
-
     def __init__(self, parent=None):
         self._summary_service: TrackingSummaryService | None = None
         self._track_file_service: TrackFileService | None = None
@@ -73,7 +70,6 @@ class CompactTrackingPage(TrackingPage):
         self._track_file_inventory = TrackFileInventory()
         self._track_rename_plan = TrackRenamePlan()
         self._track_file_settings = ProjectSettings()
-        self._track_name_page = 0
         self._workspace_key = WORKSPACE_TRACKING
         super().__init__(parent)
 
@@ -212,7 +208,6 @@ class CompactTrackingPage(TrackingPage):
                     f"Dialog: {self._format_count(summary.dialogue_count)}"
                 )
 
-        self._track_name_page = 0
         self._refresh_track_file_ui()
 
     @staticmethod
@@ -255,46 +250,10 @@ class CompactTrackingPage(TrackingPage):
         talent_label = QLabel("Talent")
         talent_label.setObjectName("TrackingFilterLabel")
         filter_layout.addWidget(talent_label)
-        self.talent_combo.setMinimumWidth(170)
+        self.talent_combo.setMinimumWidth(180)
         filter_layout.addWidget(self.talent_combo)
-
-        episode_label = QLabel("Episode")
-        episode_label.setObjectName("TrackingFilterLabel")
-        filter_layout.addWidget(episode_label)
-        self.episode_combo.setMinimumWidth(132)
-        filter_layout.addWidget(self.episode_combo)
-
-        self.prev_episode_button.setProperty("trackingNav", True)
-        self.next_episode_button.setProperty("trackingNav", True)
-        filter_layout.addWidget(self.prev_episode_button)
-        filter_layout.addWidget(self.next_episode_button)
-
         filter_layout.addSpacing(8)
         filter_layout.addWidget(self.summary_label, 1)
-
-        navigation = QFrame()
-        navigation.setObjectName("TrackingWorkspaceTabs")
-        navigation_layout = QHBoxLayout(navigation)
-        navigation_layout.setContentsMargins(4, 3, 4, 3)
-        navigation_layout.setSpacing(4)
-
-        self.workspace_buttons: dict[str, QPushButton] = {}
-        for key, label in (
-            (WORKSPACE_TRACKING, "Tracking"),
-            (WORKSPACE_TRACK_FILES, "Track Files"),
-            (WORKSPACE_OUTPUT_HEALTH, "Output Health"),
-        ):
-            button = QPushButton(label)
-            button.setProperty("secondary", True)
-            button.setProperty("trackingWorkspaceTab", True)
-            button.setCheckable(True)
-            button.clicked.connect(
-                lambda checked=False, workspace_key=key:
-                self.show_workspace(workspace_key)
-            )
-            navigation_layout.addWidget(button)
-            self.workspace_buttons[key] = button
-        navigation_layout.addStretch(1)
 
         self.tracking_workspace_stack = QStackedWidget()
         self.tracking_workspace_stack.setObjectName(
@@ -303,17 +262,10 @@ class CompactTrackingPage(TrackingPage):
         self.tracking_workspace_stack.addWidget(
             self._build_tracking_grid_workspace()
         )
-        self.tracking_workspace_stack.addWidget(
-            self._build_track_files_workspace()
-        )
-        self.tracking_workspace_stack.addWidget(
-            self._build_output_health_workspace()
-        )
 
         root.insertWidget(0, filter_bar)
         root.insertWidget(1, self.status_legend_widget)
-        root.insertWidget(2, navigation)
-        root.insertWidget(3, self.tracking_workspace_stack, 1)
+        root.insertWidget(2, self.tracking_workspace_stack, 1)
 
     def _build_tracking_grid_workspace(self) -> QWidget:
         page = QWidget()
@@ -345,9 +297,26 @@ class CompactTrackingPage(TrackingPage):
         queue_title.setObjectName("TrackingFooterTitle")
         queue_layout.addWidget(queue_title)
 
+        episode_row = QHBoxLayout()
+        episode_row.setContentsMargins(0, 0, 0, 0)
+        episode_row.setSpacing(6)
+
+        episode_label = QLabel("Episode")
+        episode_label.setObjectName("TrackingFilterLabel")
+        episode_row.addWidget(episode_label)
+
+        self.episode_combo.setMinimumWidth(128)
+        episode_row.addWidget(self.episode_combo, 1)
+
+        self.prev_episode_button.setProperty("trackingNav", True)
+        self.next_episode_button.setProperty("trackingNav", True)
+        episode_row.addWidget(self.prev_episode_button)
+        episode_row.addWidget(self.next_episode_button)
+        queue_layout.addLayout(episode_row)
+
         queue_help = QLabel(
-            "Pilih Talent dan Episode di atas. Daftar ini menunjukkan "
-            "tokoh/track recording yang harus dibuat stem."
+            "Episode hanya menampilkan episode yang dimainkan talent terpilih. "
+            "Daftar di bawah menunjukkan track yang harus dibuat stem."
         )
         queue_help.setObjectName("PageSubtitle")
         queue_help.setWordWrap(True)
@@ -359,7 +328,6 @@ class CompactTrackingPage(TrackingPage):
         self.character_table.setShowGrid(False)
         queue_layout.addWidget(self.character_table, 1)
 
-        queue_layout.addWidget(self.output_health_summary, 0)
         body.addWidget(queue_panel)
         body.setStretchFactor(0, 7)
         body.setStretchFactor(1, 3)
@@ -471,35 +439,10 @@ class CompactTrackingPage(TrackingPage):
         open_dialog_scope(self.window(), chip)
 
     def show_workspace(self, key: str) -> None:
-        normalized = str(key or "").strip().casefold()
-        mapping = {
-            WORKSPACE_TRACKING: 0,
-            WORKSPACE_TRACK_FILES: 1,
-            WORKSPACE_OUTPUT_HEALTH: 2,
-        }
-        if normalized not in mapping or not hasattr(
-            self, "tracking_workspace_stack"
-        ):
+        if not hasattr(self, "tracking_workspace_stack"):
             return
-
-        self._workspace_key = normalized
-        self.tracking_workspace_stack.setCurrentIndex(mapping[normalized])
-
-        titles = {
-            WORKSPACE_TRACKING: "Tracking",
-            WORKSPACE_TRACK_FILES: "Track Files",
-            WORKSPACE_OUTPUT_HEALTH: "Output Health",
-        }
-        self.title_label.setText(titles[normalized])
-
-        for button_key, button in self.workspace_buttons.items():
-            button.setChecked(button_key == normalized)
-
-        if normalized == WORKSPACE_TRACK_FILES:
-            self._refresh_track_name_suggestions()
-            self._refresh_track_files_table()
-        elif normalized == WORKSPACE_OUTPUT_HEALTH:
-            self._refresh_output_health_workspace()
+        self._workspace_key = WORKSPACE_TRACKING
+        self.tracking_workspace_stack.setCurrentIndex(0)
 
     # ------------------------------------------------------------------
     # COMPACT STATUS LEGEND
@@ -591,58 +534,51 @@ class CompactTrackingPage(TrackingPage):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
+        body = QSplitter(Qt.Orientation.Horizontal)
+        body.setChildrenCollapsible(False)
+        body.setHandleWidth(6)
+
+        suggestion_panel = QFrame()
+        suggestion_panel.setObjectName("DashboardCard")
+        suggestion_panel.setMinimumWidth(190)
+        suggestion_root = QVBoxLayout(suggestion_panel)
+        suggestion_root.setContentsMargins(10, 10, 10, 10)
+        suggestion_root.setSpacing(7)
+
         suggestion_title = QLabel("TRACK NAME SUGGESTION")
         suggestion_title.setObjectName("SectionTitle")
-        root.addWidget(suggestion_title)
-
-        suggestion_frame = QFrame()
-        suggestion_frame.setObjectName("DashboardCard")
-        suggestion_root = QVBoxLayout(suggestion_frame)
-        suggestion_root.setContentsMargins(10, 8, 10, 8)
-        suggestion_root.setSpacing(6)
+        suggestion_root.addWidget(suggestion_title)
 
         suggestion_help = QLabel(
-            "Nama track DAW menggunakan canonical character saja. "
-            "Klik nama untuk menyalin ke clipboard."
+            "Canonical character name untuk track DAW. "
+            "Klik nama untuk menyalin."
         )
         suggestion_help.setObjectName("MutedLabel")
         suggestion_help.setWordWrap(True)
         suggestion_root.addWidget(suggestion_help)
 
+        self.track_name_scroll = QScrollArea()
+        self.track_name_scroll.setWidgetResizable(True)
+        self.track_name_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.track_name_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
         self.track_name_holder = QWidget()
         self.track_name_grid = QGridLayout(self.track_name_holder)
         self.track_name_grid.setContentsMargins(0, 0, 0, 0)
-        self.track_name_grid.setHorizontalSpacing(8)
+        self.track_name_grid.setHorizontalSpacing(0)
         self.track_name_grid.setVerticalSpacing(6)
-        for column in range(self.TRACK_NAME_COLUMNS):
-            self.track_name_grid.setColumnStretch(column, 1)
-        suggestion_root.addWidget(self.track_name_holder)
+        self.track_name_grid.setColumnStretch(0, 1)
+        self.track_name_scroll.setWidget(self.track_name_holder)
+        suggestion_root.addWidget(self.track_name_scroll, 1)
 
-        pagination = QHBoxLayout()
-        pagination.setContentsMargins(0, 0, 0, 0)
-        pagination.setSpacing(6)
-        pagination.addStretch(1)
+        body.addWidget(suggestion_panel)
 
-        self.track_name_prev = QPushButton("‹")
-        self.track_name_prev.setProperty("secondary", True)
-        self.track_name_prev.clicked.connect(
-            lambda: self._change_track_name_page(-1)
-        )
-        self.track_name_page_label = QLabel("1 / 1")
-        self.track_name_page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.track_name_next = QPushButton("›")
-        self.track_name_next.setProperty("secondary", True)
-        self.track_name_next.clicked.connect(
-            lambda: self._change_track_name_page(1)
-        )
-
-        pagination.addWidget(self.track_name_prev)
-        pagination.addWidget(self.track_name_page_label)
-        pagination.addWidget(self.track_name_next)
-        pagination.addStretch(1)
-        suggestion_root.addLayout(pagination)
-
-        root.addWidget(suggestion_frame)
+        files_panel = QWidget()
+        files_root = QVBoxLayout(files_panel)
+        files_root.setContentsMargins(0, 0, 0, 0)
+        files_root.setSpacing(8)
 
         track_files_header = QHBoxLayout()
         track_files_header.setContentsMargins(0, 0, 0, 0)
@@ -674,7 +610,7 @@ class CompactTrackingPage(TrackingPage):
         )
         track_files_header.addWidget(self.refresh_track_files_button)
 
-        root.addLayout(track_files_header)
+        files_root.addLayout(track_files_header)
 
         self.track_files_table = QTableWidget(0, 3)
         self.track_files_table.setHorizontalHeaderLabels(
@@ -701,8 +637,14 @@ class CompactTrackingPage(TrackingPage):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        root.addWidget(self.track_files_table, 1)
+        files_root.addWidget(self.track_files_table, 1)
 
+        body.addWidget(files_panel)
+        body.setStretchFactor(0, 1)
+        body.setStretchFactor(1, 4)
+        body.setSizes([220, 880])
+
+        root.addWidget(body, 1)
         return page
 
     def _track_name_entries(self) -> list[tuple[int, str, tuple[str, ...]]]:
@@ -742,67 +684,30 @@ class CompactTrackingPage(TrackingPage):
         self._clear_grid(self.track_name_grid)
         entries = self._track_name_entries()
 
-        page_count = max(
-            1,
-            (len(entries) + self.TRACK_NAMES_PER_PAGE - 1)
-            // self.TRACK_NAMES_PER_PAGE,
-        )
-        self._track_name_page = min(
-            max(self._track_name_page, 0),
-            page_count - 1,
-        )
-
-        start = self._track_name_page * self.TRACK_NAMES_PER_PAGE
-        visible = entries[start:start + self.TRACK_NAMES_PER_PAGE]
-
-        if not visible:
+        if not entries:
             label = QLabel("Pilih talent untuk melihat track name suggestion.")
             label.setObjectName("MutedLabel")
-            self.track_name_grid.addWidget(
-                label,
-                0,
-                0,
-                1,
-                self.TRACK_NAME_COLUMNS,
+            label.setWordWrap(True)
+            self.track_name_grid.addWidget(label, 0, 0)
+            self.track_name_grid.setRowStretch(1, 1)
+            return
+
+        for index, (_character_id, name, aliases) in enumerate(entries):
+            button = QPushButton(name)
+            button.setProperty("secondary", True)
+            button.setStyleSheet("text-align: left; padding: 5px 8px;")
+            button.clicked.connect(
+                lambda checked=False, track_name=name:
+                self._copy_track_name(track_name)
             )
-        else:
-            for index, (_character_id, name, aliases) in enumerate(visible):
-                row_index = index % self.TRACK_NAMES_PER_COLUMN
-                column_index = index // self.TRACK_NAMES_PER_COLUMN
+            alias_text = ", ".join(aliases) if aliases else "—"
+            button.setToolTip(
+                f"Track Name: {name}\nAliases: {alias_text}\n"
+                "Click to copy"
+            )
+            self.track_name_grid.addWidget(button, index, 0)
 
-                button = QPushButton(name)
-                button.setProperty("secondary", True)
-                button.setStyleSheet("text-align: left; padding: 5px 8px;")
-                button.clicked.connect(
-                    lambda checked=False, track_name=name:
-                    self._copy_track_name(track_name)
-                )
-                alias_text = ", ".join(aliases) if aliases else "—"
-                button.setToolTip(
-                    f"Track Name: {name}\nAliases: {alias_text}\n"
-                    "Click to copy"
-                )
-                self.track_name_grid.addWidget(
-                    button,
-                    row_index,
-                    column_index,
-                )
-
-        self.track_name_page_label.setText(
-            f"{self._track_name_page + 1} / {page_count}"
-        )
-        self.track_name_prev.setEnabled(self._track_name_page > 0)
-        self.track_name_next.setEnabled(
-            self._track_name_page < page_count - 1
-        )
-        visible_pagination = page_count > 1
-        self.track_name_prev.setVisible(visible_pagination)
-        self.track_name_next.setVisible(visible_pagination)
-        self.track_name_page_label.setVisible(visible_pagination)
-
-    def _change_track_name_page(self, offset: int) -> None:
-        self._track_name_page += int(offset)
-        self._refresh_track_name_suggestions()
+        self.track_name_grid.setRowStretch(len(entries), 1)
 
     @staticmethod
     def _copy_track_name(name: str) -> None:

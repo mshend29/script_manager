@@ -37,6 +37,7 @@ from import_engine.source_sync import (
 )
 from pages.data_alias_page import AliasDataPage as DataPage
 from pages.dialog_page import DialogPage
+from pages.delivery_page import DeliveryPage
 from pages.help_page import HelpPage
 from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
@@ -57,6 +58,7 @@ class MainWindow(QMainWindow):
         "SCRIPT",
         "DIALOG",
         "TRACKING",
+        "DELIVERY",
         "DATA",
         "TOOLS",
         "HELP",
@@ -97,6 +99,7 @@ class MainWindow(QMainWindow):
             "SCRIPT": ScriptPage(),
             "DIALOG": DialogPage(),
             "TRACKING": TrackingPage(),
+            "DELIVERY": DeliveryPage(),
             "DATA": DataPage(),
             "TOOLS": ToolsPage(),
             "HELP": HelpPage(),
@@ -123,7 +126,7 @@ class MainWindow(QMainWindow):
         data_page = self.pages["DATA"]
         data_page.tracking_navigation_requested.connect(self.open_tracking_scope)
 
-        for page_name in ("DIALOG", "TRACKING", "DATA"):
+        for page_name in ("DIALOG", "TRACKING", "DELIVERY", "DATA"):
             page = self.pages[page_name]
             if hasattr(page, "data_changed"):
                 page.data_changed.connect(
@@ -728,6 +731,7 @@ class MainWindow(QMainWindow):
         self.pages["SCRIPT"].set_database(None)
         self.pages["DIALOG"].set_database(None)
         self.pages["TRACKING"].set_database(None)
+        self.pages["DELIVERY"].set_database(None)
         self.pages["DATA"].set_database(None)
         self.pages["TOOLS"].set_project(None)
         self._project_data_state.reset(mark_dirty=False)
@@ -774,10 +778,12 @@ class MainWindow(QMainWindow):
                 f"{current.settings.project_name} - Script Manager"
             )
             self._project_data_state.mark_dirty("TRACKING")
+            self._project_data_state.mark_dirty("DELIVERY")
             self._project_data_state.mark_dirty("DATA")
-            if self._current_page_name() == "TRACKING":
+            current_page = self._current_page_name()
+            if current_page in {"TRACKING", "DELIVERY"}:
                 self._refresh_data_page_if_needed(
-                    "TRACKING",
+                    current_page,
                     current,
                     force=True,
                 )
@@ -1250,12 +1256,14 @@ class MainWindow(QMainWindow):
             return
 
         self._project_data_state.mark_dirty("TRACKING")
+        self._project_data_state.mark_dirty("DELIVERY")
         self._project_data_state.mark_dirty("DATA")
         self.refresh_project_page()
 
-        if self._current_page_name() == "TRACKING":
+        current_page = self._current_page_name()
+        if current_page in {"TRACKING", "DELIVERY"}:
             self._refresh_data_page_if_needed(
-                "TRACKING",
+                current_page,
                 project,
                 force=True,
             )
@@ -1287,7 +1295,7 @@ class MainWindow(QMainWindow):
             return
 
         if (
-            page_name == "TRACKING"
+            page_name in {"TRACKING", "DELIVERY"}
             and hasattr(page, "configure_track_files")
         ):
             page.configure_track_files(project.settings)
@@ -1476,25 +1484,26 @@ class MainWindow(QMainWindow):
             self.pages["DIALOG"].set_database(project.database)
             return
 
+        if key == "revision":
+            self.set_page("TRACKING")
+            page = self.pages["TRACKING"]
+            page.set_database(project.database)
+            return
+
         if key in {
-            "revision",
             "ready_to_stem",
             "pending_delivery",
             "file_warnings",
         }:
-            self.set_page("TRACKING")
-            page = self.pages["TRACKING"]
-            if hasattr(page, "configure_track_files"):
-                page.configure_track_files(project.settings)
+            self.set_page("DELIVERY")
+            page = self.pages["DELIVERY"]
+            page.configure_track_files(project.settings)
             page.set_database(project.database)
-
-            if hasattr(page, "show_workspace"):
-                if key == "file_warnings":
-                    page.show_workspace("output_health")
-                elif key in {"ready_to_stem", "pending_delivery"}:
-                    page.show_workspace("track_files")
-                else:
-                    page.show_workspace("tracking")
+            page.show_workspace(
+                "output_health"
+                if key == "file_warnings"
+                else "track_files"
+            )
             return
 
     # ------------------------------------------------------------------

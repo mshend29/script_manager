@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-DATA_PAGE_NAMES = frozenset({"SCRIPT", "DIALOG", "TRACKING", "DATA"})
+DATA_PAGE_NAMES = frozenset({"SCRIPT", "DIALOG", "TRACKING", "DELIVERY", "DATA"})
 
 
 @dataclass

@@ -8,12 +8,14 @@ def test_main_window_imports_production_page_variants_directly() -> None:
     source = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "from pages.data_alias_page import AliasDataPage as DataPage" in source
+    assert "from pages.delivery_page import DeliveryPage" in source
     assert (
         "from pages.tracking_compact_page import "
         "CompactTrackingPage as TrackingPage"
     ) in source
     assert "from pages.data_page import DataPage" not in source
     assert "from pages.tracking_page import TrackingPage" not in source
+    assert '"DELIVERY": DeliveryPage()' in source
 
 
 def test_entrypoint_does_not_monkey_patch_main_window_page_classes() -> None:

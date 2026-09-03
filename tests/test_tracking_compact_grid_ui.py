@@ -96,41 +96,53 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
 
 
 
-def test_tracking_has_dedicated_track_files_and_output_health_workspaces():
+def test_delivery_owns_track_files_and_output_health_workspaces():
     compact = _read("pages/tracking_compact_page.py")
+    delivery = _read("pages/delivery_page.py")
     main = _read("app/main_window.py")
 
     assert 'WORKSPACE_TRACKING = "tracking"' in compact
     assert 'WORKSPACE_TRACK_FILES = "track_files"' in compact
     assert 'WORKSPACE_OUTPUT_HEALTH = "output_health"' in compact
-    assert 'QPushButton("Go to Output Health")' in compact
-    assert '(WORKSPACE_TRACKING, "Tracking")' in compact
-    assert '(WORKSPACE_TRACK_FILES, "Track Files")' in compact
-    assert '(WORKSPACE_OUTPUT_HEALTH, "Output Health")' in compact
-    assert "QStackedWidget" in compact
-    assert "self.show_workspace(WORKSPACE_OUTPUT_HEALTH)" in compact
+    assert "class DeliveryPage(CompactTrackingPage)" in delivery
+    assert '(WORKSPACE_TRACK_FILES, "Track Files")' in delivery
+    assert '(WORKSPACE_OUTPUT_HEALTH, "Output Health")' in delivery
+    assert '"DeliveryWorkspaceStack"' in delivery
+    assert '"DELIVERY": DeliveryPage()' in main
 
-    # Dashboard output warnings navigate to the detailed health workspace,
-    # while ordinary Tracking scope navigation returns to the grid.
-    assert 'page.show_workspace("output_health")' in main
-    assert 'page.show_workspace("track_files")' in main
-    assert 'page.show_workspace("tracking")' in main
+    # Output workflow dashboard actions route to Delivery, while Revision
+    # continues to route to Tracking.
+    assert 'self.set_page("DELIVERY")' in main
+    assert 'page.show_workspace(' in main
+    assert 'self.set_page("TRACKING")' in main
 
 
-def test_track_name_suggestion_uses_three_columns_five_rows_and_canonical_names():
+def test_track_name_suggestion_is_single_scroll_column_without_pagination():
     compact = _read("pages/tracking_compact_page.py")
 
-    assert "TRACK_NAMES_PER_COLUMN = 5" in compact
-    assert "TRACK_NAME_COLUMNS = 3" in compact
-    assert "TRACK_NAMES_PER_PAGE = TRACK_NAMES_PER_COLUMN * TRACK_NAME_COLUMNS" in compact
     assert 'QLabel("TRACK NAME SUGGESTION")' in compact
     assert "str(row.character_name).upper()" in compact
-    assert "index % self.TRACK_NAMES_PER_COLUMN" in compact
-    assert "index // self.TRACK_NAMES_PER_COLUMN" in compact
+    assert "self.track_name_scroll = QScrollArea()" in compact
+    assert "self.track_name_grid.addWidget(button, index, 0)" in compact
+    assert "TRACK_NAMES_PER_COLUMN" not in compact
+    assert "TRACK_NAME_COLUMNS" not in compact
+    assert "TRACK_NAMES_PER_PAGE" not in compact
+    assert "track_name_prev" not in compact
+    assert "track_name_next" not in compact
+    assert "track_name_page_label" not in compact
     assert "QApplication.clipboard().setText" in compact
     assert "QToolTip.showText" in compact
     assert 'f"Copied: {text}"' in compact
     assert "Aliases:" in compact
+
+
+def test_track_files_layout_uses_twenty_eighty_split():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert "body.setStretchFactor(0, 1)" in compact
+    assert "body.setStretchFactor(1, 4)" in compact
+    assert "body.setSizes([220, 880])" in compact
+    assert "suggestion_panel.setMinimumWidth(190)" in compact
 
 
 def test_output_health_workspace_explains_episode_counts_and_warning_details():

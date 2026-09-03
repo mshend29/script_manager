@@ -160,3 +160,28 @@ def test_project_settings_change_invalidates_tracking_filesystem_state() -> None
         source,
         settings_method,
     )
+
+
+
+def test_delivery_is_part_of_lazy_refresh_state() -> None:
+    state_source = (
+        ROOT / "app" / "project_data_state.py"
+    ).read_text(encoding="utf-8")
+    main_source = MAIN_WINDOW.read_text(encoding="utf-8")
+
+    assert '"DELIVERY"' in state_source
+    assert '"DELIVERY": DeliveryPage()' in main_source
+    assert 'page_name in {"TRACKING", "DELIVERY"}' in main_source
+
+
+def test_filesystem_refresh_invalidates_delivery_and_tracking() -> None:
+    source = MAIN_WINDOW.read_text(encoding="utf-8")
+    refresh = _method(
+        MAIN_WINDOW,
+        "MainWindow",
+        "_refresh_tracking_files_state",
+    )
+    segment = ast.get_source_segment(source, refresh)
+
+    assert 'mark_dirty("TRACKING")' in segment
+    assert 'mark_dirty("DELIVERY")' in segment

@@ -20,7 +20,7 @@ class WorkspaceNavigation(QFrame):
         ("SCRIPT", "Script"),
         ("DIALOG", "Dialog"),
         ("TRACKING", "Tracking"),
-        ("DATA", "Data"),
+        ("DELIVERY", "Delivery"),
     )
 
     def __init__(self, parent=None) -> None:

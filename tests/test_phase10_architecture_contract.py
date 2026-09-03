@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VISUAL_IMPLEMENTATION_FILES = (
     "pages/project_page.py",
     "pages/dialog_page.py",
+    "pages/delivery_page.py",
     "pages/tracking_page.py",
     "pages/tracking_compact_page.py",
     "widgets/episode_chip.py",
