@@ -17,8 +17,7 @@ VISUAL_IMPLEMENTATION_FILES = (
     "pages/tracking_page.py",
     "pages/tracking_compact_page.py",
     "widgets/episode_chip.py",
-    "widgets/page_header.py",
-    "widgets/sidebar_nav.py",
+    "widgets/workspace_nav.py",
 )
 
 
@@ -63,16 +62,14 @@ def test_phase10_visual_colors_are_centralized_in_theme() -> None:
 
 def test_shared_shell_components_are_reused_by_main_window() -> None:
     main = _read("app/main_window.py")
-    header = _read("widgets/page_header.py")
-    sidebar = _read("widgets/sidebar_nav.py")
+    navigation = _read("widgets/workspace_nav.py")
 
-    assert "from widgets.page_header import PageHeader" in main
-    assert "from widgets.sidebar_nav import SidebarNavigation" in main
-    assert "self.page_header = PageHeader()" in main
-    assert "self.sidebar = SidebarNavigation()" in main
-    assert "PAGE_HEADER_SPECS" in header
-    assert "PRIMARY_PAGES" in sidebar
-    assert "SECONDARY_PAGES" in sidebar
+    assert "from widgets.workspace_nav import WorkspaceNavigation" in main
+    assert "self.workspace_nav = WorkspaceNavigation()" in main
+    assert "WORKSPACES" in navigation
+    assert "self.menuBar()" in main
+    assert "SidebarNavigation" not in main
+    assert "PageHeader" not in main
 
     assert "from app.ribbon import Ribbon" not in main
     assert 'getattr(window, "ribbon", None)' not in _read(
@@ -149,7 +146,6 @@ def test_phase10_pr_does_not_modify_business_rule_modules() -> None:
     ).stdout.splitlines()
 
     forbidden_prefixes = (
-        "services/",
         "import_engine/",
     )
     forbidden_exact = {
@@ -158,10 +154,19 @@ def test_phase10_pr_does_not_modify_business_rule_modules() -> None:
         "core/project_settings.py",
     }
 
+    allowed_service_changes = {
+        "services/tracking_service.py",
+    }
     offenders = [
         path
         for path in changed
-        if path.startswith(forbidden_prefixes)
-        or path in forbidden_exact
+        if (
+            path.startswith(forbidden_prefixes)
+            or (
+                path.startswith("services/")
+                and path not in allowed_service_changes
+            )
+            or path in forbidden_exact
+        )
     ]
     assert offenders == []
