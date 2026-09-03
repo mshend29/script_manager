@@ -1074,9 +1074,6 @@ QPushButton[trackingRevisionAction="true"]:hover {{
     border: 2px solid {COLORS["revision"]};
 }}
 
-"""
-
-
 #HelpBrowser {{
     background: {COLORS["surface"]};
     color: {COLORS["text_primary"]};
@@ -1123,3 +1120,5 @@ QPushButton[recentProjectCard="true"]:hover {{
     border: 1px solid {COLORS["border"]};
     border-radius: {RADII["lg"]}px;
 }}
+
+"""
