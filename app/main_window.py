@@ -92,10 +92,6 @@ class MainWindow(QMainWindow):
         self.workspace_nav = WorkspaceNavigation()
         root.addWidget(self.workspace_nav)
 
-        # Temporary compatibility alias for older internal navigation helpers.
-        # No sidebar widget is rendered; navigation is the bottom workspace bar.
-        self.sidebar = self.workspace_nav
-
         self.pages = {
             "PROJECT": ProjectPage(),
             "SCRIPT": ScriptPage(),
@@ -1469,7 +1465,7 @@ class MainWindow(QMainWindow):
             return
 
         if key in {"system_errors", "workflow_warnings"}:
-            self.sidebar.select_tab("DATA")
+            self.set_page("DATA")
             page = self.pages["DATA"]
             page.set_database(project.database)
             page.show_section("Validation")
@@ -1565,7 +1561,7 @@ class MainWindow(QMainWindow):
         if project is None:
             return
 
-        self.sidebar.select_tab("TRACKING")
+        self.set_page("TRACKING")
         page = self.pages["TRACKING"]
         if hasattr(page, "show_workspace"):
             page.show_workspace("tracking")
