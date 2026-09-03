@@ -41,17 +41,17 @@ def _action_strings(path: Path) -> set[str]:
     return values
 
 
-def test_every_visible_ribbon_action_has_a_main_window_handler():
-    declared = _action_strings(ROOT / "app" / "ribbon.py")
+def test_every_visible_contextual_action_has_a_main_window_handler():
+    declared = _action_strings(ROOT / "widgets" / "page_header.py")
     handled = _action_strings(ROOT / "app" / "main_window.py")
 
     missing_handlers = declared - handled
     assert missing_handlers == set(), (
-        "Visible ribbon actions without handlers: "
+        "Visible contextual actions without handlers: "
         + ", ".join(sorted(missing_handlers))
     )
 
 
 def test_unsupported_placeholder_actions_are_not_advertised():
-    declared = _action_strings(ROOT / "app" / "ribbon.py")
+    declared = _action_strings(ROOT / "widgets" / "page_header.py")
     assert declared.isdisjoint(REMOVED_UNSUPPORTED)
