@@ -26,6 +26,7 @@ if PYSIDE_AVAILABLE:
     from pages.data_alias_page import AliasDataPage
     from pages.delivery_page import DeliveryPage
     from pages.tracking_compact_page import CompactTrackingPage
+    from pages.tracking_page import TrackingEpisodeComboBox
 
 
 @pytest.fixture(scope="module")
@@ -77,6 +78,38 @@ def _project(tmp_path):
     project.save()
     return project, source
 
+
+
+def test_tracking_episode_custom_popup_stays_fixed_when_scrolled(qapp) -> None:
+    combo = TrackingEpisodeComboBox()
+    combo.resize(180, 30)
+    for episode in range(1, 76):
+        combo.addItem(f"Episode {episode}", episode)
+
+    combo.show()
+    qapp.processEvents()
+    combo.showPopup()
+    qapp.processEvents()
+
+    popup = combo._episode_popup
+    view = combo._episode_popup_view
+    assert popup is not None
+    assert view is not None
+    assert popup.isVisible()
+    assert popup.height() <= combo.MAX_POPUP_HEIGHT
+    assert popup.width() >= combo.width()
+    assert popup.height() < qapp.primaryScreen().availableGeometry().height()
+
+    before = popup.geometry()
+    scroll = view.verticalScrollBar()
+    scroll.setValue(scroll.maximum())
+    qapp.processEvents()
+    assert popup.geometry() == before
+    assert scroll.maximum() > 0
+
+    combo.hidePopup()
+    combo.close()
+    qapp.processEvents()
 
 def test_main_window_constructs_all_major_pages(qapp) -> None:
     window = MainWindow()
