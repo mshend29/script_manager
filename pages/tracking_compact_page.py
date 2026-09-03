@@ -1018,7 +1018,7 @@ class CompactTrackingPage(TrackingPage):
 
             if warning_count:
                 self.output_episode_table.item(row_index, 3).setForeground(
-                    QColor(COLORS["error"])
+                    QColor(COLORS["error_text"])
                 )
 
         warning_rows.sort(
@@ -1263,7 +1263,7 @@ class CompactTrackingPage(TrackingPage):
                     f"{rename_item.detail}\n\n"
                     "Right-click or double-click to preview rename."
                 )
-                output.setForeground(QColor(COLORS["attention"]))
+                output.setForeground(QColor(COLORS["attention_text"]))
             else:
                 output = QTableWidgetItem(
                     self._file_cell_text(row.output, pending=False)
@@ -1302,14 +1302,14 @@ class CompactTrackingPage(TrackingPage):
                 )
 
             if row.output.valid and not simplified_candidate:
-                output.setForeground(QColor(COLORS["recorded"]))
+                output.setForeground(QColor(COLORS["recorded_text"]))
             elif row.output.exists and not simplified_candidate:
-                output.setForeground(QColor(COLORS["attention"]))
+                output.setForeground(QColor(COLORS["attention_text"]))
 
             if row.delivered.valid:
-                delivered.setForeground(QColor(COLORS["recorded"]))
+                delivered.setForeground(QColor(COLORS["recorded_text"]))
             elif row.delivered.exists:
-                delivered.setForeground(QColor(COLORS["attention"]))
+                delivered.setForeground(QColor(COLORS["attention_text"]))
             elif delivery_pending:
                 delivered.setForeground(QColor(COLORS["text_secondary"]))
 
@@ -1351,7 +1351,7 @@ class CompactTrackingPage(TrackingPage):
             output = QTableWidgetItem(
                 f"↻ {Path(rename_item.source_path).name}"
             )
-            output.setForeground(QColor(COLORS["attention"]))
+            output.setForeground(QColor(COLORS["attention_text"]))
             output.setToolTip(
                 f"{rename_item.detail}\n\n"
                 "Right-click atau double-click untuk manual match."
