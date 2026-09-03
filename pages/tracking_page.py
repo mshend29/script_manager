@@ -72,6 +72,10 @@ class TrackingPage(PageShell):
         self.talent_combo = QComboBox()
         self.talent_combo.setObjectName("TrackingTalentFilter")
         self.talent_combo.addItem("Pilih talent", None)
+        self.talent_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.talent_combo.setMinimumContentsLength(12)
         context.add_widget(self.talent_combo)
 
         context.add_section_title("STATUS")
@@ -82,6 +86,10 @@ class TrackingPage(PageShell):
         self.episode_combo = QComboBox()
         self.episode_combo.setObjectName("TrackingEpisodeFilter")
         self.episode_combo.addItem("Pilih episode", None)
+        self.episode_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.episode_combo.setMinimumContentsLength(12)
         context.add_widget(self.episode_combo)
 
         episode_nav = QWidget()
@@ -403,6 +411,8 @@ class TrackingPage(PageShell):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
         character.setObjectName("TrackingCharacterName")
+        character.setWordWrap(True)
+        character.setToolTip(row.character_name)
 
         episode_holder = QWidget()
         episode_holder.setSizePolicy(
