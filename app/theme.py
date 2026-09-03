@@ -832,13 +832,4 @@ QPushButton[trackingRevisionAction="true"]:hover {{
     border: 2px solid {COLORS["revision"]};
 }}
 
-/* Legacy ribbon selectors retained only while page-local references/tests are
-   migrated during Phase 10. The production MainWindow no longer uses Ribbon. */
-#RibbonRoot,
-#RibbonTabBar,
-#RibbonContent,
-#RibbonGroup {{
-    background: {COLORS["surface"]};
-    border-color: {COLORS["border"]};
-}}
 """
