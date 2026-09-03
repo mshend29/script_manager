@@ -495,7 +495,7 @@ QProgressBar::chunk {{
 
 #ProjectHealthBadge[healthState="NEUTRAL"] {{
     background: {COLORS["neutral_soft"]};
-    color: {COLORS["text_secondary"]};
+    color: {COLORS["neutral_text"]};
 }}
 
 #ProjectHealthBadge[healthState="HEALTHY"] {{
