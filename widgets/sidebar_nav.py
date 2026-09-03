@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -75,11 +75,7 @@ class SidebarNavigation(QFrame):
 
         mark = QLabel("SM")
         mark.setObjectName("SidebarBrandMark")
-        mark.setAlignment(
-            mark.alignment()
-            | mark.alignment().AlignHCenter
-            | mark.alignment().AlignVCenter
-        )
+        mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
         mark.setFixedSize(38, 38)
         layout.addWidget(mark)
 
