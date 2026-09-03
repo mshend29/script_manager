@@ -265,6 +265,13 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert delivery_page.delivery_workspace_stack.currentIndex() == 0
     assert delivery_page.track_name_scroll is not None
     assert delivery_page.track_files_table.columnCount() == 3
+    assert delivery_page.grid_header.isHidden()
+    assert delivery_page.scroll.isHidden()
+    assert delivery_page.summary_label.isHidden()
+    assert delivery_page.episode_combo.isHidden()
+    assert delivery_page.prev_episode_button.isHidden()
+    assert delivery_page.next_episode_button.isHidden()
+    assert delivery_page.rename_episode_button.isHidden()
 
     window.set_page("DATA")
     qapp.processEvents()
