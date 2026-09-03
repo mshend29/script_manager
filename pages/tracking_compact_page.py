@@ -966,9 +966,12 @@ class CompactTrackingPage(TrackingPage):
             str(total_warning_count)
         )
         self.output_summary_values["warnings"].setStyleSheet(
-            "font-size: 14pt; font-weight: 700; color: #b3261e;"
+            f"font-size: 14pt; font-weight: 700; color: {COLORS['error']};"
             if total_warning_count
-            else "font-size: 14pt; font-weight: 700; color: #176b2c;"
+            else (
+                f"font-size: 14pt; font-weight: 700; "
+                f"color: {COLORS['recorded']};"
+            )
         )
 
         by_episode: dict[int, list[TrackFileRow]] = {}
