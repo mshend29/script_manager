@@ -132,7 +132,7 @@ class ProjectPage(QWidget):
         )
         self.stem_card = DashboardCard(
             "0",
-            "Ready to stem",
+            "Recorded / No Stem File",
             detail="track scope",
         )
         self.delivery_card = DashboardCard(
