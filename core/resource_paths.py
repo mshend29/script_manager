@@ -18,3 +18,7 @@ def resource_path(*parts: str) -> Path:
 
 def application_icon_path() -> Path:
     return resource_path("resources", "app.ico")
+
+
+def project_file_icon_path() -> Path:
+    return resource_path("resources", "project_file.ico")
