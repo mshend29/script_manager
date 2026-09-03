@@ -37,6 +37,17 @@ COLORS = {
     "error_soft": "#FEE2E2",
     "neutral": "#94A3B8",
     "neutral_soft": "#F1F5F9",
+    # Dark semantic foregrounds for text rendered on the corresponding
+    # soft status backgrounds. Accent colors stay available for borders/icons.
+    "recorded_text": "#166534",
+    "ready_to_stem_text": "#4338CA",
+    "stemmed_text": "#115E59",
+    "attention_text": "#92400E",
+    "source_revised_text": "#9A3412",
+    "revision_text": "#6D28D9",
+    "delivered_text": "#1D4ED8",
+    "error_text": "#B91C1C",
+    "neutral_text": "#475569",
 }
 
 SPACING = {
@@ -489,17 +500,17 @@ QProgressBar::chunk {{
 
 #ProjectHealthBadge[healthState="HEALTHY"] {{
     background: {COLORS["recorded_soft"]};
-    color: {COLORS["recorded"]};
+    color: {COLORS["recorded_text"]};
 }}
 
 #ProjectHealthBadge[healthState="ATTENTION"] {{
     background: {COLORS["attention_soft"]};
-    color: {COLORS["attention"]};
+    color: {COLORS["attention_text"]};
 }}
 
 #ProjectHealthBadge[healthState="ERROR"] {{
     background: {COLORS["error_soft"]};
-    color: {COLORS["error"]};
+    color: {COLORS["error_text"]};
 }}
 
 #ProjectHealthBanner {{
@@ -803,7 +814,7 @@ QPushButton[trackingWorkspaceTab="true"]:checked {{
 
 QPushButton[trackingRevisionAction="true"] {{
     background: {COLORS["revision_soft"]};
-    color: {COLORS["revision"]};
+    color: {COLORS["revision_text"]};
     border: 1px solid {COLORS["revision"]};
     border-radius: {RADII["sm"]}px;
     min-height: {COMPACT_CONTROL_HEIGHT}px;
