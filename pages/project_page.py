@@ -208,10 +208,14 @@ class ProjectPage(QWidget):
 
         self.project_name = QLabel("No project open")
         self.project_name.setObjectName("ProjectIdentityName")
+        self.project_name.setMinimumWidth(0)
+        self.project_name.setWordWrap(True)
         identity.addWidget(self.project_name)
 
         self.project_identity = QLabel("Project belum dibuka")
         self.project_identity.setObjectName("ProjectIdentityMeta")
+        self.project_identity.setMinimumWidth(0)
+        self.project_identity.setWordWrap(True)
         identity.addWidget(self.project_identity)
 
         top.addLayout(identity, 1)
