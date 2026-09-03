@@ -208,6 +208,27 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert next(iter(dialog_page._checkboxes.values())).isChecked()
     assert "1/1 recorded" in dialog_page.selection_info.text()
 
+    window.resize(1100, 700)
+    window.set_page("TRACKING")
+    qapp.processEvents()
+
+    tracking_page = window.pages["TRACKING"]
+    assert window._project_data_state.is_dirty("TRACKING") is False
+    assert tracking_page.layout().itemAt(0).widget().isHidden()
+    assert tracking_page.character_table.maximumHeight() == 112
+    assert tracking_page.status_legend_widget is not None
+    assert tracking_page.tracking_workspace_stack.currentIndex() == 0
+
+    tracking_page.talent_combo.setCurrentIndex(
+        tracking_page.talent_combo.findText("Brama")
+    )
+    qapp.processEvents()
+
+    assert tracking_page.episode_combo.currentData() == 1
+    assert len(tracking_page._workspace_rows) == 1
+    assert tracking_page._workspace_rows[0].character_name == "Hendra"
+    assert len(tracking_page._workspace_rows[0].chips) == 1
+
     window.set_page("DATA")
     qapp.processEvents()
 
