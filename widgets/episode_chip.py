@@ -59,6 +59,27 @@ def status_palette(status: str) -> tuple[str, str, str]:
     return STATUS_PALETTE.get(status, STATUS_PALETTE[NOT_STARTED])
 
 
+def open_dialog_scope(window, chip: TrackingChip) -> bool:
+    pages = getattr(window, "pages", None)
+    set_page = getattr(window, "set_page", None)
+    if not isinstance(pages, dict) or not callable(set_page):
+        return False
+
+    dialog_page = pages.get("DIALOG")
+    if dialog_page is None or not hasattr(dialog_page, "reload"):
+        return False
+
+    # Let MainWindow bind/refresh the DIALOG workspace first, then apply the
+    # exact Talent -> Character -> Episode scope represented by this chip.
+    set_page("DIALOG")
+    dialog_page.reload(
+        preferred_talent_id=chip.talent_id,
+        preferred_character_id=chip.character_id,
+        preferred_episode=chip.episode_number,
+    )
+    return True
+
+
 class EpisodeChipButton(QPushButton):
     detail_requested = Signal(object)
 
@@ -88,25 +109,7 @@ class EpisodeChipButton(QPushButton):
         )
 
     def _go_to_dialog(self) -> None:
-        window = self.window()
-        ribbon = getattr(window, "ribbon", None)
-        pages = getattr(window, "pages", None)
-        if ribbon is None or not isinstance(pages, dict):
-            return
-
-        dialog_page = pages.get("DIALOG")
-        if dialog_page is None or not hasattr(dialog_page, "reload"):
-            return
-
-        # Selecting the ribbon tab first lets MainWindow bind the active
-        # project database to DIALOG. Then reuse the existing chained filter
-        # loader so Talent -> Tokoh -> Episode opens exactly this Tracking chip.
-        ribbon.select_tab("DIALOG")
-        dialog_page.reload(
-            preferred_talent_id=self.chip.talent_id,
-            preferred_character_id=self.chip.character_id,
-            preferred_episode=self.chip.episode_number,
-        )
+        open_dialog_scope(self.window(), self.chip)
 
     def _apply_status_style(self) -> None:
         background, foreground, border = status_palette(
