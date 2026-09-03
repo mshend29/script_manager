@@ -8,7 +8,6 @@ from services.tracking_service import (
     DELIVERED,
     IN_PROGRESS,
     NOT_STARTED,
-    READY_TO_STEM,
     RECORDED,
     REVISION,
     STEMMED,
@@ -31,11 +30,6 @@ STATUS_PALETTE = {
         COLORS["recorded_soft"],
         COLORS["recorded_text"],
         COLORS["recorded"],
-    ),
-    READY_TO_STEM: (
-        COLORS["ready_to_stem_soft"],
-        COLORS["ready_to_stem_text"],
-        COLORS["ready_to_stem"],
     ),
     STEMMED: (
         COLORS["stemmed_soft"],
