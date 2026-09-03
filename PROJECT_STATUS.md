@@ -779,33 +779,35 @@ Only after those designs are approved should implementation begin.
 
 ### PHASE 10C — PROJECT Page Redesign
 
-**Status: CURRENT**
+**Status: COMPLETE**
 
-- [ ] Remove poster/avatar dependency from PROJECT.
-- [ ] Project identity block should use actual project metadata only:
+- [x] Remove poster/avatar dependency from PROJECT.
+- [x] Project identity block should use actual project metadata only:
   - project code,
   - project name,
   - client,
   - start date,
   - project/source locations where useful.
-- [ ] Make Sync Source the primary contextual action.
-- [ ] Surface Source Folder / Drive / Last Sync as compact status rows.
-- [ ] Show useful production metrics:
+- [x] Make Sync Source the primary contextual action.
+- [x] Surface Source Folder / Drive / Last Sync as compact status rows.
+- [x] Show useful production metrics:
   - episode count,
   - dialogue count,
   - recording progress,
   - tracking progress,
   - delivery progress.
-- [ ] Create Needs Attention area for actionable issues:
+- [x] Create Needs Attention area for actionable issues:
   - Source Revised,
   - unresolved cast,
   - validation issues,
   - other real workflow warnings.
-- [ ] Create compact Next Actions / recent workflow area.
-- [ ] Avoid decorative cards that do not answer an operator question.
-- [ ] Preserve all existing PROJECT behavior and navigation.
+- [x] Create compact Next Actions / recent workflow area.
+- [x] Avoid decorative cards that do not answer an operator question.
+- [x] Preserve all existing PROJECT behavior and navigation.
 
 ### PHASE 10D — DIALOG Page Redesign
+
+**Status: CURRENT**
 
 - [ ] Maximize dialogue reading/recording workspace.
 - [ ] Keep Talent / Character / Episode filters in one compact top control row.
@@ -1031,9 +1033,11 @@ Application icon blocker selesai di Phase 10B. Binary icon sekarang berasal dari
 Current next action:
 
 ```text
-PHASE 10C — redesign PROJECT
-then DIALOG → TRACKING in order
+PHASE 10D — redesign DIALOG
+then TRACKING in order
 ```
+
+Windows package/installer workflow is manual-only during Phase 10 UI iteration; Engine + Qt runtime remain the per-commit gates. Packaging is re-enabled as the final Phase 10/release gate.
 
 Deviation dari urutan phase didokumentasikan: Phase 10 design dapat berjalan sementara real-release updater verification menunggu first published release.
 
@@ -1063,7 +1067,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
-| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
+| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
