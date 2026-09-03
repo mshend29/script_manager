@@ -63,4 +63,5 @@ def test_source_sync_progress_is_visually_emphasized():
     assert '"accent": "#4F46E5"' in source
     assert 'background: {COLORS["accent"]}' in source
     assert "QStatusBar" in source
-    assert "min-height: 34px" in source
+    assert "min-height: 25px" in source
+    assert "max-height: 25px" in source
