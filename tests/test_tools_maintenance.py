@@ -128,10 +128,10 @@ def test_project_diagnostics_reports_database_and_folder_health(tmp_path):
     assert checks["main_drive"].status == STATUS_OK
 
 
-def test_tools_page_and_ribbon_expose_real_maintenance_actions():
+def test_tools_page_and_header_expose_real_maintenance_actions():
     root = Path(__file__).resolve().parents[1]
     page = (root / "pages" / "tools_page.py").read_text(encoding="utf-8")
-    ribbon = (root / "app" / "ribbon.py").read_text(encoding="utf-8")
+    header = (root / "widgets" / "page_header.py").read_text(encoding="utf-8")
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert '"Tools & Maintenance"' in page
@@ -157,7 +157,7 @@ def test_tools_page_and_ribbon_expose_real_maintenance_actions():
         "tools.open_material_drive",
         "tools.open_delivery_drive",
     ):
-        assert action in ribbon
+        assert action in header
         assert action in main
 
     assert "QDesktopServices.openUrl" in main
