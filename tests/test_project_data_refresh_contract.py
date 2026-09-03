@@ -123,3 +123,40 @@ def test_script_full_refresh_reloads_episode_filters_not_rows_only() -> None:
     assert "reload" in calls
     assert "refresh_rows" not in calls
     assert "newly added episodes" in source
+
+
+
+def test_compact_tracking_refresh_rescans_filesystem_inventory() -> None:
+    refresh = _method(
+        ROOT / "pages" / "tracking_compact_page.py",
+        "CompactTrackingPage",
+        "refresh_from_database",
+    )
+    calls = _called_attributes(refresh)
+
+    assert "refresh_track_files" in calls
+
+
+def test_source_sync_without_excel_changes_still_refreshes_track_files() -> None:
+    prepared = _method(
+        MAIN_WINDOW,
+        "MainWindow",
+        "_source_sync_prepared",
+    )
+    calls = _called_attributes(prepared)
+
+    assert "_refresh_tracking_files_state" in calls
+
+
+def test_project_settings_change_invalidates_tracking_filesystem_state() -> None:
+    source = MAIN_WINDOW.read_text(encoding="utf-8")
+    settings_method = _method(
+        MAIN_WINDOW,
+        "MainWindow",
+        "open_project_settings",
+    )
+
+    assert 'mark_dirty("TRACKING")' in ast.get_source_segment(
+        source,
+        settings_method,
+    )
