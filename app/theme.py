@@ -948,6 +948,30 @@ QPushButton[trackingWorkspaceTab="true"]:checked {{
     padding: 3px 7px;
 }}
 
+
+#TrackingEpisodePopup {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border_strong"]};
+    border-radius: {RADII["md"]}px;
+}}
+
+#TrackingEpisodePopupList {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 0px;
+    outline: 0px;
+}}
+
+#TrackingEpisodePopupList::item {{
+    min-height: 28px;
+    padding: 4px 8px;
+}}
+
+#TrackingEpisodePopupList::item:selected {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["text_primary"]};
+}}
+
 #TrackingHealthLabel {{
     color: {COLORS["text_secondary"]};
     font-size: 8.5pt;

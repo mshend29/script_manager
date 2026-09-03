@@ -67,16 +67,22 @@ def test_tracking_column_headers_stay_outside_scroll_area():
     assert "matrix_layout.addWidget(self.scroll, 1)" in compact
 
 
-def test_tracking_episode_popup_is_compact_and_uses_native_positioning():
+def test_tracking_episode_popup_is_fixed_custom_popup():
     tracking = _read("pages/tracking_page.py")
+    theme = _read("app/theme.py")
 
     assert "class TrackingEpisodeComboBox(QComboBox)" in tracking
     assert "MAX_VISIBLE_EPISODES = 8" in tracking
     assert "MAX_POPUP_HEIGHT = 250" in tracking
-    assert "view.setMaximumHeight(" in tracking
-    assert "ScrollBarAsNeeded" in tracking
-    assert "super().showPopup()" in tracking
-    assert "_position_popup" not in tracking
+    assert 'QFrame(' in tracking
+    assert 'Qt.WindowType.Popup' in tracking
+    assert 'QListView(popup)' in tracking
+    assert 'popup.setFixedSize(popup_width, popup_height)' in tracking
+    assert 'popup.move(x, y)' in tracking
+    assert 'view.setVerticalScrollBarPolicy(' in tracking
+    assert "super().showPopup()" not in tracking
+    assert "#TrackingEpisodePopup" in theme
+    assert "#TrackingEpisodePopupList" in theme
     assert "self.episode_combo = TrackingEpisodeComboBox()" in tracking
 
 
