@@ -1018,7 +1018,7 @@ class CompactTrackingPage(TrackingPage):
 
             if warning_count:
                 self.output_episode_table.item(row_index, 3).setForeground(
-                    QColor("#b3261e")
+                    QColor(COLORS["error"])
                 )
 
         warning_rows.sort(
