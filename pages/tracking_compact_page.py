@@ -307,27 +307,41 @@ class CompactTrackingPage(TrackingPage):
         episode_label.setObjectName("TrackingFilterLabel")
         episode_row.addWidget(episode_label)
 
+        # These controls are created by the base Tracking page inside the
+        # context panel. Reparent explicitly because the context panel is hidden
+        # in CompactTrackingPage; relying on layout transfer alone can leave
+        # the combo popup attached to the hidden container on Windows.
+        self.episode_combo.setParent(queue_panel)
         self.episode_combo.setMinimumWidth(128)
+        self.episode_combo.setMaximumWidth(210)
+        self.episode_combo.show()
         episode_row.addWidget(self.episode_combo, 1)
 
+        self.prev_episode_button.setParent(queue_panel)
+        self.next_episode_button.setParent(queue_panel)
         self.prev_episode_button.setProperty("trackingNav", True)
         self.next_episode_button.setProperty("trackingNav", True)
+        self.prev_episode_button.show()
+        self.next_episode_button.show()
         episode_row.addWidget(self.prev_episode_button)
         episode_row.addWidget(self.next_episode_button)
         queue_layout.addLayout(episode_row)
 
         queue_help = QLabel(
             "Episode hanya menampilkan episode yang dimainkan talent terpilih. "
-            "Daftar di bawah menunjukkan track yang harus dibuat stem."
+            "Daftar ini hanya berisi Recorded atau Revision yang masih perlu "
+            "di-stem; setelah Stemmed/Delivered track otomatis keluar dari queue."
         )
         queue_help.setObjectName("PageSubtitle")
         queue_help.setWordWrap(True)
         queue_layout.addWidget(queue_help)
 
+        self.character_table.setParent(queue_panel)
         self.character_table.setMinimumHeight(180)
         self.character_table.setMaximumHeight(16777215)
         self.character_table.setAlternatingRowColors(False)
         self.character_table.setShowGrid(False)
+        self.character_table.show()
         queue_layout.addWidget(self.character_table, 1)
 
         body.addWidget(queue_panel)
