@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -25,6 +26,82 @@ from PySide6.QtWidgets import (
 from core.database import Database
 from app.theme import COLORS
 from services.recording_service import RecordingDialogueRow, RecordingService
+
+
+class BulkHeaderCheckBox(QCheckBox):
+    """Header checkbox that toggles all rows instead of cycling partial state."""
+
+    def nextCheckState(self) -> None:
+        next_state = (
+            Qt.CheckState.Unchecked
+            if self.checkState() == Qt.CheckState.Checked
+            else Qt.CheckState.Checked
+        )
+        self.setCheckState(next_state)
+
+
+class DialogHeaderView(QHeaderView):
+    bulk_toggled = Signal(bool)
+
+    def __init__(self, parent=None):
+        super().__init__(Qt.Orientation.Horizontal, parent)
+        self.bulk_checkbox = BulkHeaderCheckBox(self)
+        self.bulk_checkbox.setTristate(True)
+        self.bulk_checkbox.setToolTip(
+            "Centang untuk menandai seluruh dialog sebagai recorded. "
+            "Klik lagi untuk uncheck seluruh dialog."
+        )
+        self.bulk_checkbox.stateChanged.connect(self._bulk_state_changed)
+        self.sectionResized.connect(
+            lambda *args: self._position_bulk_checkbox()
+        )
+        self.sectionMoved.connect(
+            lambda *args: self._position_bulk_checkbox()
+        )
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._position_bulk_checkbox()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._position_bulk_checkbox()
+
+    def _position_bulk_checkbox(self) -> None:
+        if self.count() < 1:
+            return
+        section_x = self.sectionViewportPosition(0)
+        section_width = self.sectionSize(0)
+        size = self.bulk_checkbox.sizeHint()
+        width = max(20, size.width())
+        height = max(20, size.height())
+        self.bulk_checkbox.setGeometry(
+            section_x + max(0, (section_width - width) // 2),
+            max(0, (self.height() - height) // 2),
+            width,
+            height,
+        )
+        self.bulk_checkbox.raise_()
+
+    def _bulk_state_changed(self, state: int) -> None:
+        checked = state == int(Qt.CheckState.Checked.value)
+        partial = state == int(Qt.CheckState.PartiallyChecked.value)
+        if not partial:
+            self.bulk_toggled.emit(checked)
+
+    def set_bulk_state(self, checked: int, total: int) -> None:
+        self.bulk_checkbox.blockSignals(True)
+        try:
+            if total <= 0 or checked <= 0:
+                state = Qt.CheckState.Unchecked
+            elif checked >= total:
+                state = Qt.CheckState.Checked
+            else:
+                state = Qt.CheckState.PartiallyChecked
+            self.bulk_checkbox.setCheckState(state)
+        finally:
+            self.bulk_checkbox.blockSignals(False)
+        self._position_bulk_checkbox()
 
 
 class DialogPage(QWidget):
@@ -104,6 +181,11 @@ class DialogPage(QWidget):
         filter_layout.addWidget(self.prev_episode_button)
         filter_layout.addWidget(self.next_episode_button)
 
+        self.open_source_button = QPushButton("Open Source")
+        self.open_source_button.setProperty("secondary", True)
+        self.open_source_button.setEnabled(False)
+        filter_layout.addWidget(self.open_source_button)
+
         filter_layout.addSpacing(6)
 
         self.search_edit = QLineEdit()
@@ -125,7 +207,7 @@ class DialogPage(QWidget):
 
         self.table = QTableWidget(0, 4)
         self.table.setObjectName("DialogTable")
-        self.table.setHorizontalHeaderLabels(["✓", "IN", "OUT", "DIALOG"])
+        self.table.setHorizontalHeaderLabels(["", "IN", "OUT", "DIALOG"])
         self.table.setAlternatingRowColors(False)
         self.table.setWordWrap(False)
         self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
@@ -142,7 +224,10 @@ class DialogPage(QWidget):
         self.table.verticalHeader().setDefaultSectionSize(38)
         self.table.setShowGrid(False)
 
-        header = self.table.horizontalHeader()
+        header = DialogHeaderView(self.table)
+        self.table.setHorizontalHeader(header)
+        self.header_checkbox = header
+        header.bulk_toggled.connect(self.set_all_checked)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(
             1,
@@ -157,35 +242,49 @@ class DialogPage(QWidget):
         self.table.setColumnWidth(0, 46)
         self.table.setColumnWidth(1, 112)
         self.table.setColumnWidth(2, 112)
-        root.addWidget(self.table, 1)
 
-        session = QFrame()
-        session.setObjectName("DialogSessionFooter")
-        session_layout = QVBoxLayout(session)
-        session_layout.setContentsMargins(12, 9, 12, 10)
-        session_layout.setSpacing(7)
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        content_splitter.setChildrenCollapsible(False)
+        content_splitter.setHandleWidth(6)
 
-        summary_row = QHBoxLayout()
-        summary_row.setContentsMargins(0, 0, 0, 0)
-        summary_row.setSpacing(8)
+        dialog_column = QWidget()
+        dialog_layout = QVBoxLayout(dialog_column)
+        dialog_layout.setContentsMargins(0, 0, 0, 0)
+        dialog_layout.setSpacing(8)
+        dialog_layout.addWidget(self.table, 1)
 
+        selection_footer = QFrame()
+        selection_footer.setObjectName("DialogSelectionFooter")
+        selection_layout = QHBoxLayout(selection_footer)
+        selection_layout.setContentsMargins(12, 8, 12, 8)
         self.selection_info = QLabel(
             "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
         )
         self.selection_info.setObjectName("DialogSessionSummary")
         self.selection_info.setWordWrap(True)
-        summary_row.addWidget(self.selection_info, 1)
+        selection_layout.addWidget(self.selection_info, 1)
+        dialog_layout.addWidget(selection_footer)
+
+        cast_panel = QFrame()
+        cast_panel.setObjectName("DialogCastPanel")
+        cast_layout = QVBoxLayout(cast_panel)
+        cast_layout.setContentsMargins(12, 10, 12, 12)
+        cast_layout.setSpacing(8)
 
         cast_label = QLabel("CAST EPISODE")
         cast_label.setObjectName("DialogFooterLabel")
-        summary_row.addWidget(cast_label)
+        cast_layout.addWidget(cast_label)
 
-        session_layout.addLayout(summary_row)
+        cast_help = QLabel(
+            "Daftar tokoh dan talent pada episode yang sedang dipilih."
+        )
+        cast_help.setObjectName("PageSubtitle")
+        cast_help.setWordWrap(True)
+        cast_layout.addWidget(cast_help)
 
         self.cast_table = QTableWidget(0, 2)
         self.cast_table.setObjectName("DialogCastTable")
         self.cast_table.setHorizontalHeaderLabels(["TOKOH", "TALENT"])
-        self.cast_table.setMaximumHeight(112)
         self.cast_table.setAlternatingRowColors(False)
         self.cast_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
@@ -205,16 +304,14 @@ class DialogPage(QWidget):
             1,
             QHeaderView.ResizeMode.Stretch,
         )
-        session_layout.addWidget(self.cast_table)
+        cast_layout.addWidget(self.cast_table, 1)
 
-        root.addWidget(session)
-
-        # The page header owns the visible Open Source action. This hidden
-        # compatibility control preserves the existing action routing and
-        # enabled-state contract in MainWindow.
-        self.open_source_button = QPushButton("Open Source File", self)
-        self.open_source_button.setVisible(False)
-        self.open_source_button.setEnabled(False)
+        content_splitter.addWidget(dialog_column)
+        content_splitter.addWidget(cast_panel)
+        content_splitter.setStretchFactor(0, 7)
+        content_splitter.setStretchFactor(1, 3)
+        content_splitter.setSizes([700, 300])
+        root.addWidget(content_splitter, 1)
 
         self.talent_combo.currentIndexChanged.connect(
             self._talent_changed
@@ -305,6 +402,7 @@ class DialogPage(QWidget):
         self.cast_table.setRowCount(0)
         self.table.setRowCount(0)
         self.selection_info.setText("No project open")
+        self._update_header_checkbox_state()
 
     def reload(
         self,
@@ -674,6 +772,7 @@ class DialogPage(QWidget):
             self._updating_checks = False
 
         self._apply_search_filter()
+        self._update_header_checkbox_state()
 
     def _apply_search_filter(self) -> None:
         query = self.search_edit.text().strip().casefold()
@@ -766,7 +865,19 @@ class DialogPage(QWidget):
 
         self._clear_source_revision_marker(int(dialogue_id))
         self._update_selection_info()
+        self._update_header_checkbox_state()
         self.data_changed.emit()
+
+    def _update_header_checkbox_state(self) -> None:
+        if not hasattr(self, "header_checkbox"):
+            return
+        total = len(self._checkboxes)
+        checked = sum(
+            1
+            for checkbox in self._checkboxes.values()
+            if checkbox.isChecked()
+        )
+        self.header_checkbox.set_bulk_state(checked, total)
 
     def set_all_checked(self, checked: bool) -> None:
         if self._service is None or not self._checkboxes:
@@ -803,6 +914,7 @@ class DialogPage(QWidget):
             self._clear_source_revision_marker(dialogue_id)
 
         self._update_selection_info()
+        self._update_header_checkbox_state()
         self.data_changed.emit()
 
     def _update_selection_info(self) -> None:

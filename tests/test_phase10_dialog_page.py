@@ -17,7 +17,9 @@ def test_dialog_page_uses_full_width_phase10_workspace() -> None:
     assert '"DialogWorkspace"' in source
     assert '"DialogFilterBar"' in source
     assert '"DialogTable"' in source
-    assert '"DialogSessionFooter"' in source
+    assert '"DialogSelectionFooter"' in source
+    assert '"DialogCastPanel"' in source
+    assert "QSplitter(Qt.Orientation.Horizontal)" in source
     assert 'QLabel("Dialog")' not in source
 
 
@@ -43,7 +45,9 @@ def test_dialog_preserves_recording_and_source_revision_semantics() -> None:
     )
     theme = (ROOT / "app" / "theme.py").read_text(encoding="utf-8")
 
-    assert 'self.table.setHorizontalHeaderLabels(["✓", "IN", "OUT", "DIALOG"])' in source
+    assert 'self.table.setHorizontalHeaderLabels(["", "IN", "OUT", "DIALOG"])' in source
+    assert "class DialogHeaderView(QHeaderView)" in source
+    assert "header.bulk_toggled.connect(self.set_all_checked)" in source
     assert "self._service.set_recorded(int(dialogue_id), recorded)" in source
     assert "self._service.set_recorded_bulk(dialogue_ids, checked)" in source
     assert "⚠ Source Revised" in source
@@ -52,12 +56,15 @@ def test_dialog_preserves_recording_and_source_revision_semantics() -> None:
     assert 'QCheckBox[source_revised="true"]' in theme
 
 
-def test_dialog_session_summary_and_cast_are_bottom_aligned_and_compact() -> None:
+def test_dialog_data_and_cast_use_seventy_thirty_split_layout() -> None:
     source = (ROOT / "pages" / "dialog_page.py").read_text(
         encoding="utf-8"
     )
 
     assert '"DialogSessionSummary"' in source
     assert '"CAST EPISODE"' in source
-    assert "self.cast_table.setMaximumHeight(112)" in source
+    assert "content_splitter.setStretchFactor(0, 7)" in source
+    assert "content_splitter.setStretchFactor(1, 3)" in source
+    assert "content_splitter.setSizes([700, 300])" in source
+    assert "self.cast_table.setMaximumHeight(112)" not in source
     assert "recorded{revision_text}" in source

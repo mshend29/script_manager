@@ -97,6 +97,7 @@ class HelpPage(PageShell):
         root.addWidget(self.subtitle)
 
         self.browser = QTextBrowser()
+        self.browser.setObjectName("HelpBrowser")
         self.browser.setOpenExternalLinks(False)
         self.browser.setOpenLinks(False)
         root.addWidget(self.browser, 1)
@@ -130,6 +131,7 @@ class HelpPage(PageShell):
         self._problem_report_text = ""
 
         super().__init__(context, workspace, parent)
+        context.setVisible(False)
         self.show_getting_started()
 
     def _set_active_button(self, active: QPushButton) -> None:

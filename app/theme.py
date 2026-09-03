@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 # Phase 10 light visual system.
 # Keep these values centralized so pages/components do not grow their own
 # unrelated color systems.
@@ -23,8 +22,8 @@ COLORS = {
     "recorded_soft": "#DCFCE7",
     "ready_to_stem": "#4F46E5",
     "ready_to_stem_soft": "#EEF2FF",
-    "stemmed": "#0F766E",
-    "stemmed_soft": "#CCFBF1",
+    "stemmed": "#0891B2",
+    "stemmed_soft": "#CFFAFE",
     "attention": "#F59E0B",
     "attention_soft": "#FEF3C7",
     "source_revised": "#F97316",
@@ -41,7 +40,7 @@ COLORS = {
     # soft status backgrounds. Accent colors stay available for borders/icons.
     "recorded_text": "#166534",
     "ready_to_stem_text": "#4338CA",
-    "stemmed_text": "#115E59",
+    "stemmed_text": "#155E75",
     "attention_text": "#92400E",
     "source_revised_text": "#9A3412",
     "revision_text": "#6D28D9",
@@ -73,6 +72,91 @@ SIDEBAR_WIDTH = 184
 APP_STYLESHEET = f"""
 QMainWindow {{
     background: {COLORS["app_background"]};
+}}
+
+QDialog,
+QMessageBox,
+QInputDialog {{
+    background: {COLORS["app_background"]};
+    color: {COLORS["text_primary"]};
+}}
+
+QToolTip {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    padding: 4px 6px;
+}}
+
+QTextBrowser,
+QTextEdit,
+QPlainTextEdit {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["md"]}px;
+    selection-background-color: {COLORS["accent_soft"]};
+    selection-color: {COLORS["text_primary"]};
+}}
+
+QComboBox QAbstractItemView,
+QListView,
+QTreeView {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    selection-background-color: {COLORS["accent_soft"]};
+    selection-color: {COLORS["text_primary"]};
+}}
+
+QTabWidget::pane {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+}}
+
+QTabBar::tab {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_secondary"]};
+    border: 1px solid {COLORS["border"]};
+    border-bottom: 0px;
+    padding: 7px 12px;
+}}
+
+QTabBar::tab:selected {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    font-weight: 700;
+}}
+
+QGroupBox {{
+    background: transparent;
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["md"]}px;
+    margin-top: 10px;
+    padding-top: 7px;
+    font-weight: 650;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0px 5px;
+    background: {COLORS["surface"]};
+}}
+
+QDialogButtonBox QPushButton {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    border-radius: {RADII["sm"]}px;
+    min-height: 30px;
+    padding: 0px 14px;
+}}
+
+QDialogButtonBox QPushButton:hover {{
+    background: {COLORS["accent_soft"]};
+    border-color: {COLORS["focus"]};
 }}
 
 QWidget {{
@@ -211,6 +295,79 @@ QPushButton[headerPrimary="true"]:focus,
 QPushButton[headerSecondary="true"]:focus,
 QToolButton[headerOverflow="true"]:focus {{
     border: 2px solid {COLORS["focus"]};
+}}
+
+QMenuBar {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border-bottom: 1px solid {COLORS["border"]};
+    padding: 2px 6px;
+}}
+
+QMenuBar::item {{
+    background: transparent;
+    padding: 5px 9px;
+    border-radius: {RADII["sm"]}px;
+}}
+
+QMenuBar::item:selected,
+QMenuBar::item:pressed {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+}}
+
+#WorkspaceNavigation {{
+    background: {COLORS["surface"]};
+    border-top: 1px solid {COLORS["border"]};
+}}
+
+QPushButton[workspaceNav="true"] {{
+    background: transparent;
+    color: {COLORS["text_secondary"]};
+    border: 0px;
+    border-top: 3px solid transparent;
+    padding: 5px 16px 4px 16px;
+    font-size: 9pt;
+    font-weight: 650;
+}}
+
+QPushButton[workspaceNav="true"]:hover {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_primary"]};
+}}
+
+QPushButton[workspaceNav="true"]:checked {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+    border-top: 3px solid {COLORS["accent"]};
+    font-weight: 800;
+}}
+
+#WorkspaceTabs {{
+    background: {COLORS["surface"]};
+    border-bottom: 1px solid {COLORS["border"]};
+}}
+
+#WorkspaceTabs QTabBar::tab {{
+    min-width: 88px;
+    background: transparent;
+    border: 0px;
+    border-bottom: 2px solid transparent;
+    padding: 7px 14px;
+    color: {COLORS["text_secondary"]};
+    font-weight: 650;
+}}
+
+#WorkspaceTabs QTabBar::tab:hover {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_primary"]};
+}}
+
+#WorkspaceTabs QTabBar::tab:selected {{
+    background: {COLORS["surface"]};
+    color: {COLORS["accent"]};
+    border-bottom: 2px solid {COLORS["accent"]};
+    font-weight: 750;
 }}
 
 QMenu {{
@@ -830,6 +987,53 @@ QPushButton[trackingRevisionAction="true"] {{
 QPushButton[trackingRevisionAction="true"]:hover {{
     background: {COLORS["surface"]};
     border: 2px solid {COLORS["revision"]};
+}}
+
+#HelpBrowser {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+    padding: 14px;
+}}
+
+#RecentProjectsDialog,
+#RecentProjectsBody {{
+    background: {COLORS["app_background"]};
+}}
+
+QPushButton[recentProjectCard="true"] {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+    min-height: 92px;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+}}
+
+QPushButton[recentProjectCard="true"]:hover {{
+    background: {COLORS["accent_soft"]};
+    border: 1px solid {COLORS["accent"]};
+}}
+
+#RecentProjectsTitle {{
+    color: {COLORS["text_primary"]};
+    font-size: 19pt;
+    font-weight: 750;
+}}
+
+#RecentProjectsSubtitle {{
+    color: {COLORS["text_secondary"]};
+    font-size: 9.5pt;
+}}
+
+#DialogCastPanel,
+#DialogSelectionFooter {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
 }}
 
 """

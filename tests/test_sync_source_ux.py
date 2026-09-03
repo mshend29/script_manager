@@ -6,10 +6,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_contextual_header_exposes_one_sync_source_action_only() -> None:
-    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
+def test_data_menu_exposes_one_sync_source_action_only() -> None:
+    main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert header.count('HeaderAction("source.sync", "Sync Source"') == 1
+    assert main.count(
+        'self._add_menu_action(data_menu, "Sync Source", self.sync_source, "F5")'
+    ) == 1
 
     for removed in (
         "source.import",
@@ -20,15 +22,17 @@ def test_contextual_header_exposes_one_sync_source_action_only() -> None:
         "data.refresh",
         "Import Source",
         "Refresh Data",
-        "Refresh View",
     ):
-        assert removed not in header
+        assert removed not in main
 
 
-def test_main_window_routes_f5_and_header_to_same_sync_source_method() -> None:
+def test_main_window_routes_f5_and_data_menu_to_same_sync_source_method() -> None:
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert '("F5", self.sync_source)' in main
+    assert (
+        'self._add_menu_action(data_menu, "Sync Source", self.sync_source, "F5")'
+        in main
+    )
     assert '"source.sync": self.sync_source' in main
     assert "def sync_source(self)" in main
     assert 'self._run_source_sync("Sync Source")' in main

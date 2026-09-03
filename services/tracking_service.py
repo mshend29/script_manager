@@ -18,8 +18,8 @@ NOT_READY = "NOT_READY"
 AUTO_FILE_STATUS_NOTE = "auto:file-inventory"
 
 # Only Revision remains a manual downstream state. STEMMED/DELIVERED are
-# derived from filesystem inventory; READY_TO_STEM is retained only for
-# compatibility with historical rows and is no longer an active workflow state.
+# derived from filesystem inventory. READY_TO_STEM is historical-only and is
+# presented as Recorded if an old row ever leaks into a compatibility path.
 DOWNSTREAM_STATUSES = {
     NOT_READY,
     REVISION,
@@ -29,7 +29,7 @@ STATUS_LABELS = {
     NOT_STARTED: "Not Started",
     IN_PROGRESS: "In Progress",
     RECORDED: "Recorded",
-    READY_TO_STEM: "Ready to Stem",
+    READY_TO_STEM: "Recorded",  # historical compatibility only
     STEMMED: "Stemmed",
     DELIVERED: "Delivered",
     REVISION: "Revision",

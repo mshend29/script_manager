@@ -36,6 +36,11 @@ class ProjectDataRevisionState:
     def mark_all_dirty(self) -> None:
         self._dirty_pages.update(DATA_PAGE_NAMES)
 
+    def mark_dirty(self, page_name: str) -> None:
+        normalized = str(page_name or "").strip().upper()
+        if normalized in DATA_PAGE_NAMES:
+            self._dirty_pages.add(normalized)
+
     def is_dirty(self, page_name: str) -> bool:
         return str(page_name).upper() in self._dirty_pages
 

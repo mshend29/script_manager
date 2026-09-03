@@ -46,9 +46,9 @@ def test_primary_desktop_sizes_keep_core_workspaces_reachable(
     window.show()
     qapp.processEvents()
 
-    assert window.sidebar.width() == 184
-    assert window.page_header.isVisible()
-    assert window.page_stack.width() > 850
+    assert window.workspace_nav.isVisible()
+    assert window.workspace_nav.height() == 58
+    assert window.page_stack.width() > 1000
 
     window.set_page("PROJECT")
     qapp.processEvents()
@@ -186,12 +186,12 @@ window.resize(1366, 768)
 window.show()
 app.processEvents()
 
-assert window.sidebar.width() == 184
+assert window.workspace_nav.height() == 58
 for page_name in ("PROJECT", "DIALOG", "TRACKING"):
     window.set_page(page_name)
     app.processEvents()
-    assert window.page_stack.currentWidget().width() > 800
-    assert window.page_header.isVisible()
+    assert window.page_stack.currentWidget().width() > 1000
+    assert window.workspace_nav.isVisible()
 
 window.close()
 app.processEvents()

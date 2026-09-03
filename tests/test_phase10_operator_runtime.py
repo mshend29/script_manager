@@ -88,7 +88,7 @@ def _wait_until(qapp, predicate, *, timeout: float = 12.0) -> None:
     raise AssertionError("Timed out waiting for Qt runtime condition.")
 
 
-def test_sidebar_operator_navigation_project_dialog_tracking(qapp) -> None:
+def test_bottom_workspace_navigation_project_dialog_tracking(qapp) -> None:
     window = MainWindow()
     window.show()
     qapp.processEvents()
@@ -98,11 +98,10 @@ def test_sidebar_operator_navigation_project_dialog_tracking(qapp) -> None:
         ("DIALOG", "Dialog"),
         ("TRACKING", "Tracking"),
     ):
-        window.sidebar._buttons[page_name].click()
+        window.workspace_nav._buttons[page_name].click()
         qapp.processEvents()
         assert window.page_stack.currentWidget() is window.pages[page_name]
-        assert window.sidebar._buttons[page_name].isChecked()
-        assert window.page_header.title_label.text() == title
+        assert window.workspace_nav._buttons[page_name].isChecked()
 
     window.close()
     qapp.processEvents()
@@ -154,14 +153,7 @@ def test_header_sync_source_runs_prepare_apply_and_lazy_refresh(
     )
 
     before_revision = window._project_data_state.revision
-    sync_buttons = [
-        button
-        for button in window.page_header.findChildren(QPushButton)
-        if button.text() == "Sync Source"
-    ]
-    assert len(sync_buttons) == 1
-
-    sync_buttons[0].click()
+    window.sync_source()
 
     _wait_until(
         qapp,
@@ -175,10 +167,10 @@ def test_header_sync_source_runs_prepare_apply_and_lazy_refresh(
     # revision-dirty until the operator opens them.
     assert window._project_data_state.is_dirty("SCRIPT") is True
 
-    window.sidebar._buttons["SCRIPT"].click()
+    window.workspace_nav._buttons["SCRIPT"].click()
     qapp.processEvents()
 
-    assert window.page_header.title_label.text() == "Script"
+    assert window.page_stack.currentWidget() is window.pages["SCRIPT"]
     assert window._project_data_state.is_dirty("SCRIPT") is False
     assert script_page.table_model.rowCount() == 2
     assert script_page.episode_combo.findData(2) >= 0
