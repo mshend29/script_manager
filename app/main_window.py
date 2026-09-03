@@ -790,6 +790,13 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(
                 f"{current.settings.project_name} - Script Manager"
             )
+            self._project_data_state.mark_dirty("TRACKING")
+            if self._current_page_name() == "TRACKING":
+                self._refresh_data_page_if_needed(
+                    "TRACKING",
+                    current,
+                    force=True,
+                )
 
         self.statusBar().showMessage(
             "Project settings saved",
@@ -1176,8 +1183,9 @@ class MainWindow(QMainWindow):
             return
 
         if not preview.has_changes:
+            self._refresh_tracking_files_state()
             self.statusBar().showMessage(
-                f"{title}: tidak ada perubahan source",
+                f"{title}: source tidak berubah; Track Files diperbarui",
                 5000,
             )
             return
@@ -1251,6 +1259,21 @@ class MainWindow(QMainWindow):
             f"Gagal pada phase {operation}.\n\n{exc}",
         )
         self.statusBar().showMessage(f"{title} gagal", 5000)
+
+    def _refresh_tracking_files_state(self) -> None:
+        project = self.project_manager.current
+        if project is None:
+            return
+
+        self._project_data_state.mark_dirty("TRACKING")
+        self.refresh_project_page()
+
+        if self._current_page_name() == "TRACKING":
+            self._refresh_data_page_if_needed(
+                "TRACKING",
+                project,
+                force=True,
+            )
 
     def _current_page_name(self) -> str:
         current_page = self.page_stack.currentWidget()
