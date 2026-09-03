@@ -51,6 +51,34 @@ def test_tracking_workspace_wraps_episode_chips_without_horizontal_scroll():
     assert "detail_requested.connect(self._select_episode_detail)" in source
 
 
+def test_tracking_column_headers_stay_outside_scroll_area():
+    tracking = _read("pages/tracking_page.py")
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert 'self.grid_header = QFrame()' in tracking
+    assert 'self.character_header_label = QLabel("TOKOH")' in tracking
+    assert 'self.episode_header_label = QLabel("EPISODE")' in tracking
+    reset = tracking.split("def _reset_tracking_grid", 1)[1].split(
+        "def _refresh_workspace", 1
+    )[0]
+    assert 'QLabel("TOKOH")' not in reset
+    assert 'QLabel("EPISODE")' not in reset
+    assert "matrix_layout.addWidget(self.grid_header)" in compact
+    assert "matrix_layout.addWidget(self.scroll, 1)" in compact
+
+
+def test_tracking_episode_popup_is_compact_and_screen_aware():
+    tracking = _read("pages/tracking_page.py")
+
+    assert "class TrackingEpisodeComboBox(QComboBox)" in tracking
+    assert "MAX_VISIBLE_EPISODES = 8" in tracking
+    assert "MAX_POPUP_HEIGHT = 250" in tracking
+    assert "QTimer.singleShot(0, self._position_popup)" in tracking
+    assert "self.screen().availableGeometry()" in tracking
+    assert "popup.move(x, y)" in tracking
+    assert "self.episode_combo = TrackingEpisodeComboBox()" in tracking
+
+
 def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_columns():
     source = _read("pages/tracking_page.py")
 
@@ -94,6 +122,25 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
     assert '["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]' in compact
     assert 'QLabel("OUTPUT HEALTH")' in compact
 
+
+
+def test_delivery_hides_tracking_only_controls_and_matrix():
+    delivery = _read("pages/delivery_page.py")
+
+    assert "self.grid_header.hide()" in delivery
+    assert "self.scroll.hide()" in delivery
+    assert "self.summary_label.hide()" in delivery
+    assert "self.episode_combo.hide()" in delivery
+    assert "self.prev_episode_button.hide()" in delivery
+    assert "self.next_episode_button.hide()" in delivery
+    assert "filter_layout.addWidget(self.talent_combo)" in delivery
+    assert "self.rename_episode_button.hide()" in delivery
+
+    build = delivery.split("def _build_tracking_workspaces", 1)[1].split(
+        "def show_workspace", 1
+    )[0]
+    assert 'QLabel("Episode")' not in build
+    assert "filter_layout.addWidget(self.summary_label" not in build
 
 
 def test_delivery_owns_track_files_and_output_health_workspaces():
