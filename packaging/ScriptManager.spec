@@ -17,12 +17,14 @@ from PyInstaller.utils.win32.versioninfo import (
 project_root = Path(SPECPATH).parent
 sys.path.insert(0, str(project_root))
 
+from core.icon_assets import materialize_packaging_icons
 from core.version import APP_NAME, APP_VERSION
 
 
 version_parts = [int(part) for part in APP_VERSION.split(".")[:4]]
 version_parts.extend([0] * (4 - len(version_parts)))
 version_tuple = tuple(version_parts[:4])
+materialize_packaging_icons(project_root)
 icon_file = project_root / "resources" / "app.ico"
 exe_options = {}
 if icon_file.is_file():
