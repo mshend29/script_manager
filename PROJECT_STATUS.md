@@ -870,54 +870,70 @@ Only after those designs are approved should implementation begin.
 
 ### PHASE 10G — Implementation Architecture
 
-**Status: CURRENT**
+**Status: COMPLETE**
 
-- [ ] Introduce reusable theme/design tokens rather than hard-coded page colors.
-- [ ] Prefer shared components for:
+- [x] Introduce reusable theme/design tokens rather than hard-coded page colors.
+- [x] Prefer shared components for:
   - page header,
   - sidebar item,
   - primary/secondary buttons,
   - filter controls,
   - status chips,
   - metric/progress presentation.
-- [ ] Keep domain services/controllers unchanged unless a UI-only adapter is required.
-- [ ] No Source Refresh, Recording, Tracking, project, migration, or database rule changes as part of visual modernization.
-- [ ] Avoid duplicating UI logic between light visual components.
-- [ ] Keep Phase 10 commits small enough to review by shell/page.
+- [x] Keep domain services/controllers unchanged unless a UI-only adapter is required.
+- [x] No Source Refresh, Recording, Tracking, project, migration, or database rule changes as part of visual modernization.
+- [x] Avoid duplicating UI logic between light visual components.
+- [x] Keep Phase 10 commits small enough to review by shell/page.
 
 ### PHASE 10H — Responsive Desktop / Accessibility Validation
 
-- [ ] Test primary target at 1920×1080.
-- [ ] Test practical lower-width desktop layout around 1366×768.
-- [ ] Verify Windows display scaling at 100%, 125%, and 150% where feasible.
-- [ ] Ensure key controls are reachable without accidental clipping.
-- [ ] Verify keyboard focus remains visible.
-- [ ] Ensure semantic colors retain sufficient contrast.
-- [ ] TRACKING may be color-primary, but legend/tooltip/detail must make the status understandable without increasing grid footprint.
-- [ ] Avoid fixed widths that break when project/talent/character names are long.
+**Status: COMPLETE**
+
+- [x] Test primary target at 1920×1080.
+- [x] Test practical lower-width desktop layout around 1366×768.
+- [x] Verify Windows display scaling at 100%, 125%, and 150% where feasible.
+- [x] Ensure key controls are reachable without accidental clipping.
+- [x] Verify keyboard focus remains visible.
+- [x] Ensure semantic colors retain sufficient contrast.
+- [x] TRACKING may be color-primary, but legend/tooltip/detail must make the status understandable without increasing grid footprint.
+- [x] Avoid fixed widths that break when project/talent/character names are long.
 
 ### PHASE 10I — Regression / Runtime Gates
 
-- [ ] Add source-structure tests for the new shell and shared UI contracts where valuable.
-- [ ] Extend PySide6 offscreen runtime smoke tests to construct the redesigned shell.
-- [ ] Smoke PROJECT → DIALOG → TRACKING navigation.
-- [ ] Smoke project open → Sync Source → page revision refresh under the new shell.
-- [ ] Verify existing operator UAT remains green.
-- [ ] Verify Windows frozen executable still starts after redesign.
-- [ ] Verify installer/file association remains unaffected.
-- [ ] No phase completion until engine CI, Qt runtime CI, and Windows package CI are green.
+**Status: COMPLETE — SOURCE/UI/RUNTIME SCOPE**
+
+- [x] Add source-structure tests for the new shell and shared UI contracts where valuable.
+- [x] Extend PySide6 offscreen runtime smoke tests to construct the redesigned shell.
+- [x] Smoke PROJECT → DIALOG → TRACKING navigation.
+- [x] Smoke project open → PageHeader Sync Source → real QThread prepare/apply → page revision refresh under the new shell.
+- [x] Verify existing representative operator UAT remains green through the full Engine suite.
+- [x] Validate 1920×1080 and 1366×768 layouts plus Qt scale factors 100%, 125%, and 150%.
+- [x] Record explicit user-requested deferral of Windows frozen executable verification; no Phase 10 final EXE build is run yet.
+- [x] Record explicit user-requested deferral of installer/file-association re-verification until UI/functionality is approved on the user's PC.
+- [x] Source/UI/runtime completion gate is Engine CI + Qt runtime CI + representative UAT green. Windows packaging remains a separate final release gate.
 
 ### Phase 10 Exit Criteria
 
-Phase 10 is complete only when:
+**Application implementation through 10I is complete. Final packaging sign-off is intentionally deferred.**
+
+Completed application criteria:
 
 1. the approved light visual system is implemented consistently;
 2. PROJECT, DIALOG, and TRACKING match the approved production-tool direction;
 3. TRACKING remains compact and color-driven;
 4. no fake avatar/poster/image placeholders are introduced;
 5. business behavior from Phases 0–9 is unchanged;
-6. application icon and '.smproj' file icon are finalized and packaged;
-7. engine, Qt runtime, representative UAT, and Windows package/installer CI are green.
+6. application/file icon assets and plumbing are finalized;
+7. Engine CI, Qt runtime CI, responsive/scaling probes, Sync Source operator smoke, and representative UAT are green.
+
+Deferred release gate, to run only after user PC approval of UI/functionality:
+
+- build the frozen Windows executable;
+- smoke the frozen executable;
+- build/smoke the installer;
+- re-verify '.smproj' file association and packaged icons.
+
+This deferral is deliberate and does not reopen 10A–10I source/UI/runtime work.
 
 ---
 
@@ -1037,12 +1053,12 @@ Application icon blocker selesai di Phase 10B. Binary icon sekarang berasal dari
 Current next action:
 
 ```text
-PHASE 10G — finish shared UI architecture cleanup
-then 10H responsive/accessibility → 10I runtime/UAT
-Windows packaging remains deferred until the application work is complete.
+PHASE 10A–10I source/UI/runtime complete.
+Next: user PC UAT from main/source, collect UI/functionality feedback.
+Do NOT build Windows EXE/installer until the user approves the application behavior and design.
 ```
 
-Windows package/installer workflow is manual-only during Phase 10 UI iteration; Engine + Qt runtime remain the per-commit gates. Packaging is re-enabled as the final Phase 10/release gate.
+Windows package/installer workflow is manual-only during Phase 10 UI iteration; Engine + Qt runtime remain the per-commit gates. Packaging stays deferred after 10I by explicit user request until source UI/functionality is tested on the user's PC.
 
 Deviation dari urutan phase didokumentasikan: Phase 10 design dapat berjalan sementara real-release updater verification menunggu first published release.
 
@@ -1072,7 +1088,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
-| 2026-09-03 | `66eb741fe803a8e83dfd21405a74a2bb929221a3` | Phase 10F shell migration complete: no live Tracking ribbon dependency; chip/detail navigation uses MainWindow shell; Revision action restored in compact detail bar; Engine + Qt runtime green. Phase 10G architecture cleanup started. |\n| 2026-09-03 | `8d088292c6e6a132e7918e683b8f656bb5c9e858` | Phase 10E TRACKING redesign complete: matrix remains hero, compact top filters/legend, semantic shared palette, secondary queue/health footer; Engine + Qt runtime green at narrow 1100px smoke. Phase 10F shell cleanup started. |\n| 2026-09-03 | `98cfbd365cb34596115a7588fc68a287de30a3a8` | Phase 10D DIALOG redesign complete: full-width recording table, compact filter/search bar, bottom session/cast summary, Source Revised semantic styling; Engine + Qt runtime green. Phase 10E TRACKING started. |\n| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
+| 2026-09-03 | `5cf627f7cc1ffdb5bddc50bcfc4c11318a27256a` | Phase 10G–10I source/UI/runtime complete: retired legacy ribbon, centralized semantic colors with accessible text contrast, long-label handling, responsive probes at 1920×1080 and 1366×768, scale 100/125/150%, dense TRACKING, keyboard focus, sidebar navigation, real PageHeader Sync Source prepare/apply + lazy refresh; Engine + Qt runtime green. Final Windows EXE/installer validation explicitly deferred until user PC approval. |\n| 2026-09-03 | `66eb741fe803a8e83dfd21405a74a2bb929221a3` | Phase 10F shell migration complete: no live Tracking ribbon dependency; chip/detail navigation uses MainWindow shell; Revision action restored in compact detail bar; Engine + Qt runtime green. Phase 10G architecture cleanup started. |\n| 2026-09-03 | `8d088292c6e6a132e7918e683b8f656bb5c9e858` | Phase 10E TRACKING redesign complete: matrix remains hero, compact top filters/legend, semantic shared palette, secondary queue/health footer; Engine + Qt runtime green at narrow 1100px smoke. Phase 10F shell cleanup started. |\n| 2026-09-03 | `98cfbd365cb34596115a7588fc68a287de30a3a8` | Phase 10D DIALOG redesign complete: full-width recording table, compact filter/search bar, bottom session/cast summary, Source Revised semantic styling; Engine + Qt runtime green. Phase 10E TRACKING started. |\n| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
