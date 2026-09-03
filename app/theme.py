@@ -785,6 +785,37 @@ QPushButton[trackingWorkspaceTab="true"]:checked {{
     font-weight: 750;
 }}
 
+#TrackingDetailBar {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+}}
+
+#TrackingDetailPrimary {{
+    color: {COLORS["text_primary"]};
+    font-weight: 750;
+}}
+
+#TrackingDetailText {{
+    color: {COLORS["text_secondary"]};
+    font-size: 9pt;
+}}
+
+QPushButton[trackingRevisionAction="true"] {{
+    background: {COLORS["revision_soft"]};
+    color: {COLORS["revision"]};
+    border: 1px solid {COLORS["revision"]};
+    border-radius: {RADII["sm"]}px;
+    min-height: {COMPACT_CONTROL_HEIGHT}px;
+    padding: 0px 10px;
+    font-weight: 700;
+}}
+
+QPushButton[trackingRevisionAction="true"]:hover {{
+    background: {COLORS["surface"]};
+    border: 2px solid {COLORS["revision"]};
+}}
+
 /* Legacy ribbon selectors retained only while page-local references/tests are
    migrated during Phase 10. The production MainWindow no longer uses Ribbon. */
 #RibbonRoot,
