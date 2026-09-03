@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+import sys
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QColor, QPalette
 
 
@@ -71,6 +72,50 @@ RADII = {
 CONTROL_HEIGHT = 34
 COMPACT_CONTROL_HEIGHT = 30
 SIDEBAR_WIDTH = 184
+
+
+def _force_light_title_bar(widget) -> None:
+    if sys.platform != "win32":
+        return
+
+    try:
+        import ctypes
+
+        hwnd = int(widget.winId())
+        value = ctypes.c_int(0)
+        size = ctypes.sizeof(value)
+        dwmapi = ctypes.windll.dwmapi
+        for attribute in (20, 19):
+            result = dwmapi.DwmSetWindowAttribute(
+                hwnd,
+                attribute,
+                ctypes.byref(value),
+                size,
+            )
+            if result == 0:
+                break
+    except Exception:
+        pass
+
+
+class LightWindowChromeFilter(QObject):
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            event.type() in {
+                QEvent.Type.Show,
+                QEvent.Type.WinIdChange,
+            }
+            and hasattr(watched, "isWindow")
+            and watched.isWindow()
+        ):
+            _force_light_title_bar(watched)
+        return False
+
+
+def install_light_window_chrome(app) -> None:
+    filter_object = LightWindowChromeFilter(app)
+    app.installEventFilter(filter_object)
+    app._script_manager_light_chrome_filter = filter_object
 
 
 def apply_light_theme(app) -> None:
@@ -354,6 +399,33 @@ QMenuBar::item:selected,
 QMenuBar::item:pressed {{
     background: {COLORS["accent_soft"]};
     color: {COLORS["accent"]};
+}}
+
+#WorkspaceNavigation {{
+    background: {COLORS["surface"]};
+    border-top: 1px solid {COLORS["border"]};
+}}
+
+QPushButton[workspaceNav="true"] {{
+    background: transparent;
+    color: {COLORS["text_secondary"]};
+    border: 0px;
+    border-top: 3px solid transparent;
+    padding: 5px 16px 4px 16px;
+    font-size: 9pt;
+    font-weight: 650;
+}}
+
+QPushButton[workspaceNav="true"]:hover {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_primary"]};
+}}
+
+QPushButton[workspaceNav="true"]:checked {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+    border-top: 3px solid {COLORS["accent"]};
+    font-weight: 800;
 }}
 
 #WorkspaceTabs {{
