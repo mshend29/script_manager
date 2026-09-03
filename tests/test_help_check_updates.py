@@ -16,14 +16,14 @@ def test_application_version_is_centralized_and_exposed_to_qt():
 
 
 def test_check_updates_is_wired_to_help_and_background_worker():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
     worker = (
         ROOT / "app" / "update_check_worker.py"
     ).read_text(encoding="utf-8")
 
-    assert '("help.check_updates", "Check for Updates")' in ribbon
+    assert 'HeaderAction("help.check_updates", "Check for Updates")' in header
     assert 'QPushButton("Check for Updates")' in page
     assert '"help.check_updates": self.check_for_updates' in main
     assert "def check_for_updates" in main
