@@ -1234,11 +1234,18 @@ class MainWindow(QMainWindow):
         page.project_name.setText(
             settings.project_name or "Unnamed Project"
         )
+        page.set_project_metadata(
+            project_code=settings.project_code,
+            client_name=settings.client_name,
+            drive_configured=bool(
+                str(settings.main_drive_url or "").strip()
+            ),
+        )
         page.project_location.setText(
             f"Project file: {project.project_file}"
         )
         page.source_path.setText(
-            f"Source: {settings.source_folder or '-'}"
+            f"Source folder: {settings.source_folder or '-'}"
         )
         page.start_date.setText(
             f"Start date: {settings.start_date or '-'}"
@@ -1252,7 +1259,7 @@ class MainWindow(QMainWindow):
             last_sync = ""
 
         page.last_refresh.setText(
-            f"Last refresh: {last_sync or '-'}"
+            f"Last sync: {last_sync or '-'}"
         )
 
         try:
@@ -1283,7 +1290,7 @@ class MainWindow(QMainWindow):
         elif snapshot.actions:
             page.info_text.setText(
                 f"{len(snapshot.actions)} jenis pekerjaan membutuhkan perhatian. "
-                "Gunakan What Needs Attention untuk langsung membuka workflow terkait."
+                "Gunakan Needs Attention untuk langsung membuka workflow terkait."
             )
         else:
             page.info_text.setText(
