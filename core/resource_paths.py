@@ -19,17 +19,10 @@ def resource_path(*parts: str) -> Path:
 
 
 def _icon_path(icon_name: str) -> Path:
-    resources_dir = resource_path("resources")
-    bundled = resources_dir / icon_name
-
-    if bundled.is_file():
-        try:
-            if bundled.read_bytes()[:4] == b"\x00\x00\x01\x00":
-                return bundled
-        except OSError:
-            pass
-
-    return materialize_icon(resources_dir, icon_name)
+    return materialize_icon(
+        resource_path("resources"),
+        icon_name,
+    )
 
 
 def application_icon_path() -> Path:
