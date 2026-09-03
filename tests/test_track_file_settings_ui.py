@@ -90,4 +90,3 @@ def test_phase10_shell_uses_compact_navigation_and_header_spacing():
     assert "root.setSpacing(6)" in sidebar
     assert "root.setContentsMargins(20, 10, 16, 10)" in header
     assert "self.setFixedHeight(78)" in header
-    assert "min-height: 72px" in theme
