@@ -61,6 +61,10 @@ class DialogPage(QWidget):
         self.talent_combo.setObjectName("DialogTalentFilter")
         self.talent_combo.addItem("Pilih talent", None)
         self.talent_combo.setMinimumWidth(150)
+        self.talent_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.talent_combo.setMinimumContentsLength(12)
         filter_layout.addWidget(self.talent_combo)
 
         character_label = QLabel("Tokoh")
@@ -72,6 +76,10 @@ class DialogPage(QWidget):
         self.character_combo.addItem("Pilih tokoh", None)
         self.character_combo.setEnabled(False)
         self.character_combo.setMinimumWidth(150)
+        self.character_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.character_combo.setMinimumContentsLength(12)
         filter_layout.addWidget(self.character_combo)
 
         episode_label = QLabel("Episode")
@@ -83,6 +91,10 @@ class DialogPage(QWidget):
         self.episode_combo.addItem("Pilih episode", None)
         self.episode_combo.setEnabled(False)
         self.episode_combo.setMinimumWidth(128)
+        self.episode_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.episode_combo.setMinimumContentsLength(12)
         filter_layout.addWidget(self.episode_combo)
 
         self.prev_episode_button = QPushButton("‹ Prev")
