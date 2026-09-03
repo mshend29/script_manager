@@ -807,29 +807,31 @@ Only after those designs are approved should implementation begin.
 
 ### PHASE 10D — DIALOG Page Redesign
 
-**Status: CURRENT**
+**Status: COMPLETE**
 
-- [ ] Maximize dialogue reading/recording workspace.
-- [ ] Keep Talent / Character / Episode filters in one compact top control row.
-- [ ] Keep Search close to filters without consuming dialogue width.
-- [ ] Keep Open Source File and Check All as contextual actions.
-- [ ] Replace spreadsheet-heavy presentation with cleaner production rows while preserving:
+- [x] Maximize dialogue reading/recording workspace.
+- [x] Keep Talent / Character / Episode filters in one compact top control row.
+- [x] Keep Search close to filters without consuming dialogue width.
+- [x] Keep Open Source File and Check All as contextual actions.
+- [x] Replace spreadsheet-heavy presentation with cleaner production rows while preserving:
   - recorded checkbox/state,
   - IN,
   - OUT,
   - dialogue text,
   - source reference where useful.
-- [ ] Dialogue text must remain the strongest visual element.
-- [ ] Preserve Source Revised state with clear orange semantic treatment.
-- [ ] Preserve recording history semantics introduced in Phase 3.
-- [ ] Avoid mandatory large right sidebar; session summary should be compact/collapsible or bottom-aligned.
-- [ ] Add compact session footer/summary:
+- [x] Dialogue text must remain the strongest visual element.
+- [x] Preserve Source Revised state with clear orange semantic treatment.
+- [x] Preserve recording history semantics introduced in Phase 3.
+- [x] Avoid mandatory large right sidebar; session summary should be compact/collapsible or bottom-aligned.
+- [x] Add compact session footer/summary:
   - recorded / total,
   - Source Revised count,
   - other immediately useful recording state.
-- [ ] Verify Check All / Uncheck All and revised-line behavior remain unchanged.
+- [x] Verify Check All / Uncheck All and revised-line behavior remain unchanged.
 
 ### PHASE 10E — TRACKING Page Redesign
+
+**Status: CURRENT**
 
 **Important: preserve the current compact tracking philosophy.**
 
@@ -1033,8 +1035,8 @@ Application icon blocker selesai di Phase 10B. Binary icon sekarang berasal dari
 Current next action:
 
 ```text
-PHASE 10D — redesign DIALOG
-then TRACKING in order
+PHASE 10E — redesign TRACKING
+then complete shell/architecture/runtime validation without Windows packaging
 ```
 
 Windows package/installer workflow is manual-only during Phase 10 UI iteration; Engine + Qt runtime remain the per-commit gates. Packaging is re-enabled as the final Phase 10/release gate.
@@ -1067,7 +1069,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
-| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
+| 2026-09-03 | `98cfbd365cb34596115a7588fc68a287de30a3a8` | Phase 10D DIALOG redesign complete: full-width recording table, compact filter/search bar, bottom session/cast summary, Source Revised semantic styling; Engine + Qt runtime green. Phase 10E TRACKING started. |\n| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
