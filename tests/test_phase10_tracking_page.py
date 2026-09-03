@@ -41,7 +41,7 @@ def test_tracking_filters_and_legend_are_compact_and_visible() -> None:
     assert "self._status_legend_label(status)" in compact
 
     assert "self.talent_combo.setMinimumWidth(180)" in compact
-    assert "self.episode_combo.setMinimumWidth(132)" in compact
+    assert "self.episode_combo.setMinimumWidth(128)" in compact
     assert 'setProperty("trackingNav", True)' in compact
 
 
