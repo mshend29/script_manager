@@ -81,6 +81,26 @@ def test_shared_shell_components_are_reused_by_main_window() -> None:
     assert 'getattr(window, "ribbon", None)' not in _read(
         "widgets/episode_chip.py"
     )
+    assert not (ROOT / "app" / "ribbon.py").exists()
+
+
+
+def test_phase10_keyboard_focus_and_long_label_contracts() -> None:
+    theme = _read("app/theme.py")
+    dialog = _read("pages/dialog_page.py")
+    tracking = _read("pages/tracking_page.py")
+    project = _read("pages/project_page.py")
+
+    assert "QLineEdit:focus" in theme
+    assert "QComboBox:focus" in theme
+    assert "QTableWidget:focus" in theme
+    assert 'COLORS["focus"]' in theme
+
+    policy = "AdjustToMinimumContentsLengthWithIcon"
+    assert dialog.count(policy) >= 3
+    assert tracking.count(policy) >= 2
+    assert "self.project_name.setWordWrap(True)" in project
+    assert "self.project_identity.setWordWrap(True)" in project
 
 
 @pytest.mark.parametrize(
