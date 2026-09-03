@@ -114,6 +114,21 @@ jobs:
             throw "Unexpected .smproj ProgID: $progId"
           }
 
+          $iconKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\ScriptManager.Project\DefaultIcon"
+          )
+          if (-not $iconKey) {
+            throw "ScriptManager.Project icon was not registered."
+          }
+          $projectIcon = [string]$iconKey.GetValue("")
+          $iconKey.Close()
+          if ($projectIcon -notlike '*resources\project_file.ico') {
+            throw "Unexpected .smproj icon: $projectIcon"
+          }
+          if (-not (Test-Path (Join-Path $installDir "resources\project_file.ico"))) {
+            throw "Installed project_file.ico is missing."
+          }
+
           $commandKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
             "Software\Classes\ScriptManager.Project\shell\open\command"
           )
