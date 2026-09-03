@@ -40,6 +40,14 @@ class DeliveryPage(CompactTrackingPage):
 
         self.drive_button.hide()
         self.title_label.hide()
+        self.summary_label.hide()
+        self.grid_header.hide()
+        self.scroll.hide()
+        self.episode_combo.hide()
+        self.prev_episode_button.hide()
+        self.next_episode_button.hide()
+
+        root.removeWidget(self.grid_header)
         root.removeWidget(self.scroll)
 
         filter_bar = QFrame()
@@ -52,21 +60,9 @@ class DeliveryPage(CompactTrackingPage):
         talent_label.setObjectName("TrackingFilterLabel")
         filter_layout.addWidget(talent_label)
         self.talent_combo.setMinimumWidth(180)
+        self.talent_combo.setMaximumWidth(360)
         filter_layout.addWidget(self.talent_combo)
-
-        episode_label = QLabel("Episode")
-        episode_label.setObjectName("TrackingFilterLabel")
-        filter_layout.addWidget(episode_label)
-        self.episode_combo.setMinimumWidth(132)
-        filter_layout.addWidget(self.episode_combo)
-
-        self.prev_episode_button.setProperty("trackingNav", True)
-        self.next_episode_button.setProperty("trackingNav", True)
-        filter_layout.addWidget(self.prev_episode_button)
-        filter_layout.addWidget(self.next_episode_button)
-
-        filter_layout.addSpacing(8)
-        filter_layout.addWidget(self.summary_label, 1)
+        filter_layout.addStretch(1)
 
         navigation = QFrame()
         navigation.setObjectName("TrackingWorkspaceTabs")
@@ -95,9 +91,9 @@ class DeliveryPage(CompactTrackingPage):
         self.delivery_workspace_stack.setObjectName(
             "DeliveryWorkspaceStack"
         )
-        self.delivery_workspace_stack.addWidget(
-            self._build_track_files_workspace()
-        )
+        track_files_page = self._build_track_files_workspace()
+        self.rename_episode_button.hide()
+        self.delivery_workspace_stack.addWidget(track_files_page)
         self.delivery_workspace_stack.addWidget(
             self._build_output_health_workspace()
         )
