@@ -82,10 +82,12 @@ def test_project_settings_normalizes_only_supported_wav_options():
     assert settings.audio_channels == 1
 
 
-def test_ribbon_group_titles_use_compact_vertical_spacing():
-    ribbon = _read("app/ribbon.py")
-    theme = _read("app/theme.py")
+def test_phase10_shell_uses_compact_navigation_and_header_spacing():
+    sidebar = _read("widgets/sidebar_nav.py")
+    header = _read("widgets/page_header.py")
 
-    assert "root.setContentsMargins(9, 4, 9, 2)" in ribbon
-    assert "padding: 0px 2px; margin: 0px;" in theme
+    assert "root.setContentsMargins(10, 14, 10, 10)" in sidebar
+    assert "root.setSpacing(6)" in sidebar
+    assert "root.setContentsMargins(20, 10, 16, 10)" in header
+    assert "self.setFixedHeight(78)" in header
     assert "min-height: 72px" in theme
