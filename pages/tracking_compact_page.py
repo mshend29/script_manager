@@ -123,9 +123,9 @@ class CompactTrackingPage(TrackingPage):
         # Tracking depends on both SQLite state and filesystem state. Unlike
         # the base page, refreshing this workspace must rescan Stem/Delivery
         # folders so Drive Desktop changes become visible immediately.
-        self.refresh_track_files()
+        self.refresh_track_files(notify=False)
 
-    def refresh_track_files(self) -> None:
+    def refresh_track_files(self, *, notify: bool = True) -> None:
         if self._database is None:
             return
 
@@ -146,6 +146,8 @@ class CompactTrackingPage(TrackingPage):
             ),
         )
         self._refresh_track_file_ui()
+        if notify:
+            self.data_changed.emit()
 
     def _build_track_file_service(self, database: Database) -> TrackFileService:
         settings = self._track_file_settings
@@ -1624,4 +1626,4 @@ class CompactTrackingPage(TrackingPage):
         # Clearing Revision should immediately restore the automatic file-based
         # state if valid files are still present.
         if status == "NOT_READY" and self._database is not None:
-            self.refresh_track_files()
+            self.refresh_track_files(notify=False)
