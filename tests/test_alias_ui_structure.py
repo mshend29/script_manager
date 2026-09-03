@@ -17,11 +17,12 @@ def test_character_alias_ui_is_manual_and_reversible():
     assert "remove_alias" in source
 
 
-def test_tracking_status_legend_is_two_column_grid():
+def test_tracking_status_legend_is_compact_top_bar():
     source = _read("pages/tracking_compact_page.py")
-    assert "QGridLayout" in source
-    assert "index // 2" in source
-    assert "index % 2" in source
+    assert '"TrackingLegendBar"' in source
+    assert "for status in STATUS_ORDER:" in source
+    assert "self._status_legend_label(status)" in source
+    assert "context.hide()" in source
 
 
 def test_main_window_uses_enhanced_data_and_tracking_pages():
