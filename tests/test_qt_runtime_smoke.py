@@ -64,9 +64,12 @@ def _project(tmp_path):
         file_path=tmp_path / "qt-runtime.smproj",
         settings=ProjectSettings(
             project_name="Qt Runtime",
+            project_code="QT",
+            client_name="Test Client",
             source_folder=str(source),
             episode_before="第",
             episode_after="集",
+            main_drive_url="https://drive.google.com/example",
         ),
         project_id="qt-runtime-smoke",
     )
@@ -128,6 +131,14 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
         project.project_file,
         show_errors=False,
     )
+
+    project_page = window.pages["PROJECT"]
+    assert project_page.project_name.text() == "Qt Runtime"
+    assert project_page.project_identity.text() == "QT  •  Test Client"
+    assert project_page.drive_status.text() == "Main drive: Configured"
+    assert project_page.empty_action_bar.isHidden()
+    assert project_page.episodes_card.value_label.text() == "1"
+    assert project_page.dialogues_card.value_label.text() == "1"
 
     window.set_page("SCRIPT")
     qapp.processEvents()
