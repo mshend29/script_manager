@@ -34,59 +34,45 @@ def _action_strings(path: Path) -> set[str]:
     return values
 
 
-def test_main_window_uses_phase10_desktop_shell_not_ribbon() -> None:
+def test_main_window_uses_standard_menu_and_bottom_workspace_navigation() -> None:
     source = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert "from widgets.sidebar_nav import SidebarNavigation" in source
-    assert "from widgets.page_header import PageHeader" in source
-    assert "self.sidebar = SidebarNavigation()" in source
-    assert "self.page_header = PageHeader()" in source
+    assert "from widgets.workspace_nav import WorkspaceNavigation" in source
+    assert "self.workspace_nav = WorkspaceNavigation()" in source
+    assert "self.menuBar()" in source
+    assert "SidebarNavigation" not in source
+    assert "PageHeader" not in source
     assert "from app.ribbon import Ribbon" not in source
-    assert "self.ribbon = Ribbon()" not in source
 
 
-def test_sidebar_contains_only_product_navigation_no_account_chrome() -> None:
-    source = (ROOT / "widgets" / "sidebar_nav.py").read_text(
+def test_bottom_navigation_contains_production_workspaces_only() -> None:
+    source = (ROOT / "widgets" / "workspace_nav.py").read_text(
         encoding="utf-8"
     )
 
-    for page in (
-        "PROJECT",
-        "SCRIPT",
-        "DIALOG",
-        "TRACKING",
-        "DATA",
-        "TOOLS",
-        "HELP",
-    ):
+    for page in ("PROJECT", "SCRIPT", "DIALOG", "TRACKING", "DATA"):
         assert f'("{page}",' in source
 
-    for forbidden in (
-        "avatar",
-        "login",
-        "logout",
-        "account",
-        "producer",
-        "online",
-        "profile",
+    assert "TOOLS" not in source.split("WORKSPACES =", 1)[1].split(")", 1)[0]
+    assert "HELP" not in source.split("WORKSPACES =", 1)[1].split(")", 1)[0]
+
+
+def test_standard_menu_contract_is_present() -> None:
+    source = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
+
+    for menu in ("&File", "&Project", "&Data", "&Tools", "&Help"):
+        assert f'menu_bar.addMenu("{menu}")' in source
+
+    for label in (
+        "New Project",
+        "Open Project",
+        "Sync Source",
+        "Tools & Maintenance",
+        "Getting Started",
     ):
-        assert forbidden not in source.casefold()
+        assert label in source
 
-
-def test_every_contextual_header_action_has_main_window_handler() -> None:
-    declared = _action_strings(ROOT / "widgets" / "page_header.py")
-    handled = _action_strings(ROOT / "app" / "main_window.py")
-
-    assert declared - handled == set()
-
-
-def test_sync_source_is_single_primary_project_action() -> None:
-    source = (ROOT / "widgets" / "page_header.py").read_text(
-        encoding="utf-8"
-    )
-
-    assert source.count('HeaderAction("source.sync", "Sync Source"') == 1
-    assert 'HeaderAction("source.sync", "Sync Source", primary=True)' in source
+    assert "existing_only=True)[:5]" in source
 
 
 def test_phase10_light_tokens_are_centralized() -> None:
