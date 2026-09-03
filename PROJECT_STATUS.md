@@ -857,18 +857,20 @@ Only after those designs are approved should implementation begin.
 
 ### PHASE 10F — Navigation / Desktop Shell Implementation
 
-**Status: CURRENT**
+**Status: COMPLETE**
 
-- [ ] Replace ribbon presentation with slim persistent left navigation.
-- [ ] Keep PROJECT / SCRIPT / DIALOG / TRACKING / DATA as primary navigation.
-- [ ] Keep TOOLS / HELP separated visually as secondary navigation.
-- [ ] Do not add account/profile/login area.
-- [ ] Add contextual actions at the page header instead of global ribbon groups.
-- [ ] Preserve keyboard shortcuts and F5 = Sync Source.
-- [ ] Preserve application-level dirty-page / project revision behavior from Phase 5.
-- [ ] Preserve status-bar information in a more compact visual form.
+- [x] Replace ribbon presentation with slim persistent left navigation.
+- [x] Keep PROJECT / SCRIPT / DIALOG / TRACKING / DATA as primary navigation.
+- [x] Keep TOOLS / HELP separated visually as secondary navigation.
+- [x] Do not add account/profile/login area.
+- [x] Add contextual actions at the page header instead of global ribbon groups.
+- [x] Preserve keyboard shortcuts and F5 = Sync Source.
+- [x] Preserve application-level dirty-page / project revision behavior from Phase 5.
+- [x] Preserve status-bar information in a more compact visual form.
 
 ### PHASE 10G — Implementation Architecture
+
+**Status: CURRENT**
 
 - [ ] Introduce reusable theme/design tokens rather than hard-coded page colors.
 - [ ] Prefer shared components for:
@@ -1035,8 +1037,8 @@ Application icon blocker selesai di Phase 10B. Binary icon sekarang berasal dari
 Current next action:
 
 ```text
-PHASE 10F — finish shell migration and remove live ribbon dependencies
-then 10G architecture → 10H responsive/accessibility → 10I runtime/UAT
+PHASE 10G — finish shared UI architecture cleanup
+then 10H responsive/accessibility → 10I runtime/UAT
 Windows packaging remains deferred until the application work is complete.
 ```
 
@@ -1070,7 +1072,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
-| 2026-09-03 | `8d088292c6e6a132e7918e683b8f656bb5c9e858` | Phase 10E TRACKING redesign complete: matrix remains hero, compact top filters/legend, semantic shared palette, secondary queue/health footer; Engine + Qt runtime green at narrow 1100px smoke. Phase 10F shell cleanup started. |\n| 2026-09-03 | `98cfbd365cb34596115a7588fc68a287de30a3a8` | Phase 10D DIALOG redesign complete: full-width recording table, compact filter/search bar, bottom session/cast summary, Source Revised semantic styling; Engine + Qt runtime green. Phase 10E TRACKING started. |\n| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
+| 2026-09-03 | `66eb741fe803a8e83dfd21405a74a2bb929221a3` | Phase 10F shell migration complete: no live Tracking ribbon dependency; chip/detail navigation uses MainWindow shell; Revision action restored in compact detail bar; Engine + Qt runtime green. Phase 10G architecture cleanup started. |\n| 2026-09-03 | `8d088292c6e6a132e7918e683b8f656bb5c9e858` | Phase 10E TRACKING redesign complete: matrix remains hero, compact top filters/legend, semantic shared palette, secondary queue/health footer; Engine + Qt runtime green at narrow 1100px smoke. Phase 10F shell cleanup started. |\n| 2026-09-03 | `98cfbd365cb34596115a7588fc68a287de30a3a8` | Phase 10D DIALOG redesign complete: full-width recording table, compact filter/search bar, bottom session/cast summary, Source Revised semantic styling; Engine + Qt runtime green. Phase 10E TRACKING started. |\n| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
