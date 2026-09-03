@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QMenu, QPushButton
 
+from app.theme import COLORS
 from services.tracking_service import (
     DELIVERED,
     IN_PROGRESS,
@@ -16,13 +17,41 @@ from services.tracking_service import (
 
 
 STATUS_PALETTE = {
-    NOT_STARTED: ("#F2F2F2", "#5C5C5C", "#D0D0D0"),
-    IN_PROGRESS: ("#FFF3CD", "#6B5700", "#E5C95B"),
-    RECORDED: ("#E2F0D9", "#215E21", "#70AD47"),
-    READY_TO_STEM: ("#DDEBF7", "#1F4E78", "#5B9BD5"),
-    STEMMED: ("#E4DFEC", "#4C3A6D", "#8064A2"),
-    DELIVERED: ("#D9EAD3", "#274E13", "#6AA84F"),
-    REVISION: ("#FCE4D6", "#9C0006", "#E26B0A"),
+    NOT_STARTED: (
+        COLORS["neutral_soft"],
+        COLORS["text_secondary"],
+        COLORS["neutral"],
+    ),
+    IN_PROGRESS: (
+        COLORS["attention_soft"],
+        COLORS["attention"],
+        COLORS["attention"],
+    ),
+    RECORDED: (
+        COLORS["recorded_soft"],
+        COLORS["recorded"],
+        COLORS["recorded"],
+    ),
+    READY_TO_STEM: (
+        COLORS["ready_to_stem_soft"],
+        COLORS["ready_to_stem"],
+        COLORS["ready_to_stem"],
+    ),
+    STEMMED: (
+        COLORS["stemmed_soft"],
+        COLORS["stemmed"],
+        COLORS["stemmed"],
+    ),
+    DELIVERED: (
+        COLORS["delivered_soft"],
+        COLORS["delivered"],
+        COLORS["delivered"],
+    ),
+    REVISION: (
+        COLORS["revision_soft"],
+        COLORS["revision"],
+        COLORS["revision"],
+    ),
 }
 
 
