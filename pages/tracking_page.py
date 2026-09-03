@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, QTimer, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -49,6 +49,73 @@ STATUS_ORDER = (
 )
 
 
+class TrackingEpisodeComboBox(QComboBox):
+    """Compact episode popup that stays close to its control."""
+
+    MAX_VISIBLE_EPISODES = 8
+    MAX_POPUP_HEIGHT = 250
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMaxVisibleItems(self.MAX_VISIBLE_EPISODES)
+
+    def showPopup(self) -> None:
+        view = self.view()
+        row_height = max(view.sizeHintForRow(0), 28)
+        visible_rows = min(
+            max(self.count(), 1),
+            self.MAX_VISIBLE_EPISODES,
+        )
+        view.setMaximumHeight(
+            min(
+                row_height * visible_rows + 8,
+                self.MAX_POPUP_HEIGHT,
+            )
+        )
+        view.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        super().showPopup()
+        QTimer.singleShot(0, self._position_popup)
+
+    def _position_popup(self) -> None:
+        popup = self.view().window()
+        if popup is None or not popup.isVisible():
+            return
+
+        popup.adjustSize()
+        popup_height = min(
+            popup.height(),
+            self.MAX_POPUP_HEIGHT,
+        )
+        popup_width = max(self.width(), popup.width())
+        popup.resize(popup_width, popup_height)
+
+        screen = self.screen().availableGeometry()
+        combo_top = self.mapToGlobal(QPoint(0, 0))
+        combo_bottom = self.mapToGlobal(QPoint(0, self.height()))
+
+        x = min(
+            max(combo_bottom.x(), screen.left() + 4),
+            max(screen.left() + 4, screen.right() - popup_width - 4),
+        )
+
+        below_y = combo_bottom.y()
+        above_y = combo_top.y() - popup_height
+
+        if below_y + popup_height <= screen.bottom() - 4:
+            y = below_y
+        elif above_y >= screen.top() + 4:
+            y = above_y
+        else:
+            y = min(
+                max(combo_bottom.y(), screen.top() + 4),
+                max(screen.top() + 4, screen.bottom() - popup_height - 4),
+            )
+
+        popup.move(x, y)
+
+
 class TrackingPage(PageShell):
     tracking_detail_changed = Signal(object)
     data_changed = Signal()
@@ -81,7 +148,7 @@ class TrackingPage(PageShell):
             context.add_widget(self._status_legend_label(status))
 
         context.add_section_title("EPISODE")
-        self.episode_combo = QComboBox()
+        self.episode_combo = TrackingEpisodeComboBox()
         self.episode_combo.setObjectName("TrackingEpisodeFilter")
         self.episode_combo.addItem("Pilih episode", None)
         self.episode_combo.setSizeAdjustPolicy(
@@ -146,6 +213,24 @@ class TrackingPage(PageShell):
         self.scroll.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
+
+        self.grid_header = QFrame()
+        self.grid_header.setObjectName("TrackingGridHeader")
+        grid_header_layout = QGridLayout(self.grid_header)
+        grid_header_layout.setContentsMargins(0, 0, 0, 0)
+        grid_header_layout.setHorizontalSpacing(12)
+        grid_header_layout.setVerticalSpacing(0)
+        grid_header_layout.setColumnStretch(1, 1)
+
+        self.character_header_label = QLabel("TOKOH")
+        self.character_header_label.setObjectName("SectionTitle")
+        self.character_header_label.setMinimumWidth(190)
+        self.character_header_label.setMaximumWidth(230)
+        self.episode_header_label = QLabel("EPISODE")
+        self.episode_header_label.setObjectName("SectionTitle")
+        grid_header_layout.addWidget(self.character_header_label, 0, 0)
+        grid_header_layout.addWidget(self.episode_header_label, 0, 1)
+        layout.addWidget(self.grid_header)
 
         self.rows_container = QWidget()
         self.rows_container.setObjectName("TrackingRows")
@@ -354,13 +439,6 @@ class TrackingPage(PageShell):
             if widget is not None:
                 widget.deleteLater()
 
-        character_header = QLabel("TOKOH")
-        character_header.setObjectName("SectionTitle")
-        episode_header = QLabel("EPISODE")
-        episode_header.setObjectName("SectionTitle")
-        self.rows_layout.addWidget(character_header, 0, 0)
-        self.rows_layout.addWidget(episode_header, 0, 1)
-
     def _refresh_workspace(self) -> None:
         self._reset_tracking_grid()
         self._workspace_rows = []
@@ -393,7 +471,7 @@ class TrackingPage(PageShell):
 
         self.summary_label.setText(f"Talent: {talent_name}")
 
-        for row_number, row in enumerate(rows, start=1):
+        for row_number, row in enumerate(rows):
             self._add_character_row(row_number, row)
 
     def _add_character_row(
@@ -431,7 +509,7 @@ class TrackingPage(PageShell):
         label = QLabel(text)
         label.setObjectName("TrackingEmptyState")
         label.setWordWrap(True)
-        self.rows_layout.addWidget(label, 1, 0, 1, 2)
+        self.rows_layout.addWidget(label, 0, 0, 1, 2)
 
     # ------------------------------------------------------------------
     # CHARACTER QUEUE
