@@ -125,7 +125,12 @@ class CompactTrackingPage(TrackingPage):
         # folders so Drive Desktop changes become visible immediately.
         self.refresh_track_files(notify=False)
 
-    def refresh_track_files(self, *, notify: bool = True) -> None:
+    def refresh_track_files(
+        self,
+        checked: bool = False,
+        *,
+        notify: bool = True,
+    ) -> None:
         if self._database is None:
             return
 
