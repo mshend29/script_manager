@@ -678,7 +678,7 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 - [x] Windows packaging.
 - [x] Windows application version metadata.
-- [ ] Application icon — final visual asset will be designed and approved in Phase 10.
+- [x] Application icon — approved SM icon family completed in Phase 10B and verified by Windows packaging CI.
 - [x] `.smproj` file association via installer.
 - [x] Upgrade / migration smoke test.
 - [x] Backup / recovery disaster test.
@@ -694,7 +694,7 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 ## PHASE 10 — UI/UX Modernization
 
-**Status: CURRENT — visual design first, implementation after approval**
+**Status: CURRENT — 10A + 10B complete; 10C PROJECT redesign in progress**
 
 ### Goal
 
@@ -724,16 +724,16 @@ Only after those designs are approved should implementation begin.
 
 ### PHASE 10A — Visual System / Design Tokens
 
-**Status: CURRENT**
+**Status: COMPLETE**
 
-- [ ] Finalize light palette tokens:
+- [x] Finalize light palette tokens:
   - application background,
   - sidebar,
   - surfaces,
   - borders,
   - primary/secondary text,
   - accent/hover/soft accent.
-- [ ] Finalize semantic status tokens:
+- [x] Finalize semantic status tokens:
   - Recorded,
   - Needs Attention,
   - Source Revised,
@@ -741,22 +741,22 @@ Only after those designs are approved should implementation begin.
   - Delivered,
   - Error,
   - Not Started / neutral.
-- [ ] Finalize typography hierarchy:
+- [x] Finalize typography hierarchy:
   - page title,
   - section title,
   - body,
   - helper text,
   - numeric metrics,
   - compact tracking labels.
-- [ ] Finalize spacing scale, corner radius, row height, control height, and border rules.
-- [ ] Define hover, pressed, selected, disabled, focus, and keyboard-focus states.
-- [ ] Define icon sizing and stroke rules for navigation/actions.
-- [ ] Approve one shared desktop shell:
+- [x] Finalize spacing scale, corner radius, row height, control height, and border rules.
+- [x] Define hover, pressed, selected, disabled, focus, and keyboard-focus states.
+- [x] Define icon sizing and stroke rules for navigation/actions.
+- [x] Approve one shared desktop shell:
   - slim left navigation,
   - contextual top action header,
   - content workspace,
   - compact bottom status area.
-- [ ] Explicitly avoid web-only visual patterns:
+- [x] Explicitly avoid web-only visual patterns:
   - user/account panel,
   - online presence,
   - fake collaboration indicators,
@@ -764,20 +764,22 @@ Only after those designs are approved should implementation begin.
 
 ### PHASE 10B — Application Icon / File Icon
 
-**Status: CURRENT DESIGN TASK**
+**Status: COMPLETE**
 
-- [ ] Design one primary Script Manager application icon optimized for Windows desktop/taskbar sizes.
-- [ ] Application icon must visually represent script/dialogue/production management rather than generic warehouse/database software.
-- [ ] Keep icon legible at 16, 24, 32, 48, 64, 128, and 256 px.
-- [ ] Avoid small text or the full product name inside the icon.
-- [ ] Prefer a simple symbolic mark using the Phase 10 accent palette.
-- [ ] Design a related '.smproj' project-file icon that is visually connected to the application icon but clearly reads as a document/project file.
-- [ ] Export approved application icon to 'resources/app.ico'.
-- [ ] If separate file icon is approved, add 'resources/project_file.ico' and wire installer association to it.
-- [ ] Verify runtime window/taskbar icon, frozen EXE, installer, shortcuts, Add/Remove Programs, and '.smproj' association.
-- [ ] Close the remaining Phase 9 Application Icon checklist item after the approved asset passes Windows packaging CI.
+- [x] Design one primary Script Manager application icon optimized for Windows desktop/taskbar sizes.
+- [x] Application icon must visually represent script/dialogue/production management rather than generic warehouse/database software.
+- [x] Keep icon legible at 16, 24, 32, 48, 64, 128, and 256 px.
+- [x] Avoid small text or the full product name inside the icon.
+- [x] Prefer a simple symbolic mark using the Phase 10 accent palette.
+- [x] Design a related '.smproj' project-file icon that is visually connected to the application icon but clearly reads as a document/project file.
+- [x] Store approved SM icon payloads as deterministic UTF-8 assets and materialize `resources/app.ico` / `resources/project_file.ico` for runtime and packaging.
+- [x] If separate file icon is approved, add 'resources/project_file.ico' and wire installer association to it.
+- [x] Verify runtime window/taskbar icon, frozen EXE, installer, shortcuts, Add/Remove Programs, and '.smproj' association.
+- [x] Close the remaining Phase 9 Application Icon checklist item after the approved asset passes Windows packaging CI.
 
 ### PHASE 10C — PROJECT Page Redesign
+
+**Status: CURRENT**
 
 - [ ] Remove poster/avatar dependency from PROJECT.
 - [ ] Project identity block should use actual project metadata only:
@@ -1024,14 +1026,13 @@ Business consequences harus berdasarkan parsed / semantic diff.
 
 Phase 9 masih memiliki satu publication-dependent gate: Update checker against real published release. Gate itu baru dapat divalidasi setelah release pertama diterbitkan dari main/tag dan tidak memblokir pekerjaan visual Phase 10.
 
-Application icon juga belum final; desain dan asset final dipindahkan ke Phase 10B agar konsisten dengan visual system baru.
+Application icon blocker selesai di Phase 10B. Binary icon sekarang berasal dari deterministic text payload karena direct binary upload melalui connector pernah mengubah byte ICO; integrity test mengunci exact local Git-blob SHA sebelum packaging.
 
 Current next action:
 
 ```text
-PHASE 10A — lock the light visual system
-PHASE 10B — approve application + .smproj icons
-then implement PROJECT → DIALOG → TRACKING in order
+PHASE 10C — redesign PROJECT
+then DIALOG → TRACKING in order
 ```
 
 Deviation dari urutan phase didokumentasikan: Phase 10 design dapat berjalan sementara real-release updater verification menunggu first published release.
@@ -1062,7 +1063,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
-| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
+| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
