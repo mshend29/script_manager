@@ -234,6 +234,27 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert tracking_page._workspace_rows[0].character_name == "Hendra"
     assert len(tracking_page._workspace_rows[0].chips) == 1
 
+    chip = tracking_page._workspace_rows[0].chips[0]
+    tracking_page._select_episode_detail(chip)
+    qapp.processEvents()
+
+    assert not tracking_page.tracking_detail_bar.isHidden()
+    assert tracking_page.detail_episode.text() == "Episode 1"
+    assert tracking_page.detail_character.text() == "Hendra"
+    assert tracking_page.detail_revision_button.text() == "Mark Revision"
+
+    tracking_page.detail_revision_button.click()
+    qapp.processEvents()
+    assert tracking_page._detail_chip.display_status == "REVISION"
+    assert tracking_page.detail_revision_button.text() == "Clear Revision"
+
+    tracking_page.detail_go_dialog_button.click()
+    qapp.processEvents()
+    assert window.page_header.title_label.text() == "Dialog"
+    assert dialog_page.talent_combo.currentText() == "Brama"
+    assert dialog_page.character_combo.currentText() == "Hendra"
+    assert dialog_page.episode_combo.currentData() == 1
+
     window.set_page("DATA")
     qapp.processEvents()
 
