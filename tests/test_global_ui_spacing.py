@@ -35,6 +35,7 @@ def test_recording_checkbox_has_visible_centered_empty_box():
     assert "width: 19px" in theme
     assert "height: 19px" in theme
     assert "QCheckBox::indicator:unchecked" in theme
-    assert "border: 1px solid #9aa0a6" in theme
+    assert '"neutral": "#94A3B8"' in theme
+    assert 'border: 1px solid {COLORS["neutral"]}' in theme
     assert "QCheckBox()" in dialog
     assert "holder_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)" in dialog
