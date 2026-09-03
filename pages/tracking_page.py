@@ -70,6 +70,7 @@ class TrackingPage(PageShell):
 
         context.add_section_title("TALENT")
         self.talent_combo = QComboBox()
+        self.talent_combo.setObjectName("TrackingTalentFilter")
         self.talent_combo.addItem("Pilih talent", None)
         context.add_widget(self.talent_combo)
 
@@ -79,6 +80,7 @@ class TrackingPage(PageShell):
 
         context.add_section_title("EPISODE")
         self.episode_combo = QComboBox()
+        self.episode_combo.setObjectName("TrackingEpisodeFilter")
         self.episode_combo.addItem("Pilih episode", None)
         context.add_widget(self.episode_combo)
 
@@ -96,6 +98,7 @@ class TrackingPage(PageShell):
 
         context.add_section_title("CHARACTER TO STEM")
         self.character_table = QTableWidget(0, 2)
+        self.character_table.setObjectName("TrackingCharacterQueue")
         self.character_table.setHorizontalHeaderLabels(["TOKOH", "STATUS"])
         self.character_table.setMinimumHeight(180)
         self.character_table.setAlternatingRowColors(True)
@@ -120,7 +123,7 @@ class TrackingPage(PageShell):
         self.title_label = QLabel("Tracking")
         self.title_label.setObjectName("PageTitle")
         self.summary_label = QLabel("No project open")
-        self.summary_label.setObjectName("MutedLabel")
+        self.summary_label.setObjectName("TrackingSummary")
         self.summary_label.setContentsMargins(8, 0, 5, 0)
 
         header_row = QHBoxLayout()
@@ -131,6 +134,7 @@ class TrackingPage(PageShell):
         layout.addLayout(header_row)
 
         self.scroll = QScrollArea()
+        self.scroll.setObjectName("TrackingScroll")
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(
@@ -138,6 +142,7 @@ class TrackingPage(PageShell):
         )
 
         self.rows_container = QWidget()
+        self.rows_container.setObjectName("TrackingRows")
         self.rows_layout = QGridLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_layout.setHorizontalSpacing(12)
@@ -164,6 +169,7 @@ class TrackingPage(PageShell):
     def _status_legend_label(status: str) -> QLabel:
         background, foreground, border = status_palette(status)
         label = QLabel(f"■  {STATUS_LABELS[status]}")
+        label.setObjectName("TrackingLegendChip")
         label.setStyleSheet(
             f"background: {background}; color: {foreground}; "
             f"border: 1px solid {border}; border-radius: 5px; "
@@ -397,10 +403,7 @@ class TrackingPage(PageShell):
         character.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        character.setStyleSheet(
-            "background: #ffffff; border-bottom: 1px solid #ececec; "
-            "padding: 4px 8px; font-weight: 600;"
-        )
+        character.setObjectName("TrackingCharacterName")
 
         episode_holder = QWidget()
         episode_holder.setSizePolicy(
@@ -419,8 +422,8 @@ class TrackingPage(PageShell):
 
     def _show_empty_state(self, text: str) -> None:
         label = QLabel(text)
+        label.setObjectName("TrackingEmptyState")
         label.setWordWrap(True)
-        label.setStyleSheet("padding: 18px; color: #6b7075;")
         self.rows_layout.addWidget(label, 1, 0, 1, 2)
 
     # ------------------------------------------------------------------
