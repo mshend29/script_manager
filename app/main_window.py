@@ -308,6 +308,8 @@ class MainWindow(QMainWindow):
 
         if dialog.action == RecentProjectsDialog.ACTION_NEW:
             self.new_project()
+            if not self.project_manager.is_open:
+                self.show_startup_recent_projects()
             return
 
         if dialog.action == RecentProjectsDialog.ACTION_CLOSE:
@@ -319,15 +321,10 @@ class MainWindow(QMainWindow):
     def _init_keyboard_shortcuts(self) -> None:
         self._keyboard_shortcuts: list[QShortcut] = []
 
+        # Menu actions own the standard application shortcuts. Keep only
+        # workspace-local shortcuts here to avoid ambiguous duplicate bindings.
         bindings = (
-            ("Ctrl+N", self.new_project),
-            ("Ctrl+O", self.open_project),
-            ("Ctrl+S", self.save_project),
-            ("Ctrl+Shift+S", self.save_project_as),
-            ("Ctrl+W", self.close_project),
             ("Ctrl+F", self.open_script_search),
-            ("F5", self.sync_source),
-            ("F1", self.open_getting_started),
         )
 
         for sequence, handler in bindings:
@@ -455,7 +452,7 @@ class MainWindow(QMainWindow):
         if self._block_project_change_during_sync("Open Recent"):
             return
 
-        recent = self.recent_projects.list(existing_only=True)
+        recent = self.recent_projects.list(existing_only=True)[:5]
         if not recent:
             QMessageBox.information(
                 self,
@@ -464,23 +461,13 @@ class MainWindow(QMainWindow):
             )
             return
 
-        labels = [
-            f"{item.project_name or Path(item.file_path).stem} — {item.file_path}"
-            for item in recent
-        ]
-        selected, accepted = QInputDialog.getItem(
-            self,
-            "Open Recent",
-            "Recent Projects",
-            labels,
-            0,
-            False,
-        )
-        if not accepted or not selected:
-            return
-
-        index = labels.index(selected)
-        self.open_project_path(recent[index].file_path)
+        dialog = RecentProjectsDialog(recent, self)
+        dialog.exec()
+        if (
+            dialog.action == RecentProjectsDialog.ACTION_OPEN
+            and dialog.project_path
+        ):
+            self.open_project_path(dialog.project_path)
 
     def save_project(self) -> None:
         if not self.project_manager.is_open:
