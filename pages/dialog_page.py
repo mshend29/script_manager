@@ -181,6 +181,11 @@ class DialogPage(QWidget):
         filter_layout.addWidget(self.prev_episode_button)
         filter_layout.addWidget(self.next_episode_button)
 
+        self.open_source_button = QPushButton("Open Source")
+        self.open_source_button.setProperty("secondary", True)
+        self.open_source_button.setEnabled(False)
+        filter_layout.addWidget(self.open_source_button)
+
         filter_layout.addSpacing(6)
 
         self.search_edit = QLineEdit()
@@ -307,13 +312,6 @@ class DialogPage(QWidget):
         content_splitter.setStretchFactor(1, 3)
         content_splitter.setSizes([700, 300])
         root.addWidget(content_splitter, 1)
-
-        # The page header owns the visible Open Source action. This hidden
-        # compatibility control preserves the existing action routing and
-        # enabled-state contract in MainWindow.
-        self.open_source_button = QPushButton("Open Source File", self)
-        self.open_source_button.setVisible(False)
-        self.open_source_button.setEnabled(False)
 
         self.talent_combo.currentIndexChanged.connect(
             self._talent_changed
