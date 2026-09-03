@@ -47,7 +47,7 @@ def test_dialog_preserves_recording_and_source_revision_semantics() -> None:
     assert "self._service.set_recorded(int(dialogue_id), recorded)" in source
     assert "self._service.set_recorded_bulk(dialogue_ids, checked)" in source
     assert "⚠ Source Revised" in source
-    assert 'COLORS["source_revised"]' in source
+    assert 'COLORS["source_revised_text"]' in source
     assert 'COLORS["source_revised_soft"]' in source
     assert 'QCheckBox[source_revised="true"]' in theme
 
