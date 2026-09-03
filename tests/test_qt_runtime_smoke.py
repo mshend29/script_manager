@@ -179,6 +179,35 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert dialog_page.talent_combo.findText("Brama") >= 0
     assert dialog_page.talent_combo.findText("Dika") >= 0
 
+    dialog_page.talent_combo.setCurrentIndex(
+        dialog_page.talent_combo.findText("Brama")
+    )
+    qapp.processEvents()
+    dialog_page.character_combo.setCurrentIndex(
+        dialog_page.character_combo.findText("Hendra")
+    )
+    qapp.processEvents()
+    dialog_page.episode_combo.setCurrentIndex(
+        dialog_page.episode_combo.findData(1)
+    )
+    qapp.processEvents()
+
+    assert dialog_page.table.rowCount() == 1
+    assert "0/1 recorded" in dialog_page.selection_info.text()
+
+    dialog_page.search_edit.setText("not present")
+    qapp.processEvents()
+    assert dialog_page.table.isRowHidden(0)
+
+    dialog_page.search_edit.setText("Halo")
+    qapp.processEvents()
+    assert not dialog_page.table.isRowHidden(0)
+
+    dialog_page.set_all_checked(True)
+    qapp.processEvents()
+    assert next(iter(dialog_page._checkboxes.values())).isChecked()
+    assert "1/1 recorded" in dialog_page.selection_info.text()
+
     window.set_page("DATA")
     qapp.processEvents()
 
