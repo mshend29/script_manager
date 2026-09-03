@@ -778,6 +778,7 @@ class MainWindow(QMainWindow):
                 f"{current.settings.project_name} - Script Manager"
             )
             self._project_data_state.mark_dirty("TRACKING")
+            self._project_data_state.mark_dirty("DATA")
             if self._current_page_name() == "TRACKING":
                 self._refresh_data_page_if_needed(
                     "TRACKING",
@@ -1253,6 +1254,7 @@ class MainWindow(QMainWindow):
             return
 
         self._project_data_state.mark_dirty("TRACKING")
+        self._project_data_state.mark_dirty("DATA")
         self.refresh_project_page()
 
         if self._current_page_name() == "TRACKING":
