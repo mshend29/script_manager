@@ -331,8 +331,8 @@ QCheckBox {{
 }}
 
 QCheckBox::indicator {{
-    width: 18px;
-    height: 18px;
+    width: 19px;
+    height: 19px;
 }}
 
 QCheckBox::indicator:unchecked {{
