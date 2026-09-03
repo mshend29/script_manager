@@ -665,6 +665,126 @@ QPushButton[dialogNav="true"]:disabled {{
     padding: 3px 7px;
 }}
 
+/* ------------------------------------------------------------------
+   Phase 10 TRACKING production workspace
+   ------------------------------------------------------------------ */
+
+#TrackingFilterBar,
+#TrackingLegendBar,
+#TrackingWorkspaceTabs,
+#TrackingQueuePanel,
+#TrackingHealthStrip {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+}}
+
+#TrackingFilterLabel,
+#TrackingFooterTitle {{
+    color: {COLORS["text_secondary"]};
+    font-size: 8pt;
+    font-weight: 800;
+}}
+
+#TrackingTalentFilter,
+#TrackingEpisodeFilter {{
+    min-height: {COMPACT_CONTROL_HEIGHT}px;
+    max-height: {COMPACT_CONTROL_HEIGHT}px;
+}}
+
+#TrackingSummary {{
+    color: {COLORS["text_secondary"]};
+    font-size: 9pt;
+    font-weight: 600;
+}}
+
+QPushButton[trackingNav="true"] {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_secondary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    border-radius: {RADII["sm"]}px;
+    min-height: {COMPACT_CONTROL_HEIGHT}px;
+    max-height: {COMPACT_CONTROL_HEIGHT}px;
+    padding: 0px 9px;
+    font-weight: 600;
+}}
+
+QPushButton[trackingNav="true"]:hover {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+    border-color: {COLORS["focus"]};
+}}
+
+QPushButton[trackingNav="true"]:disabled {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_muted"]};
+    border-color: {COLORS["border"]};
+}}
+
+QPushButton[trackingWorkspaceTab="true"] {{
+    background: transparent;
+    color: {COLORS["text_secondary"]};
+    border: 0px;
+    border-radius: {RADII["sm"]}px;
+    padding: 6px 11px;
+    font-weight: 650;
+}}
+
+QPushButton[trackingWorkspaceTab="true"]:hover {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_primary"]};
+}}
+
+QPushButton[trackingWorkspaceTab="true"]:checked {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+    font-weight: 750;
+}}
+
+#TrackingWorkspaceStack,
+#TrackingGridWorkspace,
+#TrackingScroll,
+#TrackingScroll > QWidget > QWidget,
+#TrackingRows {{
+    background: {COLORS["app_background"]};
+    border: 0px;
+}}
+
+#TrackingCharacterName {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border-bottom: 1px solid {COLORS["border"]};
+    padding: 4px 8px;
+    font-weight: 650;
+}}
+
+#TrackingEmptyState {{
+    color: {COLORS["text_secondary"]};
+    padding: 18px;
+}}
+
+#TrackingCharacterQueue {{
+    background: {COLORS["surface_subtle"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["md"]}px;
+    gridline-color: transparent;
+}}
+
+#TrackingCharacterQueue::item {{
+    border-bottom: 1px solid {COLORS["border"]};
+    padding: 3px 7px;
+}}
+
+#TrackingHealthLabel {{
+    color: {COLORS["text_secondary"]};
+    font-size: 8.5pt;
+}}
+
+#TrackingHealthValue {{
+    color: {COLORS["text_primary"]};
+    font-weight: 750;
+}}
+
 /* Legacy ribbon selectors retained only while page-local references/tests are
    migrated during Phase 10. The production MainWindow no longer uses Ribbon. */
 #RibbonRoot,
