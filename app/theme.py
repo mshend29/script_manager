@@ -310,6 +310,11 @@ QDateEdit:focus {{
     border: 1px solid {COLORS["focus"]};
 }}
 
+QTableWidget:focus,
+QTableView:focus {{
+    border: 2px solid {COLORS["focus"]};
+}}
+
 QPushButton[primary="true"] {{
     background: {COLORS["accent"]};
     color: #FFFFFF;
