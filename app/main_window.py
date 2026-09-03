@@ -3,7 +3,7 @@ from __future__ import annotations
 import webbrowser
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Qt, QUrl, Slot
+from PySide6.QtCore import QThread, Qt, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -17,8 +17,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.project_data_state import DATA_PAGE_NAMES, ProjectDataRevisionState
 from app.ribbon import Ribbon
-from app.source_sync_worker import SourceSyncWorker
+from app.source_sync_controller import SourceSyncController
 from app.update_check_worker import UpdateCheckWorker
 from core.app_paths import project_backups_dir
 from core.project_manager import ProjectManager
@@ -32,13 +33,13 @@ from import_engine.source_sync import (
     SourceSyncProgress,
     SourceSyncReport,
 )
-from pages.data_page import DataPage
+from pages.data_alias_page import AliasDataPage as DataPage
 from pages.dialog_page import DialogPage
 from pages.help_page import HelpPage
 from pages.project_page import ProjectPage
 from pages.script_page import ScriptPage
 from pages.tools_page import ToolsPage
-from pages.tracking_page import TrackingPage
+from pages.tracking_compact_page import CompactTrackingPage as TrackingPage
 from services.application_info_service import ApplicationInfoService
 from services.backup_service import BackupService
 from services.problem_report_service import ProblemReportService
@@ -46,6 +47,8 @@ from services.project_dashboard_service import ProjectDashboardService
 
 
 class MainWindow(QMainWindow):
+    project_data_changed = Signal(int)
+
     PAGE_ORDER = [
         "PROJECT",
         "SCRIPT",
@@ -66,12 +69,11 @@ class MainWindow(QMainWindow):
         self.project_manager = ProjectManager()
         self.recent_projects = RecentProjectsStore()
         self.source_sync_engine = SourceSyncEngine()
-        self._source_sync_thread: QThread | None = None
-        self._source_sync_worker: SourceSyncWorker | None = None
-        self._source_sync_title = ""
-        self._source_sync_operation = ""
-        self._pending_source_apply_report: SourceSyncReport | None = None
-        self._pending_source_apply_title = ""
+        self.source_sync_controller = SourceSyncController(
+            self.source_sync_engine,
+            self,
+        )
+        self._project_data_state = ProjectDataRevisionState()
         self._update_check_thread: QThread | None = None
         self._update_check_worker: UpdateCheckWorker | None = None
 
@@ -117,6 +119,18 @@ class MainWindow(QMainWindow):
         data_page = self.pages["DATA"]
         data_page.tracking_navigation_requested.connect(self.open_tracking_scope)
 
+        for page_name in ("DIALOG", "TRACKING", "DATA"):
+            page = self.pages[page_name]
+            if hasattr(page, "data_changed"):
+                page.data_changed.connect(
+                    lambda page_name=page_name:
+                        self._workspace_data_changed(page_name)
+                )
+
+        self.project_data_changed.connect(
+            self._project_data_revision_changed
+        )
+
         tools_page = self.pages["TOOLS"]
         tools_page.action_requested.connect(self.handle_ribbon_action)
 
@@ -124,6 +138,22 @@ class MainWindow(QMainWindow):
         help_page.action_requested.connect(self.handle_ribbon_action)
         help_page.release_requested.connect(self.open_update_release)
         help_page.issue_requested.connect(self.open_problem_issue)
+
+        self.source_sync_controller.progress.connect(
+            self._source_sync_progress
+        )
+        self.source_sync_controller.prepared.connect(
+            self._source_sync_prepared
+        )
+        self.source_sync_controller.applied.connect(
+            self._source_sync_applied
+        )
+        self.source_sync_controller.failed.connect(
+            self._source_sync_failed
+        )
+        self.source_sync_controller.phase_started.connect(
+            self._source_sync_phase_started
+        )
 
         self._init_source_sync_progress_ui()
         self._init_keyboard_shortcuts()
@@ -141,7 +171,7 @@ class MainWindow(QMainWindow):
             ("Ctrl+Shift+S", self.save_project_as),
             ("Ctrl+W", self.close_project),
             ("Ctrl+F", self.open_script_search),
-            ("F5", self.refresh_source),
+            ("F5", self.sync_source),
             ("F1", self.open_getting_started),
         )
 
@@ -155,24 +185,9 @@ class MainWindow(QMainWindow):
             return
 
         project = self.project_manager.current
-        database = project.database if project is not None else None
 
-        if page_name == "SCRIPT":
-            self.pages["SCRIPT"].set_database(database)
-
-        elif page_name == "DIALOG":
-            self.pages["DIALOG"].set_database(database)
-
-        elif page_name == "TRACKING":
-            tracking_page = self.pages["TRACKING"]
-            if hasattr(tracking_page, "configure_track_files"):
-                tracking_page.configure_track_files(
-                    project.settings if project is not None else None
-                )
-            tracking_page.set_database(database)
-
-        elif page_name == "DATA":
-            self.pages["DATA"].set_database(database)
+        if page_name in DATA_PAGE_NAMES:
+            self._refresh_data_page_if_needed(page_name, project)
 
         elif page_name == "TOOLS":
             self.pages["TOOLS"].set_project(project)
@@ -207,6 +222,7 @@ class MainWindow(QMainWindow):
             return
 
         self._clear_data_pages()
+        self._project_data_state.reset(mark_dirty=True)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -251,7 +267,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(
                     self,
                     "Open Project",
-                    "Source Import/Refresh sedang berjalan.",
+                    "Sync Source sedang berjalan.",
                 )
             return False
 
@@ -267,6 +283,7 @@ class MainWindow(QMainWindow):
             return False
 
         self._clear_data_pages()
+        self._project_data_state.reset(mark_dirty=True)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -536,6 +553,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_after_project_switch(self, project) -> None:
         self._clear_data_pages()
+        self._project_data_state.reset(mark_dirty=True)
         self.refresh_project_page()
         self.setWindowTitle(
             f"{project.settings.project_name} - Script Manager"
@@ -573,6 +591,7 @@ class MainWindow(QMainWindow):
         self.pages["TRACKING"].set_database(None)
         self.pages["DATA"].set_database(None)
         self.pages["TOOLS"].set_project(None)
+        self._project_data_state.reset(mark_dirty=False)
 
     def open_project_settings(self) -> None:
         if self._block_project_change_during_sync("Project Settings"):
@@ -839,8 +858,7 @@ class MainWindow(QMainWindow):
         )
 
     def _source_sync_running(self) -> bool:
-        thread = self._source_sync_thread
-        return thread is not None and thread.isRunning()
+        return self.source_sync_controller.is_running
 
     def _block_project_change_during_sync(self, action_title: str) -> bool:
         if not self._source_sync_running():
@@ -849,7 +867,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             action_title,
-            "Source Import/Refresh sedang berjalan. "
+            "Sync Source sedang berjalan. "
             "Project tidak dapat diganti sampai proses selesai.",
         )
         return True
@@ -898,19 +916,17 @@ class MainWindow(QMainWindow):
         self._source_sync_progress_bar.show()
 
     # ------------------------------------------------------------------
-    # SOURCE IMPORT / REFRESH
+    # SOURCE SYNC
     # ------------------------------------------------------------------
 
-    def import_source(self) -> None:
-        self._run_source_sync("Import Source")
-
-    def refresh_source(self) -> None:
-        self._run_source_sync("Refresh Data")
+    def sync_source(self) -> None:
+        self._run_source_sync("Sync Source")
 
     def _run_source_sync(self, title: str) -> None:
         if self._source_sync_running():
+            active_title = self.source_sync_controller.title or "Source Sync"
             self.statusBar().showMessage(
-                f"{self._source_sync_title or 'Source sync'} masih berjalan",
+                f"{active_title} masih berjalan",
                 3000,
             )
             return
@@ -936,79 +952,32 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self._start_source_sync_worker(
+        self.source_sync_controller.start_prepare(
+            project,
             title=title,
-            operation="prepare",
         )
 
-    def _start_source_sync_worker(
+    @Slot(str, str)
+    def _source_sync_phase_started(
         self,
-        *,
         title: str,
         operation: str,
-        report: SourceSyncReport | None = None,
     ) -> None:
-        project = self.project_manager.current
-        if project is None:
-            return
-
-        thread = QThread(self)
-        worker = SourceSyncWorker(
-            self.source_sync_engine,
-            project,
-            operation=operation,
-            report=report,
-        )
-        worker.moveToThread(thread)
-
-        thread.started.connect(worker.run)
-        worker.progress.connect(
-            self._source_sync_progress,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        if operation == "prepare":
-            worker.completed.connect(
-                self._source_sync_prepared,
-                Qt.ConnectionType.QueuedConnection,
-            )
-        else:
-            worker.completed.connect(
-                self._source_sync_applied,
-                Qt.ConnectionType.QueuedConnection,
-            )
-        worker.failed.connect(
-            self._source_sync_failed,
-            Qt.ConnectionType.QueuedConnection,
-        )
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(self._source_sync_thread_finished)
-
-        self._source_sync_thread = thread
-        self._source_sync_worker = worker
-        self._source_sync_title = title
-        self._source_sync_operation = operation
-
         phase_text = (
             "preparing preview"
             if operation == "prepare"
             else "applying changes"
         )
-        self._source_sync_progress(
-            SourceSyncProgress(
-                stage="starting",
-                message=f"{title}: {phase_text}...",
-            )
-        )
         self.statusBar().showMessage(
             f"{title} — {phase_text}; aplikasi tetap dapat digunakan"
         )
-        thread.start()
 
-    @Slot(object)
-    def _source_sync_prepared(self, report: SourceSyncReport) -> None:
-        title = self._source_sync_title or "Source Sync"
+    @Slot(str, object)
+    def _source_sync_prepared(
+        self,
+        title: str,
+        report: SourceSyncReport,
+    ) -> None:
         project = self.project_manager.current
         self._hide_source_sync_progress()
 
@@ -1057,18 +1026,22 @@ class MainWindow(QMainWindow):
             )
             return
 
-        # The prepare worker may still be unwinding its Qt thread after this
-        # queued slot. Defer the apply worker until thread.finished.
-        self._pending_source_apply_report = report
-        self._pending_source_apply_title = title
+        self.source_sync_controller.apply_after_prepare(
+            project,
+            report,
+            title=title,
+        )
         self.statusBar().showMessage(
             "Preview disetujui — menunggu apply phase...",
             3000,
         )
 
-    @Slot(object)
-    def _source_sync_applied(self, report: SourceSyncReport) -> None:
-        title = self._source_sync_title or "Source Sync"
+    @Slot(str, object)
+    def _source_sync_applied(
+        self,
+        title: str,
+        report: SourceSyncReport,
+    ) -> None:
         project = self.project_manager.current
         self._hide_source_sync_progress()
 
@@ -1087,8 +1060,8 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.refresh_project_page()
-        self._refresh_current_data_page(project)
+        revision = self._project_data_state.mark_changed()
+        self.project_data_changed.emit(revision)
 
         backup_text = (
             f"\n\nSafety backup:\n{report.backup_path}"
@@ -1108,10 +1081,13 @@ class MainWindow(QMainWindow):
             5000,
         )
 
-    @Slot(object)
-    def _source_sync_failed(self, exc: object) -> None:
-        title = self._source_sync_title or "Source Sync"
-        operation = self._source_sync_operation or "source sync"
+    @Slot(str, str, object)
+    def _source_sync_failed(
+        self,
+        title: str,
+        operation: str,
+        exc: object,
+    ) -> None:
         self._hide_source_sync_progress()
         QMessageBox.critical(
             self,
@@ -1119,47 +1095,74 @@ class MainWindow(QMainWindow):
             f"Gagal pada phase {operation}.\n\n{exc}",
         )
         self.statusBar().showMessage(f"{title} gagal", 5000)
-        self._pending_source_apply_report = None
-        self._pending_source_apply_title = ""
 
-    @Slot()
-    def _source_sync_thread_finished(self) -> None:
-        self._hide_source_sync_progress()
+    def _current_page_name(self) -> str:
+        current_page = self.page_stack.currentWidget()
+        for page_name, page in self.pages.items():
+            if page is current_page:
+                return page_name
+        return ""
 
-        pending_report = self._pending_source_apply_report
-        pending_title = self._pending_source_apply_title
+    def _refresh_data_page_if_needed(
+        self,
+        page_name: str,
+        project,
+        *,
+        force: bool = False,
+    ) -> None:
+        if page_name not in DATA_PAGE_NAMES:
+            return
 
-        self._source_sync_thread = None
-        self._source_sync_worker = None
-        self._source_sync_title = ""
-        self._source_sync_operation = ""
-        self._pending_source_apply_report = None
-        self._pending_source_apply_title = ""
+        page = self.pages[page_name]
+        if project is None:
+            page.set_database(None)
+            self._project_data_state.mark_clean(page_name)
+            return
 
-        if pending_report is not None:
-            self._start_source_sync_worker(
-                title=pending_title or "Source Sync",
-                operation="apply",
-                report=pending_report,
+        if not force and not self._project_data_state.is_dirty(page_name):
+            return
+
+        if (
+            page_name == "TRACKING"
+            and hasattr(page, "configure_track_files")
+        ):
+            page.configure_track_files(project.settings)
+
+        if hasattr(page, "refresh_from_database"):
+            page.refresh_from_database(project.database)
+        else:
+            page.set_database(project.database)
+
+        self._project_data_state.mark_clean(page_name)
+
+    @Slot(int)
+    def _project_data_revision_changed(self, revision: int) -> None:
+        project = self.project_manager.current
+        if project is None:
+            return
+
+        # Project dashboard is small and should always reflect the latest
+        # committed application state immediately.
+        self.refresh_project_page()
+
+        current_page_name = self._current_page_name()
+        if current_page_name in DATA_PAGE_NAMES:
+            self._refresh_data_page_if_needed(
+                current_page_name,
+                project,
             )
 
-    def _refresh_current_data_page(self, project) -> None:
-        current_page = self.page_stack.currentWidget()
+    def _workspace_data_changed(self, source_page_name: str) -> None:
+        project = self.project_manager.current
+        if project is None:
+            return
 
-        if current_page is self.pages["SCRIPT"]:
-            self.pages["SCRIPT"].set_database(project.database)
+        revision = self._project_data_state.mark_changed()
 
-        elif current_page is self.pages["DIALOG"]:
-            self.pages["DIALOG"].set_database(project.database)
-
-        elif current_page is self.pages["TRACKING"]:
-            tracking_page = self.pages["TRACKING"]
-            if hasattr(tracking_page, "configure_track_files"):
-                tracking_page.configure_track_files(project.settings)
-            tracking_page.set_database(project.database)
-
-        elif current_page is self.pages["DATA"]:
-            self.pages["DATA"].set_database(project.database)
+        # The emitting page has already updated its own UI after committing the
+        # change. Keep it clean while all sibling workspaces stay lazy-dirty.
+        self._project_data_state.mark_clean(source_page_name)
+        self.project_data_changed.emit(revision)
 
     def _show_source_sync_errors(
         self,
@@ -1338,13 +1341,14 @@ class MainWindow(QMainWindow):
             return
 
         page = self.pages.get(page_name)
-        if page is None or not hasattr(page, "set_database"):
+        if page is None or page_name not in DATA_PAGE_NAMES:
             return
 
-        if page_name == "TRACKING" and hasattr(page, "configure_track_files"):
-            page.configure_track_files(project.settings)
-
-        page.set_database(project.database)
+        self._refresh_data_page_if_needed(
+            page_name,
+            project,
+            force=True,
+        )
         self.statusBar().showMessage(f"{page_name.title()} view refreshed", 3000)
 
     def focus_script_search(self) -> None:
@@ -1681,11 +1685,8 @@ class MainWindow(QMainWindow):
             "project.settings": self.open_project_settings,
             "project.close": self.close_project,
             "client.drive": self.open_client_drive,
-            "source.import": self.import_source,
-            "source.refresh": self.refresh_source,
-            "script.refresh": lambda: self.refresh_data_view("SCRIPT"),
+            "source.sync": self.sync_source,
             "script.search": self.focus_script_search,
-            "dialog.refresh": lambda: self.refresh_data_view("DIALOG"),
             "dialog.open_source": self.open_dialog_source,
             "dialog.check_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(True)
@@ -1693,9 +1694,7 @@ class MainWindow(QMainWindow):
             "dialog.uncheck_all": (
                 lambda: self.pages["DIALOG"].set_all_checked(False)
             ),
-            "tracking.refresh": lambda: self.refresh_data_view("TRACKING"),
             "tracking.open_drive": self.open_client_drive,
-            "data.refresh": self.refresh_source,
             "data.rebuild": self.rebuild_data_indexes,
             "data.characters": lambda: self.show_data_section("characters"),
             "data.talents": lambda: self.show_data_section("talents"),
@@ -1768,7 +1767,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "Source Sync",
-                "Source Import/Refresh sedang berjalan. "
+                "Sync Source sedang berjalan. "
                 "Aplikasi tetap terbuka untuk menjaga proses database tetap aman.",
             )
             return

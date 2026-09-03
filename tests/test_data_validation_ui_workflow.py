@@ -16,8 +16,11 @@ def test_unresolved_has_review_mode_and_manual_narration_actions():
     assert 'addItem("Narration / Non-Dialogue", "narration")' in source
     assert 'addAction("Mark as Narration / Non-Dialogue")' in source
     assert 'addAction("Restore to Needs Review")' in source
-    assert "self._review_service.mark_non_dialogue" in source
-    assert "self._review_service.restore_to_review" in source
+    assert "self._controller.mark_non_dialogue" in source
+    assert "self._controller.restore_to_review" in source
+    controller = _read("pages/data_workspace_controller.py")
+    assert "self.review.mark_non_dialogue" in controller
+    assert "self.review.restore_to_review" in controller
 
 
 def test_validation_is_detailed_filterable_and_actionable():

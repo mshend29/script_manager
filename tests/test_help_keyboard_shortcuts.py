@@ -13,7 +13,7 @@ EXPECTED_BINDINGS = {
     "Ctrl+Shift+S": "self.save_project_as",
     "Ctrl+W": "self.close_project",
     "Ctrl+F": "self.open_script_search",
-    "F5": "self.refresh_source",
+    "F5": "self.sync_source",
     "F1": "self.open_getting_started",
 }
 
@@ -62,11 +62,11 @@ def test_keyboard_shortcuts_help_navigation_is_wired():
     assert "page.show_keyboard_shortcuts()" in main
 
 
-def test_keyboard_shortcuts_page_explains_refresh_data_semantics():
+def test_keyboard_shortcuts_page_explains_sync_source_semantics():
     content = (
         ROOT / "resources" / "help" / "keyboard_shortcuts.html"
     ).read_text(encoding="utf-8")
 
     assert "F5 bukan sekadar refresh tampilan" in content
-    assert "Refresh Data" in content
+    assert "Sync Source" in content
     assert "source Excel" in content

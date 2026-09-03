@@ -24,7 +24,14 @@ def test_tracking_status_legend_is_two_column_grid():
     assert "index % 2" in source
 
 
-def test_main_uses_enhanced_data_and_tracking_pages():
-    source = _read("main.py")
-    assert "main_window_module.DataPage = AliasDataPage" in source
-    assert "main_window_module.TrackingPage = CompactTrackingPage" in source
+def test_main_window_uses_enhanced_data_and_tracking_pages():
+    source = _read("app/main_window.py")
+    entrypoint = _read("main.py")
+
+    assert "from pages.data_alias_page import AliasDataPage as DataPage" in source
+    assert (
+        "from pages.tracking_compact_page import "
+        "CompactTrackingPage as TrackingPage"
+    ) in source
+    assert "main_window_module.DataPage" not in entrypoint
+    assert "main_window_module.TrackingPage" not in entrypoint

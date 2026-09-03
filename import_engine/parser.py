@@ -58,6 +58,16 @@ class ParsedDialogueRow:
     def is_multi_character(self) -> bool:
         return len(self.characters) > 1
 
+    @property
+    def source_signature(self) -> str:
+        """Content-derived source signature used for reconciliation.
+
+        The stored field remains named dialog_uid for constructor compatibility
+        during the hardening migration. Database dialog_uid is being separated
+        into a persistent application identity.
+        """
+        return self.dialog_uid
+
 
 @dataclass
 class ScriptParseResult:
@@ -471,7 +481,7 @@ class ScriptParser:
                 f"TALENT ({len(talents)}) berbeda."
             )
 
-        dialog_uid = build_dialog_uid(
+        dialog_uid = build_source_signature(
             episode_number=episode_number,
             characters=characters,
             talents=talents,
@@ -536,7 +546,7 @@ class ScriptParser:
         return values[index]
 
 
-def build_dialog_uid(
+def build_source_signature(
     *,
     episode_number: int,
     characters: tuple[str, ...] | list[str],
@@ -545,7 +555,7 @@ def build_dialog_uid(
     time_out: str,
     dialogue: str,
 ) -> str:
-    """Build stable source identity without using Excel row numbers."""
+    """Build a content-derived source signature without Excel row numbers."""
     character_keys = sorted(
         {normalize_key(name) for name in characters if normalize_key(name)}
     )
@@ -571,3 +581,28 @@ def build_dialog_uid(
     )
 
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()  # noqa: S324
+
+
+
+def build_dialog_uid(
+    *,
+    episode_number: int,
+    characters: tuple[str, ...] | list[str],
+    talents: tuple[str, ...] | list[str],
+    time_in: str,
+    time_out: str,
+    dialogue: str,
+) -> str:
+    """Backward-compatible alias for the legacy parser API.
+
+    The returned value is a source signature, not a persistent database
+    dialogue identity.
+    """
+    return build_source_signature(
+        episode_number=episode_number,
+        characters=characters,
+        talents=talents,
+        time_in=time_in,
+        time_out=time_out,
+        dialogue=dialogue,
+    )

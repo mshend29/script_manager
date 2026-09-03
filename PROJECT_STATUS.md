@@ -380,20 +380,39 @@ Kerjakan **berurutan**.
 
 ## PHASE 0 — Baseline Regression Safety
 
-**Status: NEXT**
+**Status: COMPLETE**
 
 Tujuan: membuat bug / behavior yang akan diperbaiki terlihat jelas lewat test sebelum mengubah implementation.
 
 ### Tasks
 
-- [ ] P0.1 Tambah regression test: recorded dialogue + client mengubah dialog text.
-- [ ] P0.2 Tambah regression test: recorded dialogue + timecode berubah.
-- [ ] P0.3 Tambah regression test: character spelling berubah.
-- [ ] P0.4 Tambah regression test: row baru disisipkan di atas existing dialogue.
-- [ ] P0.5 Tambah regression test: row dipindahkan tetapi content sama.
-- [ ] P0.6 Tambah regression test: duplicate identical source rows tidak collision.
-- [ ] P0.7 Tambah regression test: source formatting/fingerprint berubah tetapi parsed semantics sama → tracking tidak reset.
-- [ ] P0.8 Catat current expected failures sebelum implementation.
+- [x] P0.1 Tambah regression test: recorded dialogue + client mengubah dialog text.
+- [x] P0.2 Tambah regression test: recorded dialogue + timecode berubah.
+- [x] P0.3 Tambah regression test: character spelling berubah.
+- [x] P0.4 Tambah regression test: row baru disisipkan di atas existing dialogue.
+- [x] P0.5 Tambah regression test: row dipindahkan tetapi content sama.
+- [x] P0.6 Tambah regression test: duplicate identical source rows tidak collision.
+- [x] P0.7 Tambah regression test: source formatting/fingerprint berubah tetapi parsed semantics sama → tracking tidak reset.
+- [x] P0.8 Catat current expected failures sebelum implementation.
+
+### Baseline Result
+
+Regression baseline dibuat di `tests/test_source_refresh_identity_regressions.py`.
+
+Expected current failures yang dicatat sebagai `xfail(strict=True)`:
+
+- recorded dialogue + text revision kehilangan lineage;
+- recorded dialogue + timecode revision kehilangan lineage;
+- character spelling revision kehilangan lineage;
+- duplicate identical rows collision pada unique `dialog_uid`;
+- formatting-only workbook change mereset downstream tracking karena fingerprint berubah.
+
+Existing behavior yang diharapkan sudah lolos:
+
+- insert row di atas existing dialogue mempertahankan lineage karena content-derived UID tidak memakai source row;
+- move row dengan content sama mempertahankan lineage.
+
+`xfail` marker harus dihapus satu per satu ketika phase implementation membuat scenario tersebut lulus.
 
 ### Exit Criteria
 
@@ -403,7 +422,7 @@ Semua scenario target mempunyai regression test yang jelas. Test untuk behavior 
 
 ## PHASE 1 — Dialogue Reconciliation Model
 
-**Status: BLOCKED by Phase 0**
+**Status: COMPLETE**
 
 Tujuan: memisahkan persistent identity dari source content signature.
 
@@ -427,10 +446,10 @@ boleh berubah mengikuti source.
 
 ### Tasks
 
-- [ ] P1.1 Tentukan schema tambahan untuk source signature / reconciliation metadata.
-- [ ] P1.2 Tambah safe schema migration + pre-migration backup coverage.
-- [ ] P1.3 Buat reconciliation data model.
-- [ ] P1.4 Definisikan match levels, misalnya:
+- [x] P1.1 Tentukan schema tambahan untuk source signature / reconciliation metadata.
+- [x] P1.2 Tambah safe schema migration + pre-migration backup coverage.
+- [x] P1.3 Buat reconciliation data model.
+- [x] P1.4 Definisikan match levels, misalnya:
   - exact persistent/source match,
   - exact semantic match,
   - safe row continuity,
@@ -438,8 +457,8 @@ boleh berubah mengikuti source.
   - ambiguous,
   - new,
   - removed.
-- [ ] P1.5 Pastikan ambiguous match tidak ditebak diam-diam.
-- [ ] P1.6 Pastikan duplicate identical rows dapat memperoleh persistent identity berbeda.
+- [x] P1.5 Pastikan ambiguous match tidak ditebak diam-diam.
+- [x] P1.6 Pastikan duplicate identical rows dapat memperoleh persistent identity berbeda.
 
 ### Exit Criteria
 
@@ -449,7 +468,7 @@ Dialogue yang sama secara lineage dapat dipertahankan walaupun mutable source co
 
 ## PHASE 2 — SourceChangePlan: Preview = Apply
 
-**Status: BLOCKED by Phase 1**
+**Status: COMPLETE**
 
 Tujuan: reconciliation dilakukan satu kali.
 
@@ -471,12 +490,12 @@ SourceChangePlan
 
 ### Tasks
 
-- [ ] P2.1 Buat `SourceChangePlan` / equivalent immutable apply plan.
-- [ ] P2.2 Move dialogue matching keluar dari Preview-only logic.
-- [ ] P2.3 Preview hanya merender plan.
-- [ ] P2.4 Synchronizer hanya mengeksekusi approved plan.
-- [ ] P2.5 Tambah guard agar stale plan tidak diaplikasikan jika source/project berubah antara Prepare dan Apply.
-- [ ] P2.6 Audit details mengambil data dari plan yang sama.
+- [x] P2.1 Buat `SourceChangePlan` / equivalent immutable apply plan.
+- [x] P2.2 Move dialogue matching keluar dari Preview-only logic.
+- [x] P2.3 Preview hanya merender plan.
+- [x] P2.4 Synchronizer hanya mengeksekusi approved plan.
+- [x] P2.5 Tambah guard agar stale plan tidak diaplikasikan jika source/project berubah antara Prepare dan Apply.
+- [x] P2.6 Audit details mengambil data dari plan yang sama.
 
 ### Exit Criteria
 
@@ -486,7 +505,7 @@ Preview dan committed result tidak dapat berbeda dalam keputusan identity / add 
 
 ## PHASE 3 — Recording Revision Semantics
 
-**Status: BLOCKED by Phase 2**
+**Status: COMPLETE**
 
 Tujuan: recording history dipertahankan tetapi source revision tetap terlihat.
 
@@ -511,12 +530,12 @@ bukan kehilangan checkbox dan bukan diam-diam dianggap selesai.
 
 ### Tasks
 
-- [ ] P3.1 Finalisasi status model source revision untuk recording.
-- [ ] P3.2 Simpan source signature saat line ditandai recorded.
-- [ ] P3.3 Deteksi stale recording setelah source revision.
-- [ ] P3.4 Tampilkan revision indicator di Dialog.
-- [ ] P3.5 Tentukan behavior Check All / Uncheck All terhadap revised lines.
-- [ ] P3.6 Pastikan old recording history tetap tersedia di audit / database.
+- [x] P3.1 Finalisasi status model source revision untuk recording.
+- [x] P3.2 Simpan source signature saat line ditandai recorded.
+- [x] P3.3 Deteksi stale recording setelah source revision.
+- [x] P3.4 Tampilkan revision indicator di Dialog.
+- [x] P3.5 Tentukan behavior Check All / Uncheck All terhadap revised lines.
+- [x] P3.6 Pastikan old recording history tetap tersedia di audit / database.
 
 ### Exit Criteria
 
@@ -526,21 +545,21 @@ Recorded line yang direvisi client tetap memiliki lineage dan history, tetapi op
 
 ## PHASE 4 — Semantic Tracking Invalidation
 
-**Status: BLOCKED by Phase 2; integrates with Phase 3**
+**Status: COMPLETE**
 
 Tujuan: downstream tracking hanya direset jika semantic source change memang mempengaruhi scope tersebut.
 
 ### Tasks
 
-- [ ] P4.1 Hapus policy `fingerprint changed = reset entire episode downstream`.
-- [ ] P4.2 Derive affected Episode + Talent + Character dari SourceChangePlan.
-- [ ] P4.3 Dialog added → invalidate affected scope.
-- [ ] P4.4 Dialog removed → invalidate affected scope.
-- [ ] P4.5 Text/timecode revision → invalidate affected scope.
-- [ ] P4.6 Cast change → invalidate old + new affected scope.
-- [ ] P4.7 Formatting-only source change → no downstream invalidation.
-- [ ] P4.8 Preserve explicit REVISION semantics sesuai business rules.
-- [ ] P4.9 Tambah audit entry yang menjelaskan scope yang diinvalidasi dan alasannya.
+- [x] P4.1 Hapus policy `fingerprint changed = reset entire episode downstream`.
+- [x] P4.2 Derive affected Episode + Talent + Character dari SourceChangePlan.
+- [x] P4.3 Dialog added → invalidate affected scope.
+- [x] P4.4 Dialog removed → invalidate affected scope.
+- [x] P4.5 Text/timecode revision → invalidate affected scope.
+- [x] P4.6 Cast change → invalidate old + new affected scope.
+- [x] P4.7 Formatting-only source change → no downstream invalidation.
+- [x] P4.8 Preserve explicit REVISION semantics sesuai business rules.
+- [x] P4.9 Tambah audit entry yang menjelaskan scope yang diinvalidasi dan alasannya.
 
 ### Exit Criteria
 
@@ -550,7 +569,7 @@ Tidak ada status STEMMED / DELIVERED yang reset hanya karena file Excel berubah 
 
 ## PHASE 5 — Unified Application Data Change Notification
 
-**Status: BLOCKED by correctness Phases 0–4**
+**Status: COMPLETE**
 
 Tujuan: pengguna tidak perlu Refresh View manual.
 
@@ -564,13 +583,13 @@ project_data_changed(revision)
 
 ### Tasks
 
-- [ ] P5.1 Buat application-level project data revision / change event.
-- [ ] P5.2 Current page reload langsung.
-- [ ] P5.3 Hidden data pages ditandai dirty.
-- [ ] P5.4 Saat dirty page dibuka, reload otomatis.
-- [ ] P5.5 Preserve current filter / selected talent / character / episode jika masih valid.
-- [ ] P5.6 Project dashboard ikut reload.
-- [ ] P5.7 Tools / diagnostics hanya reload bila memang relevan; hindari expensive automatic work yang tidak diperlukan.
+- [x] P5.1 Buat application-level project data revision / change event.
+- [x] P5.2 Current page reload langsung.
+- [x] P5.3 Hidden data pages ditandai dirty.
+- [x] P5.4 Saat dirty page dibuka, reload otomatis.
+- [x] P5.5 Preserve current filter / selected talent / character / episode jika masih valid.
+- [x] P5.6 Project dashboard ikut reload.
+- [x] P5.7 Tools / diagnostics hanya reload bila memang relevan; hindari expensive automatic work yang tidak diperlukan.
 
 ### Exit Criteria
 
@@ -580,7 +599,7 @@ Setelah Source Sync berhasil, berpindah SCRIPT / DIALOG / TRACKING / DATA selalu
 
 ## PHASE 6 — Simplify Refresh UX / Ribbon
 
-**Status: BLOCKED by Phase 5**
+**Status: COMPLETE**
 
 Tujuan: satu mental model untuk operator.
 
@@ -592,15 +611,15 @@ Tujuan: satu mental model untuk operator.
 
 ### Tasks
 
-- [ ] P6.1 Satukan Import Source dan Refresh Data menjadi Sync Source.
-- [ ] P6.2 Initial sync dan incremental sync memakai tombol yang sama.
-- [ ] P6.3 F5 = Sync Source.
-- [ ] P6.4 Hapus SCRIPT → Refresh View sebagai required workflow.
-- [ ] P6.5 Hapus DIALOG → Refresh View sebagai required workflow.
-- [ ] P6.6 Hapus TRACKING → Refresh View sebagai required workflow.
-- [ ] P6.7 Hapus duplicate DATA → Refresh Data.
-- [ ] P6.8 Tentukan satu lokasi ribbon yang konsisten / global untuk Sync Source.
-- [ ] P6.9 Update Getting Started, User Guide, dan Keyboard Shortcuts.
+- [x] P6.1 Satukan Import Source dan Refresh Data menjadi Sync Source.
+- [x] P6.2 Initial sync dan incremental sync memakai tombol yang sama.
+- [x] P6.3 F5 = Sync Source.
+- [x] P6.4 Hapus SCRIPT → Refresh View sebagai required workflow.
+- [x] P6.5 Hapus DIALOG → Refresh View sebagai required workflow.
+- [x] P6.6 Hapus TRACKING → Refresh View sebagai required workflow.
+- [x] P6.7 Hapus duplicate DATA → Refresh Data.
+- [x] P6.8 Tentukan satu lokasi ribbon yang konsisten / global untuk Sync Source.
+- [x] P6.9 Update Getting Started, User Guide, dan Keyboard Shortcuts.
 
 ### Exit Criteria
 
@@ -610,17 +629,17 @@ Operator hanya perlu memahami satu jenis source refresh.
 
 ## PHASE 7 — Qt Runtime CI Hardening
 
-**Status: AFTER Source Refresh correctness**
+**Status: COMPLETE**
 
 Current GitHub Actions lightweight environment hanya memasang `pytest` dan `openpyxl`. PySide6 runtime tests dapat skip ketika PySide6 tidak tersedia.
 
 ### Tasks
 
-- [ ] P7.1 Tambah CI job khusus Qt/PySide6.
-- [ ] P7.2 Gunakan offscreen platform untuk runtime smoke tests.
-- [ ] P7.3 Construct MainWindow dan semua major pages.
-- [ ] P7.4 Smoke-test project open → source sync mock → page reload.
-- [ ] P7.5 Pertahankan fast engine-only job jika diperlukan untuk feedback cepat.
+- [x] P7.1 Tambah CI job khusus Qt/PySide6.
+- [x] P7.2 Gunakan offscreen platform untuk runtime smoke tests.
+- [x] P7.3 Construct MainWindow dan semua major pages.
+- [x] P7.4 Smoke-test project open → source sync mock → page reload.
+- [x] P7.5 Pertahankan fast engine-only job jika diperlukan untuk feedback cepat.
 
 ### Exit Criteria
 
@@ -630,7 +649,7 @@ Critical Qt runtime behavior benar-benar diuji di CI, bukan hanya AST/source ass
 
 ## PHASE 8 — Architecture Refactor
 
-**Status: AFTER correctness baseline stabil**
+**Status: COMPLETE**
 
 Beberapa file sudah besar:
 
@@ -643,31 +662,32 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 ### Tasks
 
-- [ ] P8.1 Extract source sync orchestration dari MainWindow.
-- [ ] P8.2 Extract project lifecycle orchestration bila mengurangi coupling.
-- [ ] P8.3 Pisahkan large page workspace menjadi focused components/controllers.
-- [ ] P8.4 Jangan mengubah business behavior tanpa regression test.
-- [ ] P8.5 Hindari refactor kosmetik yang tidak mengurangi complexity nyata.
+- [x] P8.1 Extract source sync orchestration dari MainWindow.
+- [x] P8.2 Extract project lifecycle orchestration bila mengurangi coupling.
+- [x] P8.3 Pisahkan large page workspace menjadi focused components/controllers.
+- [x] P8.4 Jangan mengubah business behavior tanpa regression test.
+- [x] P8.5 Hindari refactor kosmetik yang tidak mengurangi complexity nyata.
 
 ---
 
 ## PHASE 9 — v1 Release Readiness
 
-**Status: FUTURE**
+**Status: IN PROGRESS**
 
 ### Areas
 
-- [ ] Windows packaging.
-- [ ] Application icon / metadata.
-- [ ] `.smproj` file association via installer.
-- [ ] Upgrade / migration smoke test.
-- [ ] Backup / recovery disaster test.
-- [ ] Crash / diagnostics logging.
-- [ ] GitHub Release pipeline.
+- [x] Windows packaging.
+- [x] Windows application version metadata.
+- [ ] Application icon.
+- [x] `.smproj` file association via installer.
+- [x] Upgrade / migration smoke test.
+- [x] Backup / recovery disaster test.
+- [x] Crash / diagnostics logging.
+- [x] GitHub Release pipeline.
 - [ ] Update checker against real release.
-- [ ] User acceptance workflow using representative project.
-- [ ] Final user guide review.
-- [ ] Version bump strategy toward `1.0.0`.
+- [x] User acceptance workflow using representative project.
+- [x] Final user guide review.
+- [x] Version bump strategy toward `1.0.0`.
 
 ---
 
@@ -785,7 +805,7 @@ Tidak ada blocker tercatat pada audit 2026-09-02.
 Current next action:
 
 ```text
-PHASE 0 — Baseline Regression Safety
+PHASE 9 — Windows packaging + release safety
 ```
 
 Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
@@ -816,6 +836,24 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 installer: Inno Setup per-user installer builds successfully, silent install + frozen EXE + HKCU .smproj association smoke pass, and installer artifact uploads in Windows CI. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release automation: tag-gated release workflow validates tag against APP_VERSION, rebuilds portable + installer, smoke-tests assets, generates SHA-256 checksums, and is documented in RELEASING.md; no release tag has been published yet. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 crash logging: rotating local application log + unhandled main/thread exception hooks added; startup metadata excludes project/source content; engine + Qt runtime CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows packaging: PyInstaller onedir build, frozen EXE smoke test, portable ZIP and Actions artifact upload pass on windows-latest. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 release safety: backup disaster recovery + schema v10→v11 migration smoke tests added and passing in engine CI. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 final verification complete: runtime monkey-patching removed, MainWindow imports AliasDataPage/CompactTrackingPage explicitly, alias-aware DATA validation stays behind DataWorkspaceController, and engine + production Qt runtime CI are green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 8 previously reached green baseline: SourceSyncController owns async source lifecycle, existing ProjectManager retained as the correct lifecycle boundary, DATA domain service graph extracted into DataWorkspaceController. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 7 complete: dedicated PySide6/offscreen CI job added alongside fast engine job; Qt system libraries installed; MainWindow + major pages construct and project-open/source-commit/page-reload smoke flow passes in runtime CI. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 6 complete: ribbon/source UX unified to one Sync Source action, F5 routes to same command, redundant per-page refresh actions removed, Help updated, CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 5 complete: project_data_changed revision signal + dirty-page lazy refresh keeps SCRIPT/DIALOG/TRACKING/DATA current without manual Refresh View; mutation events refresh sibling workspaces and dashboard; CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 4 complete: Tracking invalidation is semantic and scoped to Episode + Talent + Character; formatting-only changes preserve downstream state; invalidation reasons are audited; CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 3 complete: schema v11 records source signature at recording, revised recordings retain history and show Source Revised, bulk recording semantics tested, CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 2 complete: immutable SourceChangePlan drives Preview + Apply, stale source/database guards added, dialogue lineage regressions promoted to required tests, CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 1 complete: schema v10 adds source_signature, conservative reconciler added, migration ordering fixed, CI green. |
+| 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 0 regression baseline added. Expected legacy failures recorded with strict xfail before reconciliation implementation. |
 | 2026-09-02 | Reviewed main at `ebdd920f887cfec3ee5f88af395bfc98a8ec834d` | Source Refresh + Dialogue Identity audit started. Found refresh UX duplication, Preview/Apply identity mismatch, content-derived dialog UID risk, and fingerprint-based Tracking invalidation. Roadmap established. |
 
 Add new rows above/below as development progresses. Keep entries concise; detailed implementation belongs in commit / PR history.

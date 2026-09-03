@@ -52,6 +52,7 @@ STATUS_ORDER = (
 
 class TrackingPage(PageShell):
     tracking_detail_changed = Signal(object)
+    data_changed = Signal()
 
     def __init__(self, parent=None):
         self._database: Database | None = None
@@ -184,6 +185,23 @@ class TrackingPage(PageShell):
         self._clear_tracking_detail()
 
         if self._service is None:
+            self.clear_data()
+            return
+
+        self.reload(
+            preferred_talent=current_talent,
+            preferred_episode=current_episode,
+        )
+
+    def refresh_from_database(self, database: Database | None) -> None:
+        current_talent = self.talent_combo.currentData()
+        current_episode = self.episode_combo.currentData()
+
+        if database is not self._database or self._service is None:
+            self.set_database(database)
+            return
+
+        if database is None:
             self.clear_data()
             return
 
@@ -504,6 +522,7 @@ class TrackingPage(PageShell):
         self._refresh_workspace()
         self._refresh_character_queue()
         self._refresh_selected_detail()
+        self.data_changed.emit()
 
     def _refresh_selected_detail(self) -> None:
         if self._selected_chip_key is None:

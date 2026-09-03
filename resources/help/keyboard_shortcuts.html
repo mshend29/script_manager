@@ -68,11 +68,11 @@ kbd {
 <table>
 <tr><th>Shortcut</th><th>Action</th><th>Keterangan</th></tr>
 <tr><td><kbd>Ctrl+F</kbd></td><td>Search Script</td><td>Berpindah ke tab SCRIPT dan memfokuskan kotak Search.</td></tr>
-<tr><td><kbd>F5</kbd></td><td>Refresh Data</td><td>Menjalankan alur Refresh Data terhadap source project aktif.</td></tr>
+<tr><td><kbd>F5</kbd></td><td>Sync Source</td><td>Menjalankan alur Sync Source terhadap source project aktif.</td></tr>
 </table>
 
 <div class="note">
-<b>F5 bukan sekadar refresh tampilan.</b> Shortcut ini menjalankan Refresh Data terhadap source Excel, sama seperti tombol Refresh Data pada tab PROJECT. Jika source berubah, aplikasi akan menjalankan proses scan/preview/apply sesuai workflow refresh.
+<b>F5 bukan sekadar refresh tampilan.</b> Shortcut ini menjalankan Sync Source terhadap source Excel, sama seperti tombol Sync Source pada tab PROJECT. Tombol yang sama dipakai untuk initial sync dan incremental sync. Jika source berubah, aplikasi menjalankan scan/preview/apply lalu workspace data otomatis membaca commit terbaru.
 </div>
 
 <h2>Help</h2>
@@ -82,7 +82,7 @@ kbd {
 </table>
 
 <h2>Perilaku saat Source Sync Berjalan</h2>
-<p>Shortcut yang dapat mengganti atau menutup project tetap mengikuti safety guard aplikasi. Jika Import Source atau Refresh Data sedang berjalan, tindakan seperti New Project, Open Project, Save As, atau Close Project dapat ditolak sampai proses sinkronisasi selesai.</p>
+<p>Shortcut yang dapat mengganti atau menutup project tetap mengikuti safety guard aplikasi. Jika Sync Source sedang berjalan, tindakan seperti New Project, Open Project, Save As, atau Close Project dapat ditolak sampai proses sinkronisasi selesai.</p>
 
 <div class="note">
 Shortcut dibuat untuk mempercepat tindakan utama. Fitur lain tetap tersedia melalui ribbon dan context panel hingga ada kebutuhan nyata untuk menambahkan kombinasi keyboard baru.

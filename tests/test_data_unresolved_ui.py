@@ -20,10 +20,13 @@ def test_unresolved_table_has_talent_column_and_manual_cell_actions():
     assert 'menu.addAction("Open Source")' in source
     assert 'menu.addAction("Mark as Narration / Non-Dialogue")' in source
     assert 'menu.addAction("Restore to Needs Review")' in source
-    assert "self._service.ensure_character(name)" in source
-    assert "self._service.assign_missing_character" in source
-    assert "self._service.ensure_talent(name)" in source
-    assert "self._service.set_locked_mapping" in source
+    assert "self._controller.add_missing_character(" in source
+    assert "self._controller.add_talent_and_lock(" in source
+    controller = _read("pages/data_workspace_controller.py")
+    assert "service.ensure_character(name)" in controller
+    assert "service.assign_missing_character" in controller
+    assert "service.ensure_talent(name)" in controller
+    assert "service.set_locked_mapping" in controller
     assert "QDesktopServices.openUrl" in source
 
 

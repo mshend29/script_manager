@@ -1,0 +1,146 @@
+name: Windows Package
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "main.py"
+      - "app/**"
+      - "core/**"
+      - "dialogs/**"
+      - "import_engine/**"
+      - "pages/**"
+      - "services/**"
+      - "widgets/**"
+      - "resources/**"
+      - "requirements.txt"
+      - "requirements-build.txt"
+      - "packaging/**"
+      - ".github/workflows/windows-package.yml"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install packaging dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-build.txt
+
+      - name: Build Windows application
+        run: |
+          python -m PyInstaller --clean --noconfirm packaging/ScriptManager.spec
+
+      - name: Smoke test frozen executable
+        shell: pwsh
+        run: |
+          & ".\dist\ScriptManager\ScriptManager.exe" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $zip = "ScriptManager-$version-windows-x64.zip"
+          Compress-Archive -Path ".\dist\ScriptManager\*" -DestinationPath $zip
+          "PACKAGE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScriptManager-windows
+          path: ${{ env.PACKAGE_ZIP }}
+          if-no-files-found: error
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --version=6.7.1 -y --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DMyAppVersion=$version" "packaging\ScriptManager.iss"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          $installer = Get-ChildItem ".\installer-dist\ScriptManager-*-Setup.exe" | Select-Object -First 1
+          if (-not $installer) {
+            throw "Installer output was not created."
+          }
+          "INSTALLER_EXE=$($installer.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Silent install and association smoke test
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:TEMP "ScriptManager-Install-Test"
+          $process = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/DIR=$installDir"
+          ) -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            exit $process.ExitCode
+          }
+
+          & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          $extensionKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\.smproj"
+          )
+          if (-not $extensionKey) {
+            throw ".smproj association was not registered."
+          }
+          $progId = [string]$extensionKey.GetValue("")
+          $extensionKey.Close()
+          if ($progId -ne "ScriptManager.Project") {
+            throw "Unexpected .smproj ProgID: $progId"
+          }
+
+          $commandKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\ScriptManager.Project\shell\open\command"
+          )
+          if (-not $commandKey) {
+            throw "ScriptManager.Project open command was not registered."
+          }
+          $openCommand = [string]$commandKey.GetValue("")
+          $commandKey.Close()
+          if ($openCommand -notlike '*ScriptManager.exe*"%1"*') {
+            throw "Unexpected .smproj open command: $openCommand"
+          }
+
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (Test-Path $uninstaller) {
+            $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+              "/VERYSILENT",
+              "/SUPPRESSMSGBOXES",
+              "/NORESTART"
+            ) -Wait -PassThru
+            if ($uninstall.ExitCode -ne 0) {
+              exit $uninstall.ExitCode
+            }
+          }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScriptManager-windows-installer
+          path: installer-dist/ScriptManager-*-Setup.exe
+          if-no-files-found: error

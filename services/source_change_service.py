@@ -6,6 +6,11 @@ from core.database import Database
 from import_engine.normalizer import normalize_key
 from import_engine.parser import ParsedDialogueRow, ScriptParseResult
 from import_engine.scanner import SourceScanResult
+from import_engine.source_change_plan import (
+    SourceChangePlan,
+    SourceChangePlanBuilder,
+    SourceFileChangeKind,
+)
 
 
 @dataclass(frozen=True)
@@ -61,7 +66,7 @@ class SourceChangePreview:
 
 
 class SourceChangeService:
-    """Build a read-only source refresh diff before database synchronization."""
+    """Render a read-only preview from the approved reconciliation plan."""
 
     def __init__(self, database: Database):
         self.database = database
@@ -72,151 +77,96 @@ class SourceChangeService:
         scan: SourceScanResult,
         parse_results: dict[str, ScriptParseResult],
     ) -> SourceChangePreview:
+        """Compatibility wrapper for callers that do not yet build a plan."""
+        plan = SourceChangePlanBuilder(self.database).build(
+            scan=scan,
+            parse_results=parse_results,
+        )
+        return self.build_from_plan(plan)
+
+    def build_from_plan(
+        self,
+        plan: SourceChangePlan,
+    ) -> SourceChangePreview:
         preview = SourceChangePreview()
-        scanned_by_path = {item.file_path: item for item in scan.files}
 
         with self.database.connect() as connection:
-            sources = connection.execute(
-                """
-                SELECT
-                    id,
-                    file_path,
-                    fingerprint,
-                    is_active,
-                    episode_number
-                FROM source_files
-                """
-            ).fetchall()
-            source_by_path = {
-                str(row["file_path"]): row
-                for row in sources
-            }
-
-            for path, source in source_by_path.items():
-                if path in scanned_by_path:
-                    continue
-                if int(source["is_active"] or 0) != 1:
-                    continue
+            for missing in plan.missing_sources:
                 preview.source_missing += 1
-                episode = int(source["episode_number"] or 0)
+                tracking = self._episode_has_tracking(
+                    connection,
+                    missing.episode_number,
+                )
                 preview.items.append(
                     SourceChangeItem(
                         change_type="SOURCE_MISSING",
-                        episode_number=episode,
+                        episode_number=missing.episode_number,
                         source_row=None,
                         entity="Source",
-                        before=path,
+                        before=missing.file_path,
                         after="File tidak ditemukan",
-                        tracking_affected=self._episode_has_tracking(
-                            connection,
-                            episode,
-                        ),
+                        tracking_affected=tracking,
                     )
                 )
 
-            for item in scan.files:
-                existing = source_by_path.get(item.file_path)
-                if existing is None:
+            for file_plan in plan.file_plans.values():
+                if file_plan.kind == SourceFileChangeKind.ADDED:
                     preview.source_added += 1
-                elif (
-                    str(existing["fingerprint"] or "")
-                    != str(item.fingerprint or "")
-                ):
+                elif file_plan.kind == SourceFileChangeKind.CHANGED:
                     preview.source_changed += 1
-                elif int(existing["is_active"] or 0) != 1:
+                elif file_plan.kind == SourceFileChangeKind.RESTORED:
                     preview.source_restored += 1
 
-            for file_path, parse_result in parse_results.items():
-                existing_source = source_by_path.get(file_path)
-                if existing_source is None:
-                    for row in parse_result.rows:
-                        preview.dialogues_added += 1
-                        preview.items.append(
-                            SourceChangeItem(
-                                change_type="DIALOG_ADDED",
-                                episode_number=int(
-                                    parse_result.episode_number
-                                ),
-                                source_row=int(row.source_row),
-                                entity=self._new_cast_text(row),
-                                before="",
-                                after=row.dialogue,
-                            )
+                for parsed_row in file_plan.additions:
+                    preview.dialogues_added += 1
+                    preview.items.append(
+                        SourceChangeItem(
+                            change_type="DIALOG_ADDED",
+                            episode_number=file_plan.episode_number,
+                            source_row=int(parsed_row.source_row),
+                            entity=self._new_cast_text(parsed_row),
+                            before="",
+                            after=parsed_row.dialogue,
                         )
-                    continue
+                    )
 
-                source_id = int(existing_source["id"])
-                old_rows = connection.execute(
-                    """
-                    SELECT
-                        d.id,
-                        d.dialog_uid,
-                        d.dialog_text,
-                        d.source_row,
-                        d.episode_id,
-                        e.episode_number,
-                        COALESCE(rs.is_recorded, 0) AS is_recorded
-                    FROM dialogues AS d
-                    JOIN episodes AS e ON e.id = d.episode_id
-                    LEFT JOIN recording_status AS rs
-                      ON rs.dialogue_id = d.id
-                    WHERE d.source_file_id = ?
-                      AND d.is_active = 1
-                    ORDER BY d.source_row, d.id
-                    """,
-                    (source_id,),
-                ).fetchall()
+                for match in file_plan.matches:
+                    old = self._load_existing_dialogue(
+                        connection,
+                        match.existing.dialogue_id,
+                    )
+                    if old is None:
+                        # The stale-plan guard in SourceSyncEngine/Sync will
+                        # reject this before Apply. Preview should still fail
+                        # safely instead of inventing an old state.
+                        continue
 
-                old_by_uid = {
-                    str(row["dialog_uid"]): row for row in old_rows
-                }
-                old_by_row = {
-                    int(row["source_row"]): row
-                    for row in old_rows
-                    if row["source_row"] is not None
-                }
-                matched_old_ids: set[int] = set()
-
-                for new_row in parse_result.rows:
-                    old = old_by_uid.get(new_row.dialog_uid)
-                    if old is not None:
-                        matched_old_ids.add(int(old["id"]))
-                        self._append_same_uid_cast_change(
+                    if (
+                        match.existing.source_signature
+                        == match.parsed.source_signature
+                    ):
+                        self._append_same_signature_cast_change(
                             preview,
                             connection,
                             old,
-                            new_row,
+                            match.parsed,
                         )
-                        continue
-
-                    old = old_by_row.get(int(new_row.source_row))
-                    if old is None:
-                        preview.dialogues_added += 1
-                        preview.items.append(
-                            SourceChangeItem(
-                                change_type="DIALOG_ADDED",
-                                episode_number=int(
-                                    parse_result.episode_number
-                                ),
-                                source_row=int(new_row.source_row),
-                                entity=self._new_cast_text(new_row),
-                                before="",
-                                after=new_row.dialogue,
-                            )
+                    else:
+                        self._append_changed_row(
+                            preview,
+                            connection,
+                            old,
+                            match.parsed,
                         )
-                        continue
 
-                    matched_old_ids.add(int(old["id"]))
-                    self._append_changed_row(
-                        preview,
+                for old_snapshot in file_plan.removals:
+                    if not old_snapshot.is_active:
+                        continue
+                    old = self._load_existing_dialogue(
                         connection,
-                        old,
-                        new_row,
+                        old_snapshot.dialogue_id,
                     )
-
-                for old in old_rows:
-                    old_id = int(old["id"])
-                    if old_id in matched_old_ids:
+                    if old is None:
                         continue
                     preview.dialogues_removed += 1
                     recorded = bool(int(old["is_recorded"] or 0))
@@ -229,7 +179,7 @@ class SourceChangeService:
                     preview.items.append(
                         SourceChangeItem(
                             change_type="DIALOG_REMOVED",
-                            episode_number=int(old["episode_number"]),
+                            episode_number=file_plan.episode_number,
                             source_row=(
                                 int(old["source_row"])
                                 if old["source_row"] is not None
@@ -237,12 +187,27 @@ class SourceChangeService:
                             ),
                             entity=self._old_cast_text(
                                 connection,
-                                old_id,
+                                int(old["id"]),
                             ),
                             before=str(old["dialog_text"]),
                             after="",
                             recording_affected=recorded,
                             tracking_affected=tracking,
+                        )
+                    )
+
+                for ambiguity in file_plan.ambiguities:
+                    preview.items.append(
+                        SourceChangeItem(
+                            change_type="AMBIGUOUS_LINEAGE",
+                            episode_number=file_plan.episode_number,
+                            source_row=int(ambiguity.parsed.source_row),
+                            entity="Dialogue Identity",
+                            before=", ".join(
+                                str(value)
+                                for value in ambiguity.candidate_dialogue_ids
+                            ),
+                            after=ambiguity.parsed.dialogue,
                         )
                     )
 
@@ -256,7 +221,29 @@ class SourceChangeService:
         )
         return preview
 
-    def _append_same_uid_cast_change(
+    @staticmethod
+    def _load_existing_dialogue(connection, dialogue_id: int):
+        return connection.execute(
+            """
+            SELECT
+                d.id,
+                d.dialog_uid,
+                COALESCE(d.source_signature, d.dialog_uid) AS source_signature,
+                d.dialog_text,
+                d.source_row,
+                d.episode_id,
+                e.episode_number,
+                COALESCE(rs.is_recorded, 0) AS is_recorded
+            FROM dialogues AS d
+            JOIN episodes AS e ON e.id = d.episode_id
+            LEFT JOIN recording_status AS rs
+              ON rs.dialogue_id = d.id
+            WHERE d.id = ?
+            """,
+            (int(dialogue_id),),
+        ).fetchone()
+
+    def _append_same_signature_cast_change(
         self,
         preview: SourceChangePreview,
         connection,
@@ -336,9 +323,8 @@ class SourceChangeService:
         if cast_changed:
             preview.cast_changed += 1
         if not text_changed and not cast_changed:
-            # UID can change because of source character spelling/timecode even
-            # when the visible text/talent set is stable. Surface it as cast
-            # identity change so the user still sees the affected source row.
+            # Source signature can change because of timecode/character
+            # identity even when the visible text/talent set remains stable.
             cast_changed = True
             preview.cast_changed += 1
 
@@ -352,9 +338,11 @@ class SourceChangeService:
             if text_changed
             else "CAST_CHANGED"
         )
-        before = old_text
-        after = new_row.dialogue
-        entity = f"{before_cast} → {after_cast}" if cast_changed else "Dialogue"
+        entity = (
+            f"{before_cast} → {after_cast}"
+            if cast_changed
+            else "Dialogue"
+        )
 
         preview.items.append(
             SourceChangeItem(
@@ -362,8 +350,8 @@ class SourceChangeService:
                 episode_number=int(old["episode_number"]),
                 source_row=int(new_row.source_row),
                 entity=entity,
-                before=before,
-                after=after,
+                before=old_text,
+                after=new_row.dialogue,
                 recording_affected=recorded,
                 tracking_affected=tracking,
             )

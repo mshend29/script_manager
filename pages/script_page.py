@@ -188,6 +188,21 @@ class ScriptPage(PageShell):
 
         self.reload()
 
+    def refresh_from_database(self, database: Database | None) -> None:
+        """Reload source-derived filters and rows while preserving filters."""
+        if database is not self._database or self._service is None:
+            self.set_database(database)
+            return
+
+        if database is None:
+            self.clear_data()
+            return
+
+        # set_database() intentionally has a cheap same-database path that only
+        # refreshes rows. A project data revision must also reload filter
+        # options so newly added episodes become available immediately.
+        self.reload()
+
     def clear_data(self) -> None:
         self._service = None
         self._database = None

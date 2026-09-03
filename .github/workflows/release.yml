@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $expectedTag = "v$version"
+          if ("${{ github.ref_name }}" -ne $expectedTag) {
+            throw "Release tag ${{ github.ref_name }} does not match APP_VERSION $version"
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-build.txt
+          choco install innosetup --version=6.7.1 -y --no-progress
+
+      - name: Build portable application
+        run: |
+          python -m PyInstaller --clean --noconfirm packaging/ScriptManager.spec
+
+      - name: Smoke test frozen executable
+        shell: pwsh
+        run: |
+          & ".\dist\ScriptManager\ScriptManager.exe" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Build release assets
+        shell: pwsh
+        run: |
+          $zip = "ScriptManager-$env:APP_VERSION-windows-x64.zip"
+          Compress-Archive -Path ".\dist\ScriptManager\*" -DestinationPath $zip
+
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DMyAppVersion=$env:APP_VERSION" "packaging\ScriptManager.iss"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          $installer = Get-ChildItem ".\installer-dist\ScriptManager-*-Setup.exe" |
+            Select-Object -First 1
+          if (-not $installer) {
+            throw "Installer output was not created."
+          }
+
+          "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "INSTALLER_EXE=$($installer.FullName)" |
+            Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Smoke test installer
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:TEMP "ScriptManager-Release-Test"
+          $install = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/DIR=$installDir"
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) {
+            exit $install.ExitCode
+          }
+
+          & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          $association = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\.smproj"
+          )
+          if (-not $association -or [string]$association.GetValue("") -ne "ScriptManager.Project") {
+            throw ".smproj association smoke test failed."
+          }
+          $association.Close()
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $checksumFile = "ScriptManager-$env:APP_VERSION-SHA256.txt"
+          $assets = @(
+            (Resolve-Path $env:PORTABLE_ZIP).Path,
+            (Resolve-Path $env:INSTALLER_EXE).Path
+          )
+          $lines = foreach ($asset in $assets) {
+            $hash = Get-FileHash -Algorithm SHA256 $asset
+            "$($hash.Hash.ToLower())  $([IO.Path]::GetFileName($asset))"
+          }
+          $lines | Set-Content -Encoding ascii $checksumFile
+          "CHECKSUM_FILE=$checksumFile" |
+            Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            --title "Script Manager $env:APP_VERSION" `
+            --generate-notes `
+            "$env:PORTABLE_ZIP" `
+            "$env:INSTALLER_EXE" `
+            "$env:CHECKSUM_FILE"
+
+      - name: Verify published release through updater
+        run: |
+          python scripts/verify_published_release.py

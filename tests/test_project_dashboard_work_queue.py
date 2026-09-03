@@ -148,6 +148,9 @@ def test_source_preview_dialog_is_read_only_until_apply():
         root / "dialogs" / "source_refresh_preview_dialog.py"
     ).read_text(encoding="utf-8")
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
+    controller = (
+        root / "app" / "source_sync_controller.py"
+    ).read_text(encoding="utf-8")
     worker = (root / "app" / "source_sync_worker.py").read_text(
         encoding="utf-8"
     )
@@ -155,7 +158,8 @@ def test_source_preview_dialog_is_read_only_until_apply():
     assert "Database belum diubah" in dialog
     assert '"Apply Refresh"' in dialog
     assert "_source_sync_prepared" in main
-    assert "_pending_source_apply_report" in main
-    assert 'operation="apply"' in main
+    assert "apply_after_prepare" in main
+    assert "_pending_report" in controller
+    assert 'operation="apply"' in controller or "operation='apply'" in controller
     assert 'self._operation == "prepare"' in worker
     assert 'self._operation == "apply"' in worker

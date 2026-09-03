@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QUrl, Qt
+from PySide6.QtCore import QTimer, QUrl, Qt, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -27,6 +27,8 @@ from widgets.page_shell import PageShell
 
 
 class DialogPage(PageShell):
+    data_changed = Signal()
+
     def __init__(self, parent=None):
         self._database: Database | None = None
         self._service: RecordingService | None = None
@@ -34,6 +36,7 @@ class DialogPage(PageShell):
         self._updating_checks = False
         self._source_file_path = ""
         self._checkboxes: dict[int, QCheckBox] = {}
+        self._dialogue_items: dict[int, QTableWidgetItem] = {}
         self._dialogue_rows: list[RecordingDialogueRow] = []
 
         context = ContextPanel("DIALOG")
@@ -172,11 +175,31 @@ class DialogPage(PageShell):
             preferred_episode=selected_episode,
         )
 
+    def refresh_from_database(self, database: Database | None) -> None:
+        selected_talent = self.talent_combo.currentData()
+        selected_character = self.character_combo.currentData()
+        selected_episode = self.episode_combo.currentData()
+
+        if database is not self._database or self._service is None:
+            self.set_database(database)
+            return
+
+        if database is None:
+            self.clear_data()
+            return
+
+        self.reload(
+            preferred_talent_id=selected_talent,
+            preferred_character_id=selected_character,
+            preferred_episode=selected_episode,
+        )
+
     def clear_data(self) -> None:
         self._service = None
         self._database = None
         self._source_file_path = ""
         self._checkboxes.clear()
+        self._dialogue_items.clear()
         self._dialogue_rows = []
 
         self._loading_controls = True
@@ -466,6 +489,7 @@ class DialogPage(PageShell):
         self.copy_all_button.setText("Copy All Dialog")
         self.cast_table.setRowCount(0)
         self._checkboxes.clear()
+        self._dialogue_items.clear()
         self._dialogue_rows = []
 
         self._updating_checks = True
@@ -500,6 +524,7 @@ class DialogPage(PageShell):
         self._updating_checks = True
         self.table.setUpdatesEnabled(False)
         self._checkboxes.clear()
+        self._dialogue_items.clear()
         self._dialogue_rows = list(rows)
         self.copy_all_button.setEnabled(bool(rows))
         self.copy_all_button.setText("Copy All Dialog")
@@ -512,6 +537,12 @@ class DialogPage(PageShell):
                 checkbox = QCheckBox()
                 checkbox.setChecked(row.is_recorded)
                 checkbox.setProperty("dialogue_id", row.dialogue_id)
+                checkbox.setProperty("source_revised", row.source_revised)
+                if row.source_revised:
+                    checkbox.setToolTip(
+                        "Source berubah sejak dialog ini terakhir direkam. "
+                        "Rekam ulang lalu update checkbox untuk menerima source terbaru."
+                    )
                 checkbox.stateChanged.connect(
                     lambda state, dialogue_id=row.dialogue_id:
                         self._recording_checkbox_changed(dialogue_id, state)
@@ -527,10 +558,24 @@ class DialogPage(PageShell):
 
                 in_item = QTableWidgetItem(row.time_in)
                 out_item = QTableWidgetItem(row.time_out)
+                dialogue_text = self._single_line_dialogue(row.dialogue)
                 dialogue_item = QTableWidgetItem(
-                    self._single_line_dialogue(row.dialogue)
+                    (
+                        f"⚠ Source Revised · {dialogue_text}"
+                        if row.source_revised
+                        else dialogue_text
+                    )
                 )
-                dialogue_item.setToolTip(row.dialogue)
+                dialogue_item.setToolTip(
+                    (
+                        "Source berubah sejak dialog terakhir direkam. "
+                        "Recording history tetap dipertahankan.\n\n"
+                        + row.dialogue
+                    )
+                    if row.source_revised
+                    else row.dialogue
+                )
+                self._dialogue_items[row.dialogue_id] = dialogue_item
 
                 self.table.setCellWidget(row_index, 0, holder)
                 self.table.setItem(row_index, 1, in_item)
@@ -591,7 +636,9 @@ class DialogPage(PageShell):
             )
             return
 
+        self._clear_source_revision_marker(int(dialogue_id))
         self._update_selection_info()
+        self.data_changed.emit()
 
     def set_all_checked(self, checked: bool) -> None:
         if self._service is None or not self._checkboxes:
@@ -615,12 +662,18 @@ class DialogPage(PageShell):
                 checkbox.blockSignals(True)
                 try:
                     checkbox.setChecked(checked)
+                    checkbox.setProperty("source_revised", False)
+                    checkbox.setToolTip("")
                 finally:
                     checkbox.blockSignals(False)
         finally:
             self._updating_checks = False
 
+        for dialogue_id in dialogue_ids:
+            self._clear_source_revision_marker(dialogue_id)
+
         self._update_selection_info()
+        self.data_changed.emit()
 
     def _update_selection_info(self) -> None:
         talent_name = self.talent_combo.currentText()
@@ -636,10 +689,45 @@ class DialogPage(PageShell):
             if checkbox.isChecked()
         )
 
+        revised = sum(
+            1
+            for checkbox in self._checkboxes.values()
+            if bool(checkbox.property("source_revised"))
+        )
+        revision_text = (
+            f" • ⚠ {revised} source revised"
+            if revised
+            else ""
+        )
+
         self.selection_info.setText(
             f"{talent_name} • {character_name} • Episode {episode_number} • "
-            f"{recorded}/{total} recorded"
+            f"{recorded}/{total} recorded{revision_text}"
         )
+
+    def _clear_source_revision_marker(self, dialogue_id: int) -> None:
+        checkbox = self._checkboxes.get(int(dialogue_id))
+        if checkbox is not None:
+            checkbox.setProperty("source_revised", False)
+            checkbox.setToolTip("")
+
+        item = self._dialogue_items.get(int(dialogue_id))
+        if item is None:
+            return
+
+        row = next(
+            (
+                value
+                for value in self._dialogue_rows
+                if value.dialogue_id == int(dialogue_id)
+            ),
+            None,
+        )
+        if row is None:
+            return
+
+        item.setText(self._single_line_dialogue(row.dialogue))
+        item.setToolTip(row.dialogue)
 
     # ------------------------------------------------------------------
     # SOURCE FILE

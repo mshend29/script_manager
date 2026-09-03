@@ -269,19 +269,16 @@ class Ribbon(QWidget):
                 ("project.close", "Close"),
             ]),
             ("Source", [
-                ("source.import", "Import Source"),
-                ("source.refresh", "Refresh Data"),
+                ("source.sync", "Sync Source"),
             ]),
             ("Client", [("client.drive", "Open Client Drive")]),
         ],
         "SCRIPT": [
             ("View", [
-                ("script.refresh", "Refresh View"),
                 ("script.search", "Search"),
             ]),
         ],
         "DIALOG": [
-            ("View", [("dialog.refresh", "Refresh View")]),
             ("Recording", [
                 ("dialog.check_all", "Check All"),
                 ("dialog.uncheck_all", "Uncheck All"),
@@ -289,14 +286,9 @@ class Ribbon(QWidget):
             ("Source", [("dialog.open_source", "Open Source File")]),
         ],
         "TRACKING": [
-            ("View", [("tracking.refresh", "Refresh View")]),
             ("Delivery", [("tracking.open_drive", "Open Client Drive")]),
         ],
         "DATA": [
-            ("Source", [
-                ("data.refresh", "Refresh Data"),
-                ("data.rebuild", "Rebuild Index"),
-            ]),
             ("Mapping", [
                 ("data.characters", "Characters"),
                 ("data.talents", "Talents"),
@@ -304,6 +296,7 @@ class Ribbon(QWidget):
             ]),
             ("Database", [
                 ("data.validate", "Validate"),
+                ("data.rebuild", "Rebuild Index"),
                 ("data.backup", "Backup"),
             ]),
         ],

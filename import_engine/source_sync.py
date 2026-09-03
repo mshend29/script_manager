@@ -22,6 +22,10 @@ from import_engine.scanner import (
     SourceScanner,
     SourceScanResult,
 )
+from import_engine.source_change_plan import (
+    SourceChangePlan,
+    SourceChangePlanBuilder,
+)
 from import_engine.synchronizer import DialogueSynchronizer
 from services.audit_service import AuditService
 from services.backup_service import BackupService
@@ -70,6 +74,9 @@ class SourceSyncReport:
     dialogues_deactivated: int = 0
     auto_locked: int = 0
     unresolved_cast: int = 0
+    tracking_invalidations: list[dict[str, object]] = field(
+        default_factory=list
+    )
 
     problems: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -83,6 +90,7 @@ class SourceSyncReport:
     inspections: dict[str, WorkbookInspection] = field(default_factory=dict)
     parse_results: dict[str, ScriptParseResult] = field(default_factory=dict)
     scan: SourceScanResult | None = None
+    plan: SourceChangePlan | None = None
     preview: SourceChangePreview | None = None
 
     synced_at: str = ""
@@ -117,6 +125,7 @@ class SourceSyncReport:
             f"Dialogues Deactivated: {self.dialogues_deactivated}\n"
             f"Auto Locked Cast: {self.auto_locked}\n"
             f"Unresolved Cast: {self.unresolved_cast}\n"
+            f"Tracking Invalidated: {len(self.tracking_invalidations)}\n"
             f"Warnings: {len(self.warnings)}"
         )
 
@@ -229,10 +238,17 @@ class SourceSyncEngine:
             stage="diffing",
             message="Building source change preview...",
         )
-        report.preview = SourceChangeService(project.database).build(
+        report.plan = SourceChangePlanBuilder(project.database).build(
             scan=scan,
             parse_results=report.parse_results,
         )
+        report.preview = SourceChangeService(
+            project.database
+        ).build_from_plan(report.plan)
+
+        if report.plan.has_ambiguities:
+            report.problems.extend(report.plan.ambiguity_messages)
+            return report
 
         self._emit_progress(
             progress_callback,
@@ -257,6 +273,20 @@ class SourceSyncEngine:
             raise SourceSyncError(
                 "Source refresh plan tidak memiliki scan context."
             )
+        if report.plan is None:
+            report.plan = SourceChangePlanBuilder(
+                project.database
+            ).build(
+                scan=report.scan,
+                parse_results=report.parse_results,
+            )
+        if report.plan.has_ambiguities:
+            raise SourceSyncError(
+                "Source refresh memiliki dialogue lineage ambigu. "
+                "Jalankan Sync Source lagi setelah source diperiksa."
+            )
+
+        self._validate_plan_is_fresh(project, report.plan)
 
         self._emit_progress(
             progress_callback,
@@ -282,6 +312,7 @@ class SourceSyncEngine:
             scan=report.scan,
             parse_results=report.parse_results,
             synced_at=now,
+            plan=report.plan,
         )
 
         report.dialogues_added = sync_report.dialogues_added
@@ -290,6 +321,18 @@ class SourceSyncEngine:
         report.dialogues_deactivated = sync_report.dialogues_deactivated
         report.auto_locked = sync_report.auto_locked
         report.unresolved_cast = sync_report.unresolved_cast
+        report.tracking_invalidations = [
+            {
+                "episode_id": item.episode_id,
+                "episode_number": item.episode_number,
+                "talent_id": item.talent_id,
+                "talent_name": item.talent_name,
+                "character_id": item.character_id,
+                "character_name": item.character_name,
+                "reasons": list(item.reasons),
+            }
+            for item in sync_report.tracking_invalidations
+        ]
         report.warnings.extend(sync_report.warnings)
 
         preview = report.preview or SourceChangePreview()
@@ -314,6 +357,7 @@ class SourceSyncEngine:
                 "cast_changed": preview.cast_changed,
                 "recording_affected": preview.recording_affected,
                 "tracking_affected": preview.tracking_affected,
+                "tracking_invalidations": report.tracking_invalidations,
                 "backup_path": report.backup_path,
             },
             created_at=now,
@@ -328,6 +372,53 @@ class SourceSyncEngine:
         )
 
         return report
+
+    def _validate_plan_is_fresh(
+        self,
+        project: Project,
+        plan: SourceChangePlan,
+    ) -> None:
+        settings = project.settings
+        current_scan = self.scanner.scan(
+            settings.source_folder.strip(),
+            episode_before=settings.episode_before,
+            episode_after=settings.episode_after,
+        )
+
+        if current_scan.problems:
+            details = "; ".join(
+                f"{Path(problem.file_path).name}: {problem.message}"
+                for problem in current_scan.problems
+            )
+            raise SourceSyncError(
+                "Source berubah atau tidak dapat dibaca setelah preview. "
+                f"Jalankan Sync Source lagi. {details}"
+            )
+
+        if current_scan.duplicate_episodes:
+            raise SourceSyncError(
+                "Source berubah setelah preview dan sekarang memiliki "
+                "duplicate episode. Jalankan Sync Source lagi."
+            )
+
+        current_snapshot = SourceChangePlanBuilder.scan_snapshot(
+            current_scan
+        )
+        if current_snapshot != plan.source_snapshot:
+            raise SourceSyncError(
+                "Source berubah setelah preview. "
+                "Jalankan Sync Source lagi sebelum Apply."
+            )
+
+        with project.database.connect() as connection:
+            current_token = (
+                SourceChangePlanBuilder.compute_database_token(connection)
+            )
+        if current_token != plan.database_token:
+            raise SourceSyncError(
+                "Database project berubah setelah preview. "
+                "Jalankan Sync Source lagi sebelum Apply."
+            )
 
     @staticmethod
     def _emit_progress(

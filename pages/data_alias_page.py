@@ -15,12 +15,11 @@ from PySide6.QtWidgets import (
 
 from core.database import Database
 from pages.data_page import DataPage
+from pages.data_workspace_controller import DataWorkspaceController
 from services.character_alias_service import (
     AliasAwareValidationService,
     CharacterAliasService,
 )
-from services.data_service import DataService
-from services.review_service import ReviewService
 from services.validation_service import ValidationService
 
 
@@ -30,6 +29,10 @@ class AliasDataPage(DataPage):
     def __init__(self, parent=None):
         self._alias_service: CharacterAliasService | None = None
         super().__init__(parent)
+        self._controller = DataWorkspaceController(
+            validation_factory=lambda database:
+                AliasAwareValidationService(database, ValidationService)
+        )
         self._install_alias_sidebar()
         self._update_cast_mapping_visibility()
         self._refresh_alias_controls()
@@ -118,25 +121,11 @@ class AliasDataPage(DataPage):
         )
 
     def set_database(self, database: Database | None) -> None:
-        self._database = database
-        self._service = DataService(database) if database is not None else None
-        self._review_service = ReviewService(database) if database is not None else None
         self._alias_service = (
             CharacterAliasService(database) if database is not None else None
         )
-        self._validation_service = (
-            AliasAwareValidationService(database, ValidationService)
-            if database is not None
-            else None
-        )
-
-        if database is None:
-            super().clear_data()
-            self._alias_service = None
-            self._refresh_alias_controls()
-            return
-
-        self.reload()
+        super().set_database(database)
+        self._refresh_alias_controls()
 
     def clear_data(self) -> None:
         super().clear_data()
@@ -149,20 +138,16 @@ class AliasDataPage(DataPage):
     # ------------------------------------------------------------------
 
     def _load_characters(self) -> None:
-        if self._service is None:
+        if not self._controller.is_bound:
             return
 
-        reviewed_count = (
-            self._review_service.get_active_non_dialogue_count()
-            if self._review_service is not None
-            else 0
-        )
+        reviewed_count = self._controller.get_active_non_dialogue_count()
         aliases = (
             self._alias_service.aliases_by_canonical()
             if self._alias_service is not None
             else {}
         )
-        rows = self._service.get_characters()
+        rows = self._controller.get_characters()
         display_rows: list[tuple[object, int, int]] = []
         for row in rows:
             active_dialogues = row.active_dialogues
