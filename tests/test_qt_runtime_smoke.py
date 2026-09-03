@@ -95,6 +95,23 @@ def test_main_window_constructs_all_major_pages(qapp) -> None:
     assert isinstance(window.pages["DATA"], AliasDataPage)
     assert isinstance(window.pages["TRACKING"], CompactTrackingPage)
 
+    assert window.sidebar is not None
+    assert window.page_header is not None
+    assert window.page_header.title_label.text() == "Project"
+
+    window.set_page("DIALOG")
+    qapp.processEvents()
+    assert window.sidebar._buttons["DIALOG"].isChecked()
+    assert window.page_header.title_label.text() == "Dialog"
+
+    window.set_page("TRACKING")
+    qapp.processEvents()
+    assert window.sidebar._buttons["TRACKING"].isChecked()
+    assert window.page_header.title_label.text() == "Tracking"
+
+    window.set_page("PROJECT")
+    qapp.processEvents()
+
     window.close()
     qapp.processEvents()
 
