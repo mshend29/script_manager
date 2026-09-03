@@ -291,6 +291,7 @@ class DialogPage(QWidget):
         self._update_episode_navigation()
         self.open_source_button.setEnabled(False)
         self.copy_all_button.setEnabled(False)
+        self.search_edit.clear()
         self.cast_table.setRowCount(0)
         self.table.setRowCount(0)
         self.selection_info.setText("No project open")
@@ -648,6 +649,10 @@ class DialogPage(QWidget):
                     if row.source_revised
                     else row.dialogue
                 )
+                self._style_dialogue_item(
+                    dialogue_item,
+                    source_revised=row.source_revised,
+                )
                 self._dialogue_items[row.dialogue_id] = dialogue_item
 
                 self.table.setCellWidget(row_index, 0, holder)
@@ -657,6 +662,46 @@ class DialogPage(QWidget):
         finally:
             self.table.setUpdatesEnabled(True)
             self._updating_checks = False
+
+        self._apply_search_filter()
+
+    def _apply_search_filter(self) -> None:
+        query = self.search_edit.text().strip().casefold()
+        for row_index, row in enumerate(self._dialogue_rows):
+            haystack = " ".join(
+                (
+                    str(row.time_in or ""),
+                    str(row.time_out or ""),
+                    str(row.dialogue or ""),
+                )
+            ).casefold()
+            self.table.setRowHidden(
+                row_index,
+                bool(query and query not in haystack),
+            )
+
+    @staticmethod
+    def _style_dialogue_item(
+        item: QTableWidgetItem,
+        *,
+        source_revised: bool,
+    ) -> None:
+        font = item.font()
+        font.setWeight(QFont.Weight.DemiBold)
+        item.setFont(font)
+
+        if source_revised:
+            item.setForeground(
+                QBrush(QColor(COLORS["source_revised"]))
+            )
+            item.setBackground(
+                QBrush(QColor(COLORS["source_revised_soft"]))
+            )
+        else:
+            item.setForeground(
+                QBrush(QColor(COLORS["text_primary"]))
+            )
+            item.setBackground(QBrush())
 
     @staticmethod
     def _single_line_dialogue(value: str) -> str:
@@ -801,6 +846,10 @@ class DialogPage(QWidget):
 
         item.setText(self._single_line_dialogue(row.dialogue))
         item.setToolTip(row.dialogue)
+        self._style_dialogue_item(
+            item,
+            source_revised=False,
+        )
 
     # ------------------------------------------------------------------
     # SOURCE FILE
