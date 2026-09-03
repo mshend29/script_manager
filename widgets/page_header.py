@@ -179,6 +179,7 @@ class PageHeader(QFrame):
             item = self.actions_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
+                widget.setParent(None)
                 widget.deleteLater()
 
         for action in spec.actions:
