@@ -48,7 +48,9 @@ from services.track_rename_service import (
     TrackRenameService,
     parse_simple_export_filename,
 )
+from services.tracking_service import NOT_READY, REVISION, STATUS_LABELS
 from services.tracking_summary_service import TrackingSummaryService
+from widgets.episode_chip import open_dialog_scope, status_palette
 
 
 WORKSPACE_TRACKING = "tracking"
@@ -78,6 +80,9 @@ class CompactTrackingPage(TrackingPage):
         self._compact_status_legend()
         self._add_output_health_sidebar()
         self._build_tracking_workspaces()
+        self.tracking_detail_changed.connect(
+            self._update_tracking_detail_bar
+        )
         self.show_workspace(WORKSPACE_TRACKING)
 
     # ------------------------------------------------------------------
@@ -295,6 +300,7 @@ class CompactTrackingPage(TrackingPage):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         layout.addWidget(self.scroll, 1)
+        layout.addWidget(self._build_tracking_detail_bar())
 
         footer = QHBoxLayout()
         footer.setContentsMargins(0, 0, 0, 0)
@@ -321,6 +327,111 @@ class CompactTrackingPage(TrackingPage):
 
         layout.addLayout(footer)
         return page
+
+    def _build_tracking_detail_bar(self) -> QFrame:
+        self._detail_chip = None
+
+        bar = QFrame()
+        bar.setObjectName("TrackingDetailBar")
+        bar.setVisible(False)
+
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(10, 7, 10, 7)
+        layout.setSpacing(10)
+
+        self.detail_episode = QLabel("Episode —")
+        self.detail_episode.setObjectName("TrackingDetailPrimary")
+        layout.addWidget(self.detail_episode)
+
+        self.detail_character = QLabel("Pilih episode")
+        self.detail_character.setObjectName("TrackingDetailText")
+        self.detail_character.setMinimumWidth(160)
+        layout.addWidget(self.detail_character, 1)
+
+        self.detail_progress = QLabel("0/0 dialog")
+        self.detail_progress.setObjectName("TrackingDetailText")
+        layout.addWidget(self.detail_progress)
+
+        self.detail_status = QLabel("-")
+        self.detail_status.setObjectName("TrackingDetailStatus")
+        self.detail_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.detail_status)
+
+        self.detail_go_dialog_button = QPushButton("Go to Dialog")
+        self.detail_go_dialog_button.setProperty("secondary", True)
+        self.detail_go_dialog_button.clicked.connect(
+            self._go_to_selected_dialog
+        )
+        layout.addWidget(self.detail_go_dialog_button)
+
+        self.detail_revision_button = QPushButton("Mark Revision")
+        self.detail_revision_button.setProperty(
+            "trackingRevisionAction",
+            True,
+        )
+        self.detail_revision_button.clicked.connect(
+            self._tracking_revision_clicked
+        )
+        layout.addWidget(self.detail_revision_button)
+
+        self.tracking_detail_bar = bar
+        return bar
+
+    def _update_tracking_detail_bar(self, chip) -> None:
+        self._detail_chip = chip
+        if not hasattr(self, "tracking_detail_bar"):
+            return
+
+        if chip is None:
+            self.tracking_detail_bar.hide()
+            return
+
+        self.detail_episode.setText(f"Episode {chip.episode_number}")
+        self.detail_character.setText(chip.character_name)
+        self.detail_character.setToolTip(chip.character_name)
+        self.detail_progress.setText(
+            f"{chip.recorded_dialogues}/{chip.total_dialogues} dialog"
+        )
+        self.detail_status.setText(
+            STATUS_LABELS.get(
+                chip.display_status,
+                chip.display_status,
+            )
+        )
+
+        background, foreground, border = status_palette(
+            chip.display_status
+        )
+        self.detail_status.setStyleSheet(
+            f"background: {background}; color: {foreground}; "
+            f"border: 1px solid {border}; border-radius: 6px; "
+            "padding: 4px 9px; font-weight: 750;"
+        )
+
+        self.detail_revision_button.setText(
+            "Clear Revision"
+            if chip.display_status == REVISION
+            else "Mark Revision"
+        )
+        self.tracking_detail_bar.show()
+
+    def _tracking_revision_clicked(self) -> None:
+        chip = self._detail_chip
+        if chip is None:
+            return
+
+        requested = (
+            NOT_READY
+            if chip.display_status == REVISION
+            else REVISION
+        )
+        self.apply_selected_status(requested)
+
+    def _go_to_selected_dialog(self) -> None:
+        chip = self._detail_chip
+        if chip is None:
+            return
+        open_dialog_scope(self.window(), chip)
 
     def show_workspace(self, key: str) -> None:
         normalized = str(key or "").strip().casefold()
