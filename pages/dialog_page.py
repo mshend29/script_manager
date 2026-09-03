@@ -220,9 +220,7 @@ class DialogPage(QWidget):
             lambda: self._select_adjacent_episode(1)
         )
         self.open_source_button.clicked.connect(self._open_source_file)
-        self.copy_all_button.clicked.connect(
-            self._copy_all_dialogues_clicked
-        )
+        self.copy_all_button.clicked.connect(self._copy_all_dialogues_clicked)
         self.search_edit.textChanged.connect(self._apply_search_filter)
         self._update_episode_navigation()
 
