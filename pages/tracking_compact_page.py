@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.theme import COLORS
 from core.database import Database
 from core.project_settings import ProjectSettings
 from dialogs.track_rename_preview_dialog import TrackRenamePreviewDialog
@@ -1071,9 +1072,9 @@ class CompactTrackingPage(TrackingPage):
         )
         self.warning_health_value.setText(str(scoped_warning_count))
         self.warning_health_value.setStyleSheet(
-            "font-weight: 700; color: #b3261e;"
+            f"font-weight: 700; color: {COLORS['error']};"
             if scoped_warning_count
-            else "font-weight: 700; color: #176b2c;"
+            else f"font-weight: 700; color: {COLORS['recorded']};"
         )
 
         self._refresh_track_name_suggestions()
@@ -1151,7 +1152,7 @@ class CompactTrackingPage(TrackingPage):
                     f"{rename_item.detail}\n\n"
                     "Right-click or double-click to preview rename."
                 )
-                output.setForeground(QColor("#9a5a00"))
+                output.setForeground(QColor(COLORS["attention"]))
             else:
                 output = QTableWidgetItem(
                     self._file_cell_text(row.output, pending=False)
@@ -1190,19 +1191,19 @@ class CompactTrackingPage(TrackingPage):
                 )
 
             if row.output.valid and not simplified_candidate:
-                output.setForeground(QColor("#176b2c"))
+                output.setForeground(QColor(COLORS["recorded"]))
             elif row.output.exists and not simplified_candidate:
-                output.setForeground(QColor("#9a5a00"))
+                output.setForeground(QColor(COLORS["attention"]))
 
             if row.delivered.valid:
-                delivered.setForeground(QColor("#176b2c"))
+                delivered.setForeground(QColor(COLORS["recorded"]))
             elif row.delivered.exists:
-                delivered.setForeground(QColor("#9a5a00"))
+                delivered.setForeground(QColor(COLORS["attention"]))
             elif delivery_pending:
-                delivered.setForeground(QColor("#6b7075"))
+                delivered.setForeground(QColor(COLORS["text_secondary"]))
 
             if row.warnings:
-                suggestion.setBackground(QColor("#FFF4CE"))
+                suggestion.setBackground(QColor(COLORS["attention_soft"]))
                 suggestion.setToolTip(
                     suggestion.toolTip()
                     + "\n\nWarnings:\n"
@@ -1229,7 +1230,7 @@ class CompactTrackingPage(TrackingPage):
             suggestion = QTableWidgetItem(
                 f"⚠ {episode_label}{status_label}"
             )
-            suggestion.setBackground(QColor("#FFF4CE"))
+            suggestion.setBackground(QColor(COLORS["attention_soft"]))
             suggestion.setToolTip(
                 rename_item.detail
                 + "\n\nDouble-click Stem / Export untuk memilih "
@@ -1239,7 +1240,7 @@ class CompactTrackingPage(TrackingPage):
             output = QTableWidgetItem(
                 f"↻ {Path(rename_item.source_path).name}"
             )
-            output.setForeground(QColor("#9a5a00"))
+            output.setForeground(QColor(COLORS["attention"]))
             output.setToolTip(
                 f"{rename_item.detail}\n\n"
                 "Right-click atau double-click untuk manual match."
