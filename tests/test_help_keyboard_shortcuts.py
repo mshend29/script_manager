@@ -36,7 +36,7 @@ def test_ctrl_f_navigates_to_script_search():
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "def open_script_search" in main
-    assert 'self.ribbon.select_tab("SCRIPT")' in main
+    assert 'self.sidebar.select_tab("SCRIPT")' in main
     assert "self.focus_script_search()" in main
 
 
