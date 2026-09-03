@@ -31,12 +31,12 @@ def test_about_content_describes_application_and_project_format():
         assert expected in content
 
 
-def test_about_is_wired_to_help_ribbon_and_main_window():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+def test_about_is_wired_to_help_header_and_main_window():
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert '("help.about", "About Script Manager")' in ribbon
+    assert 'HeaderAction("help.about", "About Script Manager")' in header
     assert 'QPushButton("About Script Manager")' in page
     assert '"help.about": self.open_about' in main
     assert "ApplicationInfoService().build()" in main
@@ -61,8 +61,8 @@ def test_about_page_renders_dynamic_engine_information():
     assert "self.about_button" in page
 
 
-def test_help_ribbon_now_contains_complete_planned_help_set():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+def test_help_header_contains_complete_planned_help_set():
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
 
     for action in (
         "help.getting_started",
@@ -72,4 +72,4 @@ def test_help_ribbon_now_contains_complete_planned_help_set():
         "help.report_problem",
         "help.about",
     ):
-        assert action in ribbon
+        assert action in header
