@@ -226,6 +226,11 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     tracking_page.talent_combo.setCurrentIndex(talent_index)
     qapp.processEvents()
 
+    assert tracking_page.episode_combo.parent().objectName() == "TrackingQueuePanel"
+    assert not tracking_page.episode_combo.isHidden()
+    assert tracking_page.episode_combo.maxVisibleItems() == 8
+    assert tracking_page.episode_combo.count() > 1
+
     episode_index = tracking_page.episode_combo.findData(1)
     assert episode_index > 0
     tracking_page.episode_combo.setCurrentIndex(episode_index)

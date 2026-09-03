@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QTimer, Qt, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -50,7 +50,7 @@ STATUS_ORDER = (
 
 
 class TrackingEpisodeComboBox(QComboBox):
-    """Compact episode popup that stays close to its control."""
+    """Compact episode popup with a bounded vertical list."""
 
     MAX_VISIBLE_EPISODES = 8
     MAX_POPUP_HEIGHT = 250
@@ -76,44 +76,6 @@ class TrackingEpisodeComboBox(QComboBox):
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
         super().showPopup()
-        QTimer.singleShot(0, self._position_popup)
-
-    def _position_popup(self) -> None:
-        popup = self.view().window()
-        if popup is None or not popup.isVisible():
-            return
-
-        popup.adjustSize()
-        popup_height = min(
-            popup.height(),
-            self.MAX_POPUP_HEIGHT,
-        )
-        popup_width = max(self.width(), popup.width())
-        popup.resize(popup_width, popup_height)
-
-        screen = self.screen().availableGeometry()
-        combo_top = self.mapToGlobal(QPoint(0, 0))
-        combo_bottom = self.mapToGlobal(QPoint(0, self.height()))
-
-        x = min(
-            max(combo_bottom.x(), screen.left() + 4),
-            max(screen.left() + 4, screen.right() - popup_width - 4),
-        )
-
-        below_y = combo_bottom.y()
-        above_y = combo_top.y() - popup_height
-
-        if below_y + popup_height <= screen.bottom() - 4:
-            y = below_y
-        elif above_y >= screen.top() + 4:
-            y = above_y
-        else:
-            y = min(
-                max(combo_bottom.y(), screen.top() + 4),
-                max(screen.top() + 4, screen.bottom() - popup_height - 4),
-            )
-
-        popup.move(x, y)
 
 
 class TrackingPage(PageShell):

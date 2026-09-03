@@ -67,16 +67,28 @@ def test_tracking_column_headers_stay_outside_scroll_area():
     assert "matrix_layout.addWidget(self.scroll, 1)" in compact
 
 
-def test_tracking_episode_popup_is_compact_and_screen_aware():
+def test_tracking_episode_popup_is_compact_and_uses_native_positioning():
     tracking = _read("pages/tracking_page.py")
 
     assert "class TrackingEpisodeComboBox(QComboBox)" in tracking
     assert "MAX_VISIBLE_EPISODES = 8" in tracking
     assert "MAX_POPUP_HEIGHT = 250" in tracking
-    assert "QTimer.singleShot(0, self._position_popup)" in tracking
-    assert "self.screen().availableGeometry()" in tracking
-    assert "popup.move(x, y)" in tracking
+    assert "view.setMaximumHeight(" in tracking
+    assert "ScrollBarAsNeeded" in tracking
+    assert "super().showPopup()" in tracking
+    assert "_position_popup" not in tracking
     assert "self.episode_combo = TrackingEpisodeComboBox()" in tracking
+
+
+def test_track_to_stem_controls_are_reparented_from_hidden_context():
+    compact = _read("pages/tracking_compact_page.py")
+
+    assert "self.episode_combo.setParent(queue_panel)" in compact
+    assert "self.episode_combo.show()" in compact
+    assert "self.prev_episode_button.setParent(queue_panel)" in compact
+    assert "self.next_episode_button.setParent(queue_panel)" in compact
+    assert "self.character_table.setParent(queue_panel)" in compact
+    assert "Stemmed/Delivered track otomatis keluar dari queue." in compact
 
 
 def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_columns():
