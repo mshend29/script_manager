@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -109,6 +110,20 @@ class CompactTrackingPage(TrackingPage):
         self._track_file_inventory = self._scan_track_files()
         super().set_database(database)
         self._refresh_track_file_ui()
+
+    def refresh_from_database(self, database: Database | None) -> None:
+        if database is not self._database or self._service is None:
+            self.set_database(database)
+            return
+
+        if database is None:
+            self.clear_data()
+            return
+
+        # Tracking depends on both SQLite state and filesystem state. Unlike
+        # the base page, refreshing this workspace must rescan Stem/Delivery
+        # folders so Drive Desktop changes become visible immediately.
+        self.refresh_track_files()
 
     def refresh_track_files(self) -> None:
         if self._database is None:
@@ -299,33 +314,51 @@ class CompactTrackingPage(TrackingPage):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
-        layout.addWidget(self.scroll, 1)
-        layout.addWidget(self._build_tracking_detail_bar())
 
-        footer = QHBoxLayout()
-        footer.setContentsMargins(0, 0, 0, 0)
-        footer.setSpacing(8)
+        body = QSplitter(Qt.Orientation.Horizontal)
+        body.setChildrenCollapsible(False)
+        body.setHandleWidth(6)
+
+        matrix_panel = QWidget()
+        matrix_layout = QVBoxLayout(matrix_panel)
+        matrix_layout.setContentsMargins(0, 0, 0, 0)
+        matrix_layout.setSpacing(8)
+        matrix_layout.addWidget(self.scroll, 1)
+        matrix_layout.addWidget(self._build_tracking_detail_bar())
+        body.addWidget(matrix_panel)
 
         queue_panel = QFrame()
         queue_panel.setObjectName("TrackingQueuePanel")
+        queue_panel.setMinimumWidth(280)
         queue_layout = QVBoxLayout(queue_panel)
-        queue_layout.setContentsMargins(10, 8, 10, 8)
-        queue_layout.setSpacing(5)
+        queue_layout.setContentsMargins(10, 9, 10, 10)
+        queue_layout.setSpacing(6)
 
-        queue_title = QLabel("CHARACTER TO STEM")
+        queue_title = QLabel("TRACKS TO STEM")
         queue_title.setObjectName("TrackingFooterTitle")
         queue_layout.addWidget(queue_title)
 
-        self.character_table.setMinimumHeight(0)
-        self.character_table.setMaximumHeight(112)
+        queue_help = QLabel(
+            "Pilih Talent dan Episode di atas. Daftar ini menunjukkan "
+            "tokoh/track recording yang harus dibuat stem."
+        )
+        queue_help.setObjectName("PageSubtitle")
+        queue_help.setWordWrap(True)
+        queue_layout.addWidget(queue_help)
+
+        self.character_table.setMinimumHeight(180)
+        self.character_table.setMaximumHeight(16777215)
         self.character_table.setAlternatingRowColors(False)
         self.character_table.setShowGrid(False)
-        queue_layout.addWidget(self.character_table)
+        queue_layout.addWidget(self.character_table, 1)
 
-        footer.addWidget(queue_panel, 1)
-        footer.addWidget(self.output_health_summary, 0)
+        queue_layout.addWidget(self.output_health_summary, 0)
+        body.addWidget(queue_panel)
+        body.setStretchFactor(0, 7)
+        body.setStretchFactor(1, 3)
+        body.setSizes([760, 320])
 
-        layout.addLayout(footer)
+        layout.addWidget(body, 1)
         return page
 
     def _build_tracking_detail_bar(self) -> QFrame:
