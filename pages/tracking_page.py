@@ -161,7 +161,7 @@ class TrackingEpisodeComboBox(QComboBox):
             )
 
         popup.show()
-        popup.raise()
+        popup.raise_()
         view.setFocus(Qt.FocusReason.PopupFocusReason)
 
     def hidePopup(self) -> None:
