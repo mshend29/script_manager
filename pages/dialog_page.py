@@ -690,7 +690,7 @@ class DialogPage(QWidget):
 
         if source_revised:
             item.setForeground(
-                QBrush(QColor(COLORS["source_revised"]))
+                QBrush(QColor(COLORS["source_revised_text"]))
             )
             item.setBackground(
                 QBrush(QColor(COLORS["source_revised_soft"]))
