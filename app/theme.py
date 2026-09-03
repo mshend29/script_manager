@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QPalette
+
 
 # Phase 10 light visual system.
 # Keep these values centralized so pages/components do not grow their own
@@ -23,8 +26,8 @@ COLORS = {
     "recorded_soft": "#DCFCE7",
     "ready_to_stem": "#4F46E5",
     "ready_to_stem_soft": "#EEF2FF",
-    "stemmed": "#0F766E",
-    "stemmed_soft": "#CCFBF1",
+    "stemmed": "#0891B2",
+    "stemmed_soft": "#CFFAFE",
     "attention": "#F59E0B",
     "attention_soft": "#FEF3C7",
     "source_revised": "#F97316",
@@ -41,7 +44,7 @@ COLORS = {
     # soft status backgrounds. Accent colors stay available for borders/icons.
     "recorded_text": "#166534",
     "ready_to_stem_text": "#4338CA",
-    "stemmed_text": "#115E59",
+    "stemmed_text": "#155E75",
     "attention_text": "#92400E",
     "source_revised_text": "#9A3412",
     "revision_text": "#6D28D9",
@@ -70,9 +73,130 @@ COMPACT_CONTROL_HEIGHT = 30
 SIDEBAR_WIDTH = 184
 
 
+def apply_light_theme(app) -> None:
+    """Force Script Manager to stay light even when Windows uses dark mode."""
+    app.setStyle("Fusion")
+
+    try:
+        app.styleHints().setColorScheme(Qt.ColorScheme.Light)
+    except (AttributeError, RuntimeError):
+        pass
+
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Window, QColor(COLORS["app_background"]))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor(COLORS["text_primary"]))
+    palette.setColor(QPalette.ColorRole.Base, QColor(COLORS["surface"]))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(COLORS["surface_subtle"]))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(COLORS["surface"]))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor(COLORS["text_primary"]))
+    palette.setColor(QPalette.ColorRole.Text, QColor(COLORS["text_primary"]))
+    palette.setColor(QPalette.ColorRole.Button, QColor(COLORS["surface"]))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor(COLORS["text_primary"]))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor(COLORS["error"]))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(COLORS["accent_soft"]))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor(COLORS["text_primary"]))
+    palette.setColor(QPalette.ColorRole.Link, QColor(COLORS["accent"]))
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.Text,
+        QColor(COLORS["text_muted"]),
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.ButtonText,
+        QColor(COLORS["text_muted"]),
+    )
+    app.setPalette(palette)
+
+
 APP_STYLESHEET = f"""
 QMainWindow {{
     background: {COLORS["app_background"]};
+}}
+
+QDialog,
+QMessageBox,
+QInputDialog {{
+    background: {COLORS["app_background"]};
+    color: {COLORS["text_primary"]};
+}}
+
+QToolTip {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    padding: 4px 6px;
+}}
+
+QTextBrowser,
+QTextEdit,
+QPlainTextEdit {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["md"]}px;
+    selection-background-color: {COLORS["accent_soft"]};
+    selection-color: {COLORS["text_primary"]};
+}}
+
+QComboBox QAbstractItemView,
+QListView,
+QTreeView {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    selection-background-color: {COLORS["accent_soft"]};
+    selection-color: {COLORS["text_primary"]};
+}}
+
+QTabWidget::pane {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+}}
+
+QTabBar::tab {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_secondary"]};
+    border: 1px solid {COLORS["border"]};
+    border-bottom: 0px;
+    padding: 7px 12px;
+}}
+
+QTabBar::tab:selected {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    font-weight: 700;
+}}
+
+QGroupBox {{
+    background: transparent;
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["md"]}px;
+    margin-top: 10px;
+    padding-top: 7px;
+    font-weight: 650;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0px 5px;
+    background: {COLORS["surface"]};
+}}
+
+QDialogButtonBox QPushButton {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border_strong"]};
+    border-radius: {RADII["sm"]}px;
+    min-height: 30px;
+    padding: 0px 14px;
+}}
+
+QDialogButtonBox QPushButton:hover {{
+    background: {COLORS["accent_soft"]};
+    border-color: {COLORS["focus"]};
 }}
 
 QWidget {{
@@ -211,6 +335,52 @@ QPushButton[headerPrimary="true"]:focus,
 QPushButton[headerSecondary="true"]:focus,
 QToolButton[headerOverflow="true"]:focus {{
     border: 2px solid {COLORS["focus"]};
+}}
+
+QMenuBar {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border-bottom: 1px solid {COLORS["border"]};
+    padding: 2px 6px;
+}}
+
+QMenuBar::item {{
+    background: transparent;
+    padding: 5px 9px;
+    border-radius: {RADII["sm"]}px;
+}}
+
+QMenuBar::item:selected,
+QMenuBar::item:pressed {{
+    background: {COLORS["accent_soft"]};
+    color: {COLORS["accent"]};
+}}
+
+#WorkspaceTabs {{
+    background: {COLORS["surface"]};
+    border-bottom: 1px solid {COLORS["border"]};
+}}
+
+#WorkspaceTabs QTabBar::tab {{
+    min-width: 88px;
+    background: transparent;
+    border: 0px;
+    border-bottom: 2px solid transparent;
+    padding: 7px 14px;
+    color: {COLORS["text_secondary"]};
+    font-weight: 650;
+}}
+
+#WorkspaceTabs QTabBar::tab:hover {{
+    background: {COLORS["surface_subtle"]};
+    color: {COLORS["text_primary"]};
+}}
+
+#WorkspaceTabs QTabBar::tab:selected {{
+    background: {COLORS["surface"]};
+    color: {COLORS["accent"]};
+    border-bottom: 2px solid {COLORS["accent"]};
+    font-weight: 750;
 }}
 
 QMenu {{
@@ -833,3 +1003,51 @@ QPushButton[trackingRevisionAction="true"]:hover {{
 }}
 
 """
+
+
+#HelpBrowser {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+    padding: 14px;
+}}
+
+#RecentProjectsDialog,
+#RecentProjectsBody {{
+    background: {COLORS["app_background"]};
+}}
+
+QPushButton[recentProjectCard="true"] {{
+    background: {COLORS["surface"]};
+    color: {COLORS["text_primary"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+    min-height: 92px;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+}}
+
+QPushButton[recentProjectCard="true"]:hover {{
+    background: {COLORS["accent_soft"]};
+    border: 1px solid {COLORS["accent"]};
+}}
+
+#RecentProjectsTitle {{
+    color: {COLORS["text_primary"]};
+    font-size: 19pt;
+    font-weight: 750;
+}}
+
+#RecentProjectsSubtitle {{
+    color: {COLORS["text_secondary"]};
+    font-size: 9.5pt;
+}}
+
+#DialogCastPanel,
+#DialogSelectionFooter {{
+    background: {COLORS["surface"]};
+    border: 1px solid {COLORS["border"]};
+    border-radius: {RADII["lg"]}px;
+}}
