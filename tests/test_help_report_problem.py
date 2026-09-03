@@ -25,12 +25,12 @@ def test_report_problem_help_content_explains_privacy_and_manual_submit():
         assert expected in content
 
 
-def test_report_problem_is_wired_to_help_ribbon_and_main_window():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+def test_report_problem_is_wired_to_help_header_and_main_window():
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert '("help.report_problem", "Report a Problem")' in ribbon
+    assert 'HeaderAction("help.report_problem", "Report a Problem")' in header
     assert 'QPushButton("Report a Problem")' in page
     assert '"help.report_problem": self.report_problem' in main
     assert "ProblemReportService().build()" in main

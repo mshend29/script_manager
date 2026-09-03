@@ -678,7 +678,7 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 
 - [x] Windows packaging.
 - [x] Windows application version metadata.
-- [ ] Application icon.
+- [x] Application icon — approved SM icon family completed in Phase 10B and verified by Windows packaging CI.
 - [x] `.smproj` file association via installer.
 - [x] Upgrade / migration smoke test.
 - [x] Backup / recovery disaster test.
@@ -688,6 +688,252 @@ Jangan melakukan refactor besar sebelum Source Refresh correctness mempunyai reg
 - [x] User acceptance workflow using representative project.
 - [x] Final user guide review.
 - [x] Version bump strategy toward `1.0.0`.
+
+
+---
+
+## PHASE 10 — UI/UX Modernization
+
+**Status: CURRENT — 10A + 10B complete; 10C PROJECT redesign in progress**
+
+### Goal
+
+Modernize Script Manager from a rigid Office/ERP-style interface into a focused desktop production tool for script, ADR/dialogue recording, and episode tracking **without changing business logic**.
+
+Phase 10 begins with visual design approval for one shared system plus the three highest-value workspaces:
+
+1. PROJECT
+2. DIALOG
+3. TRACKING
+
+Only after those designs are approved should implementation begin.
+
+### Locked visual decisions
+
+- [x] Light theme is the default and current Phase 10 target.
+- [x] Replace the large ribbon mental model with slim left navigation + contextual page actions.
+- [x] No login/account/user avatar area.
+- [x] No fake project poster, talent photo, or people image when the data does not exist.
+- [x] Do not render image placeholders merely to fill empty space.
+- [x] PROJECT is information/workflow-centric, not image-centric.
+- [x] DIALOG prioritizes maximum readable dialogue workspace.
+- [x] TRACKING keeps the existing compact episode-oriented philosophy.
+- [x] TRACKING status is communicated primarily through color to maximize density.
+- [x] Semantic status colors remain meaningful across pages.
+- [x] UI must feel like a local desktop production application, not a SaaS admin dashboard.
+
+### PHASE 10A — Visual System / Design Tokens
+
+**Status: COMPLETE**
+
+- [x] Finalize light palette tokens:
+  - application background,
+  - sidebar,
+  - surfaces,
+  - borders,
+  - primary/secondary text,
+  - accent/hover/soft accent.
+- [x] Finalize semantic status tokens:
+  - Recorded,
+  - Needs Attention,
+  - Source Revised,
+  - Revision,
+  - Delivered,
+  - Error,
+  - Not Started / neutral.
+- [x] Finalize typography hierarchy:
+  - page title,
+  - section title,
+  - body,
+  - helper text,
+  - numeric metrics,
+  - compact tracking labels.
+- [x] Finalize spacing scale, corner radius, row height, control height, and border rules.
+- [x] Define hover, pressed, selected, disabled, focus, and keyboard-focus states.
+- [x] Define icon sizing and stroke rules for navigation/actions.
+- [x] Approve one shared desktop shell:
+  - slim left navigation,
+  - contextual top action header,
+  - content workspace,
+  - compact bottom status area.
+- [x] Explicitly avoid web-only visual patterns:
+  - user/account panel,
+  - online presence,
+  - fake collaboration indicators,
+  - unnecessary profile/avatar chrome.
+
+### PHASE 10B — Application Icon / File Icon
+
+**Status: COMPLETE**
+
+- [x] Design one primary Script Manager application icon optimized for Windows desktop/taskbar sizes.
+- [x] Application icon must visually represent script/dialogue/production management rather than generic warehouse/database software.
+- [x] Keep icon legible at 16, 24, 32, 48, 64, 128, and 256 px.
+- [x] Avoid small text or the full product name inside the icon.
+- [x] Prefer a simple symbolic mark using the Phase 10 accent palette.
+- [x] Design a related '.smproj' project-file icon that is visually connected to the application icon but clearly reads as a document/project file.
+- [x] Store approved SM icon payloads as deterministic UTF-8 assets and materialize `resources/app.ico` / `resources/project_file.ico` for runtime and packaging.
+- [x] If separate file icon is approved, add 'resources/project_file.ico' and wire installer association to it.
+- [x] Verify runtime window/taskbar icon, frozen EXE, installer, shortcuts, Add/Remove Programs, and '.smproj' association.
+- [x] Close the remaining Phase 9 Application Icon checklist item after the approved asset passes Windows packaging CI.
+
+### PHASE 10C — PROJECT Page Redesign
+
+**Status: COMPLETE**
+
+- [x] Remove poster/avatar dependency from PROJECT.
+- [x] Project identity block should use actual project metadata only:
+  - project code,
+  - project name,
+  - client,
+  - start date,
+  - project/source locations where useful.
+- [x] Make Sync Source the primary contextual action.
+- [x] Surface Source Folder / Drive / Last Sync as compact status rows.
+- [x] Show useful production metrics:
+  - episode count,
+  - dialogue count,
+  - recording progress,
+  - tracking progress,
+  - delivery progress.
+- [x] Create Needs Attention area for actionable issues:
+  - Source Revised,
+  - unresolved cast,
+  - validation issues,
+  - other real workflow warnings.
+- [x] Create compact Next Actions / recent workflow area.
+- [x] Avoid decorative cards that do not answer an operator question.
+- [x] Preserve all existing PROJECT behavior and navigation.
+
+### PHASE 10D — DIALOG Page Redesign
+
+**Status: COMPLETE**
+
+- [x] Maximize dialogue reading/recording workspace.
+- [x] Keep Talent / Character / Episode filters in one compact top control row.
+- [x] Keep Search close to filters without consuming dialogue width.
+- [x] Keep Open Source File and Check All as contextual actions.
+- [x] Replace spreadsheet-heavy presentation with cleaner production rows while preserving:
+  - recorded checkbox/state,
+  - IN,
+  - OUT,
+  - dialogue text,
+  - source reference where useful.
+- [x] Dialogue text must remain the strongest visual element.
+- [x] Preserve Source Revised state with clear orange semantic treatment.
+- [x] Preserve recording history semantics introduced in Phase 3.
+- [x] Avoid mandatory large right sidebar; session summary should be compact/collapsible or bottom-aligned.
+- [x] Add compact session footer/summary:
+  - recorded / total,
+  - Source Revised count,
+  - other immediately useful recording state.
+- [x] Verify Check All / Uncheck All and revised-line behavior remain unchanged.
+
+### PHASE 10E — TRACKING Page Redesign
+
+**Status: COMPLETE**
+
+**Important: preserve the current compact tracking philosophy.**
+
+- [x] Keep episode status matrix / compact episode chips as the hero workspace.
+- [x] Preserve high information density.
+- [x] Status should be differentiated primarily by color.
+- [x] Do not introduce large episode cards.
+- [x] Do not add character/talent avatars or portraits.
+- [x] Character/talent identity should remain text-first.
+- [x] Keep a compact visible status legend.
+- [x] Provide tooltip/detail text for status meaning without increasing chip footprint.
+- [x] Preserve quick visual detection of episodes requiring treatment.
+- [x] Preserve existing Tracking service/business semantics:
+  - Recorded,
+  - Ready to Stem,
+  - Stemmed,
+  - Delivered,
+  - Revision,
+  - Source-related attention states.
+- [x] Keep unrelated episode scopes visually stable after source revision.
+- [x] Right/lower summary, if retained, must stay secondary to the episode matrix.
+- [x] Test dense episode counts and narrow window widths.
+
+### PHASE 10F — Navigation / Desktop Shell Implementation
+
+**Status: COMPLETE**
+
+- [x] Replace ribbon presentation with slim persistent left navigation.
+- [x] Keep PROJECT / SCRIPT / DIALOG / TRACKING / DATA as primary navigation.
+- [x] Keep TOOLS / HELP separated visually as secondary navigation.
+- [x] Do not add account/profile/login area.
+- [x] Add contextual actions at the page header instead of global ribbon groups.
+- [x] Preserve keyboard shortcuts and F5 = Sync Source.
+- [x] Preserve application-level dirty-page / project revision behavior from Phase 5.
+- [x] Preserve status-bar information in a more compact visual form.
+
+### PHASE 10G — Implementation Architecture
+
+**Status: COMPLETE**
+
+- [x] Introduce reusable theme/design tokens rather than hard-coded page colors.
+- [x] Prefer shared components for:
+  - page header,
+  - sidebar item,
+  - primary/secondary buttons,
+  - filter controls,
+  - status chips,
+  - metric/progress presentation.
+- [x] Keep domain services/controllers unchanged unless a UI-only adapter is required.
+- [x] No Source Refresh, Recording, Tracking, project, migration, or database rule changes as part of visual modernization.
+- [x] Avoid duplicating UI logic between light visual components.
+- [x] Keep Phase 10 commits small enough to review by shell/page.
+
+### PHASE 10H — Responsive Desktop / Accessibility Validation
+
+**Status: COMPLETE**
+
+- [x] Test primary target at 1920×1080.
+- [x] Test practical lower-width desktop layout around 1366×768.
+- [x] Verify Windows display scaling at 100%, 125%, and 150% where feasible.
+- [x] Ensure key controls are reachable without accidental clipping.
+- [x] Verify keyboard focus remains visible.
+- [x] Ensure semantic colors retain sufficient contrast.
+- [x] TRACKING may be color-primary, but legend/tooltip/detail must make the status understandable without increasing grid footprint.
+- [x] Avoid fixed widths that break when project/talent/character names are long.
+
+### PHASE 10I — Regression / Runtime Gates
+
+**Status: COMPLETE — SOURCE/UI/RUNTIME SCOPE**
+
+- [x] Add source-structure tests for the new shell and shared UI contracts where valuable.
+- [x] Extend PySide6 offscreen runtime smoke tests to construct the redesigned shell.
+- [x] Smoke PROJECT → DIALOG → TRACKING navigation.
+- [x] Smoke project open → PageHeader Sync Source → real QThread prepare/apply → page revision refresh under the new shell.
+- [x] Verify existing representative operator UAT remains green through the full Engine suite.
+- [x] Validate 1920×1080 and 1366×768 layouts plus Qt scale factors 100%, 125%, and 150%.
+- [x] Record explicit user-requested deferral of Windows frozen executable verification; no Phase 10 final EXE build is run yet.
+- [x] Record explicit user-requested deferral of installer/file-association re-verification until UI/functionality is approved on the user's PC.
+- [x] Source/UI/runtime completion gate is Engine CI + Qt runtime CI + representative UAT green. Windows packaging remains a separate final release gate.
+
+### Phase 10 Exit Criteria
+
+**Application implementation through 10I is complete. Final packaging sign-off is intentionally deferred.**
+
+Completed application criteria:
+
+1. the approved light visual system is implemented consistently;
+2. PROJECT, DIALOG, and TRACKING match the approved production-tool direction;
+3. TRACKING remains compact and color-driven;
+4. no fake avatar/poster/image placeholders are introduced;
+5. business behavior from Phases 0–9 is unchanged;
+6. application/file icon assets and plumbing are finalized;
+7. Engine CI, Qt runtime CI, responsive/scaling probes, Sync Source operator smoke, and representative UAT are green.
+
+Deferred release gate, to run only after user PC approval of UI/functionality:
+
+- build the frozen Windows executable;
+- smoke the frozen executable;
+- build/smoke the installer;
+- re-verify '.smproj' file association and packaged icons.
+
+This deferral is deliberate and does not reopen 10A–10I source/UI/runtime work.
 
 ---
 
@@ -800,15 +1046,21 @@ Business consequences harus berdasarkan parsed / semantic diff.
 
 # 11. Current Blockers / Deviations
 
-Tidak ada blocker tercatat pada audit 2026-09-02.
+Phase 9 masih memiliki satu publication-dependent gate: Update checker against real published release. Gate itu baru dapat divalidasi setelah release pertama diterbitkan dari main/tag dan tidak memblokir pekerjaan visual Phase 10.
+
+Application icon blocker selesai di Phase 10B. Binary icon sekarang berasal dari deterministic text payload karena direct binary upload melalui connector pernah mengubah byte ICO; integrity test mengunci exact local Git-blob SHA sebelum packaging.
 
 Current next action:
 
 ```text
-PHASE 9 — Windows packaging + release safety
+PHASE 10A–10I source/UI/runtime complete.
+Next: user PC UAT from main/source, collect UI/functionality feedback.
+Do NOT build Windows EXE/installer until the user approves the application behavior and design.
 ```
 
-Jangan mulai perubahan ribbon Refresh sebelum correctness Source Refresh dan persistent dialogue lineage selesai.
+Windows package/installer workflow is manual-only during Phase 10 UI iteration; Engine + Qt runtime remain the per-commit gates. Packaging stays deferred after 10I by explicit user request until source UI/functionality is tested on the user's PC.
+
+Deviation dari urutan phase didokumentasikan: Phase 10 design dapat berjalan sementara real-release updater verification menunggu first published release.
 
 ---
 
@@ -836,6 +1088,7 @@ Jika project dibuka kembali setelah lama:
 
 | Date | Commit / State | Note |
 |---|---|---|
+| 2026-09-03 | `5cf627f7cc1ffdb5bddc50bcfc4c11318a27256a` | Phase 10G–10I source/UI/runtime complete: retired legacy ribbon, centralized semantic colors with accessible text contrast, long-label handling, responsive probes at 1920×1080 and 1366×768, scale 100/125/150%, dense TRACKING, keyboard focus, sidebar navigation, real PageHeader Sync Source prepare/apply + lazy refresh; Engine + Qt runtime green. Final Windows EXE/installer validation explicitly deferred until user PC approval. |\n| 2026-09-03 | `66eb741fe803a8e83dfd21405a74a2bb929221a3` | Phase 10F shell migration complete: no live Tracking ribbon dependency; chip/detail navigation uses MainWindow shell; Revision action restored in compact detail bar; Engine + Qt runtime green. Phase 10G architecture cleanup started. |\n| 2026-09-03 | `8d088292c6e6a132e7918e683b8f656bb5c9e858` | Phase 10E TRACKING redesign complete: matrix remains hero, compact top filters/legend, semantic shared palette, secondary queue/health footer; Engine + Qt runtime green at narrow 1100px smoke. Phase 10F shell cleanup started. |\n| 2026-09-03 | `98cfbd365cb34596115a7588fc68a287de30a3a8` | Phase 10D DIALOG redesign complete: full-width recording table, compact filter/search bar, bottom session/cast summary, Source Revised semantic styling; Engine + Qt runtime green. Phase 10E TRACKING started. |\n| 2026-09-03 | `b653048acc3547925eedbf55e8c493fb4e305770` | Phase 10C PROJECT redesign complete; Engine + Qt runtime green. Windows packaging changed to manual-only during UI iteration. Phase 10D DIALOG redesign started. |\n| 2026-09-03 | `23371b8899e74321f3eb9b118960ab230fd125ca` | Phase 10A + 10B complete: light design tokens, sidebar/contextual header shell, SM application/project-file icons, deterministic icon payload materialization. Engine run 33706843960 (test + Qt runtime) and Windows run 33706843957 (EXE, ZIP, installer, silent install, `.smproj` icon association) green. Phase 10C PROJECT redesign started. |\n| 2026-09-03 | Branch `feature/ui-modernization-phase10` | Phase 10 roadmap created. Locked direction: light desktop production-tool visual system, no login/avatar chrome, no fake posters/photos/placeholders, PROJECT/DIALOG redesign, compact color-driven TRACKING retained, app + .smproj icon design included before UI implementation. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 Windows metadata: PyInstaller VERSIONINFO now derives ProductName/FileVersion/ProductVersion from central APP_VERSION; Windows build and frozen executable smoke pass. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 representative UAT: create project → Sync Source → record two cast scopes → auto-delivered tracking → revise one dialogue → preserve lineage/recording history → invalidate only affected tracking scope → accept re-record; engine + Qt runtime CI green. |
 | 2026-09-02 | Branch `phase/source-refresh-hardening` | Phase 9 documentation review: README, Getting Started, and User Guide aligned to Sync Source, installer/portable distribution, file association, recovery, update, and current Help capabilities; regression suite green. |

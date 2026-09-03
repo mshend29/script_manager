@@ -1,22 +1,11 @@
 name: Windows Package
 
 on:
+  # Packaging is intentionally manual during Phase 10 UI construction.
+  # Re-enable an automatic release/package gate only after the application
+  # workspaces are finalized, to avoid rebuilding Windows artifacts on every
+  # visual iteration.
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "main.py"
-      - "app/**"
-      - "core/**"
-      - "dialogs/**"
-      - "import_engine/**"
-      - "pages/**"
-      - "services/**"
-      - "widgets/**"
-      - "resources/**"
-      - "requirements.txt"
-      - "requirements-build.txt"
-      - "packaging/**"
-      - ".github/workflows/windows-package.yml"
 
 jobs:
   build-windows:
@@ -112,6 +101,21 @@ jobs:
           $extensionKey.Close()
           if ($progId -ne "ScriptManager.Project") {
             throw "Unexpected .smproj ProgID: $progId"
+          }
+
+          $iconKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\ScriptManager.Project\DefaultIcon"
+          )
+          if (-not $iconKey) {
+            throw "ScriptManager.Project icon was not registered."
+          }
+          $projectIcon = [string]$iconKey.GetValue("")
+          $iconKey.Close()
+          if ($projectIcon -notlike '*resources\project_file.ico') {
+            throw "Unexpected .smproj icon: $projectIcon"
+          }
+          if (-not (Test-Path (Join-Path $installDir "resources\project_file.ico"))) {
+            throw "Installed project_file.ico is missing."
           }
 
           $commandKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(

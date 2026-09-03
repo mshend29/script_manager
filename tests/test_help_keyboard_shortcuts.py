@@ -36,13 +36,13 @@ def test_ctrl_f_navigates_to_script_search():
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "def open_script_search" in main
-    assert 'self.ribbon.select_tab("SCRIPT")' in main
+    assert 'self.sidebar.select_tab("SCRIPT")' in main
     assert "self.focus_script_search()" in main
 
 
 def test_keyboard_shortcuts_help_navigation_is_wired():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "KEYBOARD_SHORTCUTS_FILE" in page
@@ -52,7 +52,7 @@ def test_keyboard_shortcuts_help_navigation_is_wired():
 
     assert (
         '("help.keyboard_shortcuts", "Keyboard Shortcuts")'
-        in ribbon
+        in header
     )
     assert (
         '"help.keyboard_shortcuts": self.open_keyboard_shortcuts'

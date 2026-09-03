@@ -37,11 +37,11 @@ def test_help_page_loads_offline_getting_started_document():
 
 
 def test_help_tab_and_getting_started_action_are_wired():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert '"HELP"' in ribbon
-    assert '("help.getting_started", "Getting Started")' in ribbon
+    assert '"HELP": PageHeaderSpec(' in header
+    assert 'HeaderAction("help.getting_started", "Getting Started")' in header
 
     assert '"HELP": HelpPage()' in main
     assert '"help.getting_started": self.open_getting_started' in main

@@ -41,20 +41,20 @@ def test_help_page_can_switch_between_getting_started_and_user_guide():
     assert 'button.setProperty("secondary", not is_active)' in page
 
 
-def test_user_guide_action_is_wired_to_ribbon_and_main_window():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+def test_user_guide_action_is_wired_to_header_and_main_window():
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert '("help.user_guide", "User Guide")' in ribbon
+    assert 'HeaderAction("help.user_guide", "User Guide", primary=True)' in header
     assert '"help.user_guide": self.open_user_guide' in main
     assert "def open_user_guide" in main
     assert "page.show_user_guide()" in main
 
 
 def test_user_guide_stage_does_not_add_later_help_features():
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
 
     for action in (
         "help.shortcuts",
     ):
-        assert action not in ribbon
+        assert action not in header

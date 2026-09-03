@@ -64,9 +64,12 @@ def _project(tmp_path):
         file_path=tmp_path / "qt-runtime.smproj",
         settings=ProjectSettings(
             project_name="Qt Runtime",
+            project_code="QT",
+            client_name="Test Client",
             source_folder=str(source),
             episode_before="第",
             episode_after="集",
+            main_drive_url="https://drive.google.com/example",
         ),
         project_id="qt-runtime-smoke",
     )
@@ -95,6 +98,23 @@ def test_main_window_constructs_all_major_pages(qapp) -> None:
     assert isinstance(window.pages["DATA"], AliasDataPage)
     assert isinstance(window.pages["TRACKING"], CompactTrackingPage)
 
+    assert window.sidebar is not None
+    assert window.page_header is not None
+    assert window.page_header.title_label.text() == "Project"
+
+    window.set_page("DIALOG")
+    qapp.processEvents()
+    assert window.sidebar._buttons["DIALOG"].isChecked()
+    assert window.page_header.title_label.text() == "Dialog"
+
+    window.set_page("TRACKING")
+    qapp.processEvents()
+    assert window.sidebar._buttons["TRACKING"].isChecked()
+    assert window.page_header.title_label.text() == "Tracking"
+
+    window.set_page("PROJECT")
+    qapp.processEvents()
+
     window.close()
     qapp.processEvents()
 
@@ -111,6 +131,14 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
         project.project_file,
         show_errors=False,
     )
+
+    project_page = window.pages["PROJECT"]
+    assert project_page.project_name.text() == "Qt Runtime"
+    assert project_page.project_identity.text() == "QT  •  Test Client"
+    assert project_page.drive_status.text() == "Main drive: Configured"
+    assert project_page.empty_action_bar.isHidden()
+    assert project_page.episodes_card.value_label.text() == "1"
+    assert project_page.dialogues_card.value_label.text() == "1"
 
     window.set_page("SCRIPT")
     qapp.processEvents()
@@ -150,6 +178,82 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert window._project_data_state.is_dirty("DIALOG") is False
     assert dialog_page.talent_combo.findText("Brama") >= 0
     assert dialog_page.talent_combo.findText("Dika") >= 0
+
+    dialog_page.talent_combo.setCurrentIndex(
+        dialog_page.talent_combo.findText("Brama")
+    )
+    qapp.processEvents()
+    dialog_page.character_combo.setCurrentIndex(
+        dialog_page.character_combo.findText("Hendra")
+    )
+    qapp.processEvents()
+    dialog_page.episode_combo.setCurrentIndex(
+        dialog_page.episode_combo.findData(1)
+    )
+    qapp.processEvents()
+
+    assert dialog_page.table.rowCount() == 1
+    assert "0/1 recorded" in dialog_page.selection_info.text()
+
+    dialog_page.search_edit.setText("not present")
+    qapp.processEvents()
+    assert dialog_page.table.isRowHidden(0)
+
+    dialog_page.search_edit.setText("Halo")
+    qapp.processEvents()
+    assert not dialog_page.table.isRowHidden(0)
+
+    dialog_page.set_all_checked(True)
+    qapp.processEvents()
+    assert next(iter(dialog_page._checkboxes.values())).isChecked()
+    assert "1/1 recorded" in dialog_page.selection_info.text()
+
+    window.resize(1100, 700)
+    window.set_page("TRACKING")
+    qapp.processEvents()
+
+    tracking_page = window.pages["TRACKING"]
+    assert window._project_data_state.is_dirty("TRACKING") is False
+    assert tracking_page.layout().itemAt(0).widget().isHidden()
+    assert tracking_page.character_table.maximumHeight() == 112
+    assert tracking_page.status_legend_widget is not None
+    assert tracking_page.tracking_workspace_stack.currentIndex() == 0
+
+    talent_index = tracking_page.talent_combo.findText("Brama")
+    assert talent_index > 0
+    tracking_page.talent_combo.setCurrentIndex(talent_index)
+    qapp.processEvents()
+
+    episode_index = tracking_page.episode_combo.findData(1)
+    assert episode_index > 0
+    tracking_page.episode_combo.setCurrentIndex(episode_index)
+    qapp.processEvents()
+
+    assert tracking_page.episode_combo.currentData() == 1
+    assert len(tracking_page._workspace_rows) == 1
+    assert tracking_page._workspace_rows[0].character_name == "Hendra"
+    assert len(tracking_page._workspace_rows[0].chips) == 1
+
+    chip = tracking_page._workspace_rows[0].chips[0]
+    tracking_page._select_episode_detail(chip)
+    qapp.processEvents()
+
+    assert not tracking_page.tracking_detail_bar.isHidden()
+    assert tracking_page.detail_episode.text() == "Episode 1"
+    assert tracking_page.detail_character.text() == "Hendra"
+    assert tracking_page.detail_revision_button.text() == "Mark Revision"
+
+    tracking_page.detail_revision_button.click()
+    qapp.processEvents()
+    assert tracking_page._detail_chip.display_status == "REVISION"
+    assert tracking_page.detail_revision_button.text() == "Clear Revision"
+
+    tracking_page.detail_go_dialog_button.click()
+    qapp.processEvents()
+    assert window.page_header.title_label.text() == "Dialog"
+    assert dialog_page.talent_combo.currentText() == "Brama"
+    assert dialog_page.character_combo.currentText() == "Hendra"
+    assert dialog_page.episode_combo.currentData() == 1
 
     window.set_page("DATA")
     qapp.processEvents()

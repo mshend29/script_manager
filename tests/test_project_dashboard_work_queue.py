@@ -130,14 +130,14 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "action_requested = Signal(str)" in page
-    assert '"WHAT NEEDS ATTENTION"' in page
+    assert '"NEEDS ATTENTION"' in page
     assert '"RECENT ACTIVITY"' in page
     assert "self.action_requested.emit(key)" in page
 
     assert "handle_project_dashboard_action" in main
     assert 'page.show_section("Unresolved")' in main
     assert 'page.show_section("Validation")' in main
-    assert 'self.ribbon.select_tab("TRACKING")' in main
+    assert 'self.sidebar.select_tab("TRACKING")' in main
 
 
 def test_source_preview_dialog_is_read_only_until_apply():

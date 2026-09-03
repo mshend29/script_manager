@@ -45,7 +45,7 @@ def test_validation_tracking_action_is_wired_to_main_window():
     assert "self.tracking_navigation_requested.emit(" in page
     assert "data_page.tracking_navigation_requested.connect(self.open_tracking_scope)" in window
     assert "def open_tracking_scope(" in window
-    assert 'self.ribbon.select_tab("TRACKING")' in window
+    assert 'self.sidebar.select_tab("TRACKING")' in window
     assert "preferred_talent=int(talent_id)" in window
     assert "preferred_episode=int(episode_number)" in window
     assert "page._select_episode_detail(chip)" in window

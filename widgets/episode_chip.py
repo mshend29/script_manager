@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QMenu, QPushButton
 
+from app.theme import COLORS
 from services.tracking_service import (
     DELIVERED,
     IN_PROGRESS,
@@ -16,18 +17,67 @@ from services.tracking_service import (
 
 
 STATUS_PALETTE = {
-    NOT_STARTED: ("#F2F2F2", "#5C5C5C", "#D0D0D0"),
-    IN_PROGRESS: ("#FFF3CD", "#6B5700", "#E5C95B"),
-    RECORDED: ("#E2F0D9", "#215E21", "#70AD47"),
-    READY_TO_STEM: ("#DDEBF7", "#1F4E78", "#5B9BD5"),
-    STEMMED: ("#E4DFEC", "#4C3A6D", "#8064A2"),
-    DELIVERED: ("#D9EAD3", "#274E13", "#6AA84F"),
-    REVISION: ("#FCE4D6", "#9C0006", "#E26B0A"),
+    NOT_STARTED: (
+        COLORS["neutral_soft"],
+        COLORS["neutral_text"],
+        COLORS["neutral"],
+    ),
+    IN_PROGRESS: (
+        COLORS["attention_soft"],
+        COLORS["attention_text"],
+        COLORS["attention"],
+    ),
+    RECORDED: (
+        COLORS["recorded_soft"],
+        COLORS["recorded_text"],
+        COLORS["recorded"],
+    ),
+    READY_TO_STEM: (
+        COLORS["ready_to_stem_soft"],
+        COLORS["ready_to_stem_text"],
+        COLORS["ready_to_stem"],
+    ),
+    STEMMED: (
+        COLORS["stemmed_soft"],
+        COLORS["stemmed_text"],
+        COLORS["stemmed"],
+    ),
+    DELIVERED: (
+        COLORS["delivered_soft"],
+        COLORS["delivered_text"],
+        COLORS["delivered"],
+    ),
+    REVISION: (
+        COLORS["revision_soft"],
+        COLORS["revision_text"],
+        COLORS["revision"],
+    ),
 }
 
 
 def status_palette(status: str) -> tuple[str, str, str]:
     return STATUS_PALETTE.get(status, STATUS_PALETTE[NOT_STARTED])
+
+
+def open_dialog_scope(window, chip: TrackingChip) -> bool:
+    pages = getattr(window, "pages", None)
+    set_page = getattr(window, "set_page", None)
+    if not isinstance(pages, dict) or not callable(set_page):
+        return False
+
+    dialog_page = pages.get("DIALOG")
+    if dialog_page is None or not hasattr(dialog_page, "reload"):
+        return False
+
+    # Let MainWindow bind/refresh the DIALOG workspace first, then apply the
+    # exact Talent -> Character -> Episode scope represented by this chip.
+    set_page("DIALOG")
+    dialog_page.reload(
+        preferred_talent_id=chip.talent_id,
+        preferred_character_id=chip.character_id,
+        preferred_episode=chip.episode_number,
+    )
+    return True
 
 
 class EpisodeChipButton(QPushButton):
@@ -59,25 +109,7 @@ class EpisodeChipButton(QPushButton):
         )
 
     def _go_to_dialog(self) -> None:
-        window = self.window()
-        ribbon = getattr(window, "ribbon", None)
-        pages = getattr(window, "pages", None)
-        if ribbon is None or not isinstance(pages, dict):
-            return
-
-        dialog_page = pages.get("DIALOG")
-        if dialog_page is None or not hasattr(dialog_page, "reload"):
-            return
-
-        # Selecting the ribbon tab first lets MainWindow bind the active
-        # project database to DIALOG. Then reuse the existing chained filter
-        # loader so Talent -> Tokoh -> Episode opens exactly this Tracking chip.
-        ribbon.select_tab("DIALOG")
-        dialog_page.reload(
-            preferred_talent_id=self.chip.talent_id,
-            preferred_character_id=self.chip.character_id,
-            preferred_episode=self.chip.episode_number,
-        )
+        open_dialog_scope(self.window(), self.chip)
 
     def _apply_status_style(self) -> None:
         background, foreground, border = status_palette(

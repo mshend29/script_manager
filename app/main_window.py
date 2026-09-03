@@ -7,6 +7,7 @@ from PySide6.QtCore import QThread, Qt, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
+    QHBoxLayout,
     QInputDialog,
     QLabel,
     QMainWindow,
@@ -18,7 +19,6 @@ from PySide6.QtWidgets import (
 )
 
 from app.project_data_state import DATA_PAGE_NAMES, ProjectDataRevisionState
-from app.ribbon import Ribbon
 from app.source_sync_controller import SourceSyncController
 from app.update_check_worker import UpdateCheckWorker
 from core.app_paths import project_backups_dir
@@ -44,6 +44,8 @@ from services.application_info_service import ApplicationInfoService
 from services.backup_service import BackupService
 from services.problem_report_service import ProblemReportService
 from services.project_dashboard_service import ProjectDashboardService
+from widgets.page_header import PageHeader
+from widgets.sidebar_nav import SidebarNavigation
 
 
 class MainWindow(QMainWindow):
@@ -78,15 +80,26 @@ class MainWindow(QMainWindow):
         self._update_check_worker: UpdateCheckWorker | None = None
 
         central = QWidget()
-        root = QVBoxLayout(central)
+        central.setObjectName("AppShell")
+        root = QHBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self.ribbon = Ribbon()
-        root.addWidget(self.ribbon)
+        self.sidebar = SidebarNavigation()
+        root.addWidget(self.sidebar)
+
+        workspace = QWidget()
+        workspace_layout = QVBoxLayout(workspace)
+        workspace_layout.setContentsMargins(0, 0, 0, 0)
+        workspace_layout.setSpacing(0)
+
+        self.page_header = PageHeader()
+        workspace_layout.addWidget(self.page_header)
 
         self.page_stack = QStackedWidget()
-        root.addWidget(self.page_stack, 1)
+        workspace_layout.addWidget(self.page_stack, 1)
+
+        root.addWidget(workspace, 1)
 
         self.pages = {
             "PROJECT": ProjectPage(),
@@ -103,8 +116,8 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central)
 
-        self.ribbon.tab_changed.connect(self.set_page)
-        self.ribbon.action_triggered.connect(self.handle_ribbon_action)
+        self.sidebar.page_requested.connect(self.set_page)
+        self.page_header.action_requested.connect(self.handle_ribbon_action)
 
         project_page = self.pages["PROJECT"]
         project_page.new_button.clicked.connect(self.new_project)
@@ -193,6 +206,8 @@ class MainWindow(QMainWindow):
             self.pages["TOOLS"].set_project(project)
 
         self.page_stack.setCurrentWidget(self.pages[page_name])
+        self.sidebar.select_page(page_name)
+        self.page_header.set_page(page_name)
         self.statusBar().showMessage(f"{page_name.title()} page")
 
     # ------------------------------------------------------------------
@@ -677,7 +692,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.ribbon.select_tab("TOOLS")
+        self.sidebar.select_tab("TOOLS")
         page = self.pages["TOOLS"]
         page.set_project(project, run_diagnostics=False)
         page.refresh_view()
@@ -693,7 +708,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.ribbon.select_tab("TOOLS")
+        self.sidebar.select_tab("TOOLS")
         page = self.pages["TOOLS"]
         page.set_project(project, run_diagnostics=False)
         page.audit_table.setFocus()
@@ -1219,11 +1234,18 @@ class MainWindow(QMainWindow):
         page.project_name.setText(
             settings.project_name or "Unnamed Project"
         )
+        page.set_project_metadata(
+            project_code=settings.project_code,
+            client_name=settings.client_name,
+            drive_configured=bool(
+                str(settings.main_drive_url or "").strip()
+            ),
+        )
         page.project_location.setText(
             f"Project file: {project.project_file}"
         )
         page.source_path.setText(
-            f"Source: {settings.source_folder or '-'}"
+            f"Source folder: {settings.source_folder or '-'}"
         )
         page.start_date.setText(
             f"Start date: {settings.start_date or '-'}"
@@ -1237,7 +1259,7 @@ class MainWindow(QMainWindow):
             last_sync = ""
 
         page.last_refresh.setText(
-            f"Last refresh: {last_sync or '-'}"
+            f"Last sync: {last_sync or '-'}"
         )
 
         try:
@@ -1268,7 +1290,7 @@ class MainWindow(QMainWindow):
         elif snapshot.actions:
             page.info_text.setText(
                 f"{len(snapshot.actions)} jenis pekerjaan membutuhkan perhatian. "
-                "Gunakan What Needs Attention untuk langsung membuka workflow terkait."
+                "Gunakan Needs Attention untuk langsung membuka workflow terkait."
             )
         else:
             page.info_text.setText(
@@ -1287,21 +1309,21 @@ class MainWindow(QMainWindow):
             return
 
         if key == "needs_review":
-            self.ribbon.select_tab("DATA")
+            self.sidebar.select_tab("DATA")
             page = self.pages["DATA"]
             page.set_database(project.database)
             page.show_section("Unresolved")
             return
 
         if key in {"system_errors", "workflow_warnings"}:
-            self.ribbon.select_tab("DATA")
+            self.sidebar.select_tab("DATA")
             page = self.pages["DATA"]
             page.set_database(project.database)
             page.show_section("Validation")
             return
 
         if key == "recording":
-            self.ribbon.select_tab("DIALOG")
+            self.sidebar.select_tab("DIALOG")
             self.pages["DIALOG"].set_database(project.database)
             return
 
@@ -1311,7 +1333,7 @@ class MainWindow(QMainWindow):
             "pending_delivery",
             "file_warnings",
         }:
-            self.ribbon.select_tab("TRACKING")
+            self.sidebar.select_tab("TRACKING")
             page = self.pages["TRACKING"]
             if hasattr(page, "configure_track_files"):
                 page.configure_track_files(project.settings)
@@ -1366,7 +1388,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.ribbon.select_tab("SCRIPT")
+        self.sidebar.select_tab("SCRIPT")
         self.focus_script_search()
 
     def open_dialog_source(self) -> None:
@@ -1390,7 +1412,7 @@ class MainWindow(QMainWindow):
         if project is None:
             return
 
-        self.ribbon.select_tab("TRACKING")
+        self.sidebar.select_tab("TRACKING")
         page = self.pages["TRACKING"]
         if hasattr(page, "show_workspace"):
             page.show_workspace("tracking")
@@ -1530,25 +1552,25 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def open_getting_started(self) -> None:
-        self.ribbon.select_tab("HELP")
+        self.sidebar.select_tab("HELP")
         page = self.pages["HELP"]
         page.show_getting_started()
         self.statusBar().showMessage("Getting Started", 3000)
 
     def open_user_guide(self) -> None:
-        self.ribbon.select_tab("HELP")
+        self.sidebar.select_tab("HELP")
         page = self.pages["HELP"]
         page.show_user_guide()
         self.statusBar().showMessage("User Guide", 3000)
 
     def open_keyboard_shortcuts(self) -> None:
-        self.ribbon.select_tab("HELP")
+        self.sidebar.select_tab("HELP")
         page = self.pages["HELP"]
         page.show_keyboard_shortcuts()
         self.statusBar().showMessage("Keyboard Shortcuts", 3000)
 
     def check_for_updates(self) -> None:
-        self.ribbon.select_tab("HELP")
+        self.sidebar.select_tab("HELP")
         page = self.pages["HELP"]
 
         if self._update_check_running():
@@ -1638,7 +1660,7 @@ class MainWindow(QMainWindow):
             )
 
     def open_about(self) -> None:
-        self.ribbon.select_tab("HELP")
+        self.sidebar.select_tab("HELP")
         info = ApplicationInfoService().build()
         self.pages["HELP"].show_about(info)
         self.statusBar().showMessage(
@@ -1647,7 +1669,7 @@ class MainWindow(QMainWindow):
         )
 
     def report_problem(self) -> None:
-        self.ribbon.select_tab("HELP")
+        self.sidebar.select_tab("HELP")
         report = ProblemReportService().build()
         self.pages["HELP"].show_report_problem(report)
         self.statusBar().showMessage(
@@ -1670,7 +1692,7 @@ class MainWindow(QMainWindow):
             )
 
     # ------------------------------------------------------------------
-    # RIBBON
+    # CONTEXTUAL ACTION ROUTING
     # ------------------------------------------------------------------
 
     def handle_ribbon_action(self, action_id: str) -> None:

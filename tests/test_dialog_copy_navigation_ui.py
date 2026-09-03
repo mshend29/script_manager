@@ -15,9 +15,11 @@ def test_dialog_table_is_single_line_and_has_copy_all_control():
 
     assert "self.table.setWordWrap(False)" in source
     assert "self.table.setTextElideMode(Qt.TextElideMode.ElideRight)" in source
-    assert "self.table.verticalHeader().setDefaultSectionSize(34)" in source
+    assert "self.table.verticalHeader().setDefaultSectionSize(38)" in source
     assert 'QPushButton("Copy All Dialog")' in source
     assert "self.copy_all_button.clicked.connect(self._copy_all_dialogues_clicked)" in source
+    assert 'self.search_edit.setPlaceholderText("Search dialog…")' in source
+    assert "self.search_edit.textChanged.connect(self._apply_search_filter)" in source
 
 
 def test_copy_all_dialogues_copies_only_dialog_text_one_record_per_line():

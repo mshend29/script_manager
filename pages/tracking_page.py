@@ -44,6 +44,7 @@ STATUS_ORDER = (
     NOT_STARTED,
     IN_PROGRESS,
     RECORDED,
+    READY_TO_STEM,
     STEMMED,
     DELIVERED,
     REVISION,
@@ -60,7 +61,6 @@ class TrackingPage(PageShell):
         self._loading = False
         self._workspace_rows: list[TrackingCharacterRow] = []
         self._selected_chip_key: tuple[int, int, int] | None = None
-        self._connected_ribbon = None
 
         context = ContextPanel("TRACKING")
 
@@ -70,7 +70,12 @@ class TrackingPage(PageShell):
 
         context.add_section_title("TALENT")
         self.talent_combo = QComboBox()
+        self.talent_combo.setObjectName("TrackingTalentFilter")
         self.talent_combo.addItem("Pilih talent", None)
+        self.talent_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.talent_combo.setMinimumContentsLength(12)
         context.add_widget(self.talent_combo)
 
         context.add_section_title("STATUS")
@@ -79,7 +84,12 @@ class TrackingPage(PageShell):
 
         context.add_section_title("EPISODE")
         self.episode_combo = QComboBox()
+        self.episode_combo.setObjectName("TrackingEpisodeFilter")
         self.episode_combo.addItem("Pilih episode", None)
+        self.episode_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.episode_combo.setMinimumContentsLength(12)
         context.add_widget(self.episode_combo)
 
         episode_nav = QWidget()
@@ -96,6 +106,7 @@ class TrackingPage(PageShell):
 
         context.add_section_title("CHARACTER TO STEM")
         self.character_table = QTableWidget(0, 2)
+        self.character_table.setObjectName("TrackingCharacterQueue")
         self.character_table.setHorizontalHeaderLabels(["TOKOH", "STATUS"])
         self.character_table.setMinimumHeight(180)
         self.character_table.setAlternatingRowColors(True)
@@ -120,7 +131,7 @@ class TrackingPage(PageShell):
         self.title_label = QLabel("Tracking")
         self.title_label.setObjectName("PageTitle")
         self.summary_label = QLabel("No project open")
-        self.summary_label.setObjectName("MutedLabel")
+        self.summary_label.setObjectName("TrackingSummary")
         self.summary_label.setContentsMargins(8, 0, 5, 0)
 
         header_row = QHBoxLayout()
@@ -131,6 +142,7 @@ class TrackingPage(PageShell):
         layout.addLayout(header_row)
 
         self.scroll = QScrollArea()
+        self.scroll.setObjectName("TrackingScroll")
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(
@@ -138,6 +150,7 @@ class TrackingPage(PageShell):
         )
 
         self.rows_container = QWidget()
+        self.rows_container.setObjectName("TrackingRows")
         self.rows_layout = QGridLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_layout.setHorizontalSpacing(12)
@@ -164,6 +177,7 @@ class TrackingPage(PageShell):
     def _status_legend_label(status: str) -> QLabel:
         background, foreground, border = status_palette(status)
         label = QLabel(f"■  {STATUS_LABELS[status]}")
+        label.setObjectName("TrackingLegendChip")
         label.setStyleSheet(
             f"background: {background}; color: {foreground}; "
             f"border: 1px solid {border}; border-radius: 5px; "
@@ -176,7 +190,6 @@ class TrackingPage(PageShell):
     # ------------------------------------------------------------------
 
     def set_database(self, database: Database | None) -> None:
-        self._ensure_ribbon_connection()
         current_talent = self.talent_combo.currentData()
         current_episode = self.episode_combo.currentData()
 
@@ -397,10 +410,9 @@ class TrackingPage(PageShell):
         character.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        character.setStyleSheet(
-            "background: #ffffff; border-bottom: 1px solid #ececec; "
-            "padding: 4px 8px; font-weight: 600;"
-        )
+        character.setObjectName("TrackingCharacterName")
+        character.setWordWrap(True)
+        character.setToolTip(row.character_name)
 
         episode_holder = QWidget()
         episode_holder.setSizePolicy(
@@ -419,8 +431,8 @@ class TrackingPage(PageShell):
 
     def _show_empty_state(self, text: str) -> None:
         label = QLabel(text)
+        label.setObjectName("TrackingEmptyState")
         label.setWordWrap(True)
-        label.setStyleSheet("padding: 18px; color: #6b7075;")
         self.rows_layout.addWidget(label, 1, 0, 1, 2)
 
     # ------------------------------------------------------------------
@@ -466,23 +478,10 @@ class TrackingPage(PageShell):
         self.character_table.setItem(0, 0, item)
 
     # ------------------------------------------------------------------
-    # RIBBON EPISODE DETAIL / DOWNSTREAM STATUS
+    # EPISODE DETAIL / DOWNSTREAM STATUS
     # ------------------------------------------------------------------
 
-    def _ensure_ribbon_connection(self) -> None:
-        window = self.window()
-        ribbon = getattr(window, "ribbon", None)
-        if ribbon is None or ribbon is self._connected_ribbon:
-            return
-
-        self.tracking_detail_changed.connect(ribbon.set_tracking_detail)
-        ribbon.tracking_status_change_requested.connect(
-            self.apply_selected_status
-        )
-        self._connected_ribbon = ribbon
-
     def _select_episode_detail(self, chip: TrackingChip) -> None:
-        self._ensure_ribbon_connection()
         self._selected_chip_key = (
             chip.episode_id,
             chip.talent_id,

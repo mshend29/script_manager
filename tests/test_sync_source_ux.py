@@ -6,10 +6,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_ribbon_exposes_one_sync_source_action_only() -> None:
-    ribbon = (ROOT / "app" / "ribbon.py").read_text(encoding="utf-8")
+def test_contextual_header_exposes_one_sync_source_action_only() -> None:
+    header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
 
-    assert ribbon.count('("source.sync", "Sync Source")') == 1
+    assert header.count('HeaderAction("source.sync", "Sync Source"') == 1
 
     for removed in (
         "source.import",
@@ -22,10 +22,10 @@ def test_ribbon_exposes_one_sync_source_action_only() -> None:
         "Refresh Data",
         "Refresh View",
     ):
-        assert removed not in ribbon
+        assert removed not in header
 
 
-def test_main_window_routes_f5_and_ribbon_to_same_sync_source_method() -> None:
+def test_main_window_routes_f5_and_header_to_same_sync_source_method() -> None:
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert '("F5", self.sync_source)' in main

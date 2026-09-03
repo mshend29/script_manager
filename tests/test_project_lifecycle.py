@@ -175,7 +175,7 @@ def test_windows_file_association_spec_uses_smproj_open_command(tmp_path):
 def test_project_lifecycle_actions_are_wired_to_ui():
     root = Path(__file__).resolve().parents[1]
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
-    ribbon = (root / "app" / "ribbon.py").read_text(encoding="utf-8")
+    header = (root / "widgets" / "page_header.py").read_text(encoding="utf-8")
     page = (root / "pages" / "project_page.py").read_text(encoding="utf-8")
 
     for action in (
@@ -185,7 +185,7 @@ def test_project_lifecycle_actions_are_wired_to_ui():
         "project.recover",
     ):
         assert action in main
-        assert action in ribbon
+        assert action in header
 
     assert "Open Recent" in page
     assert "Recover Project" in page

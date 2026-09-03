@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.theme import COLORS
 from core.database import Database
 from core.project_settings import ProjectSettings
 from dialogs.track_rename_preview_dialog import TrackRenamePreviewDialog
@@ -47,7 +48,9 @@ from services.track_rename_service import (
     TrackRenameService,
     parse_simple_export_filename,
 )
+from services.tracking_service import NOT_READY, REVISION, STATUS_LABELS
 from services.tracking_summary_service import TrackingSummaryService
+from widgets.episode_chip import open_dialog_scope, status_palette
 
 
 WORKSPACE_TRACKING = "tracking"
@@ -77,6 +80,9 @@ class CompactTrackingPage(TrackingPage):
         self._compact_status_legend()
         self._add_output_health_sidebar()
         self._build_tracking_workspaces()
+        self.tracking_detail_changed.connect(
+            self._update_tracking_detail_bar
+        )
         self.show_workspace(WORKSPACE_TRACKING)
 
     # ------------------------------------------------------------------
@@ -197,20 +203,58 @@ class CompactTrackingPage(TrackingPage):
 
     def _build_tracking_workspaces(self) -> None:
         shell_layout = self.layout()
-        workspace = shell_layout.itemAt(1).widget() if shell_layout else None
+        context = (
+            shell_layout.itemAt(0).widget()
+            if shell_layout and shell_layout.count() > 1
+            else None
+        )
+        workspace = (
+            shell_layout.itemAt(1).widget()
+            if shell_layout and shell_layout.count() > 1
+            else None
+        )
         root = workspace.layout() if workspace is not None else None
         if root is None:
             return
 
-        # TrackingPage created self.scroll directly in the common workspace.
-        # Move it into the first stacked workspace rather than rebuilding the
-        # character/episode grid.
+        if context is not None:
+            context.hide()
+
+        self.drive_button.hide()
+        self.title_label.hide()
         root.removeWidget(self.scroll)
 
-        navigation = QWidget()
+        filter_bar = QFrame()
+        filter_bar.setObjectName("TrackingFilterBar")
+        filter_layout = QHBoxLayout(filter_bar)
+        filter_layout.setContentsMargins(12, 9, 12, 9)
+        filter_layout.setSpacing(8)
+
+        talent_label = QLabel("Talent")
+        talent_label.setObjectName("TrackingFilterLabel")
+        filter_layout.addWidget(talent_label)
+        self.talent_combo.setMinimumWidth(170)
+        filter_layout.addWidget(self.talent_combo)
+
+        episode_label = QLabel("Episode")
+        episode_label.setObjectName("TrackingFilterLabel")
+        filter_layout.addWidget(episode_label)
+        self.episode_combo.setMinimumWidth(132)
+        filter_layout.addWidget(self.episode_combo)
+
+        self.prev_episode_button.setProperty("trackingNav", True)
+        self.next_episode_button.setProperty("trackingNav", True)
+        filter_layout.addWidget(self.prev_episode_button)
+        filter_layout.addWidget(self.next_episode_button)
+
+        filter_layout.addSpacing(8)
+        filter_layout.addWidget(self.summary_label, 1)
+
+        navigation = QFrame()
+        navigation.setObjectName("TrackingWorkspaceTabs")
         navigation_layout = QHBoxLayout(navigation)
-        navigation_layout.setContentsMargins(0, 0, 0, 3)
-        navigation_layout.setSpacing(6)
+        navigation_layout.setContentsMargins(4, 3, 4, 3)
+        navigation_layout.setSpacing(4)
 
         self.workspace_buttons: dict[str, QPushButton] = {}
         for key, label in (
@@ -220,6 +264,7 @@ class CompactTrackingPage(TrackingPage):
         ):
             button = QPushButton(label)
             button.setProperty("secondary", True)
+            button.setProperty("trackingWorkspaceTab", True)
             button.setCheckable(True)
             button.clicked.connect(
                 lambda checked=False, workspace_key=key:
@@ -230,6 +275,9 @@ class CompactTrackingPage(TrackingPage):
         navigation_layout.addStretch(1)
 
         self.tracking_workspace_stack = QStackedWidget()
+        self.tracking_workspace_stack.setObjectName(
+            "TrackingWorkspaceStack"
+        )
         self.tracking_workspace_stack.addWidget(
             self._build_tracking_grid_workspace()
         )
@@ -240,16 +288,147 @@ class CompactTrackingPage(TrackingPage):
             self._build_output_health_workspace()
         )
 
-        root.insertWidget(1, navigation)
-        root.insertWidget(2, self.tracking_workspace_stack, 1)
+        root.insertWidget(0, filter_bar)
+        root.insertWidget(1, self.status_legend_widget)
+        root.insertWidget(2, navigation)
+        root.insertWidget(3, self.tracking_workspace_stack, 1)
 
     def _build_tracking_grid_workspace(self) -> QWidget:
         page = QWidget()
+        page.setObjectName("TrackingGridWorkspace")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setSpacing(8)
         layout.addWidget(self.scroll, 1)
+        layout.addWidget(self._build_tracking_detail_bar())
+
+        footer = QHBoxLayout()
+        footer.setContentsMargins(0, 0, 0, 0)
+        footer.setSpacing(8)
+
+        queue_panel = QFrame()
+        queue_panel.setObjectName("TrackingQueuePanel")
+        queue_layout = QVBoxLayout(queue_panel)
+        queue_layout.setContentsMargins(10, 8, 10, 8)
+        queue_layout.setSpacing(5)
+
+        queue_title = QLabel("CHARACTER TO STEM")
+        queue_title.setObjectName("TrackingFooterTitle")
+        queue_layout.addWidget(queue_title)
+
+        self.character_table.setMinimumHeight(0)
+        self.character_table.setMaximumHeight(112)
+        self.character_table.setAlternatingRowColors(False)
+        self.character_table.setShowGrid(False)
+        queue_layout.addWidget(self.character_table)
+
+        footer.addWidget(queue_panel, 1)
+        footer.addWidget(self.output_health_summary, 0)
+
+        layout.addLayout(footer)
         return page
+
+    def _build_tracking_detail_bar(self) -> QFrame:
+        self._detail_chip = None
+
+        bar = QFrame()
+        bar.setObjectName("TrackingDetailBar")
+        bar.setVisible(False)
+
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(10, 7, 10, 7)
+        layout.setSpacing(10)
+
+        self.detail_episode = QLabel("Episode —")
+        self.detail_episode.setObjectName("TrackingDetailPrimary")
+        layout.addWidget(self.detail_episode)
+
+        self.detail_character = QLabel("Pilih episode")
+        self.detail_character.setObjectName("TrackingDetailText")
+        self.detail_character.setMinimumWidth(160)
+        layout.addWidget(self.detail_character, 1)
+
+        self.detail_progress = QLabel("0/0 dialog")
+        self.detail_progress.setObjectName("TrackingDetailText")
+        layout.addWidget(self.detail_progress)
+
+        self.detail_status = QLabel("-")
+        self.detail_status.setObjectName("TrackingDetailStatus")
+        self.detail_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.detail_status)
+
+        self.detail_go_dialog_button = QPushButton("Go to Dialog")
+        self.detail_go_dialog_button.setProperty("secondary", True)
+        self.detail_go_dialog_button.clicked.connect(
+            self._go_to_selected_dialog
+        )
+        layout.addWidget(self.detail_go_dialog_button)
+
+        self.detail_revision_button = QPushButton("Mark Revision")
+        self.detail_revision_button.setProperty("trackingRevisionAction", True)
+        self.detail_revision_button.clicked.connect(
+            self._tracking_revision_clicked
+        )
+        layout.addWidget(self.detail_revision_button)
+
+        self.tracking_detail_bar = bar
+        return bar
+
+    def _update_tracking_detail_bar(self, chip) -> None:
+        self._detail_chip = chip
+        if not hasattr(self, "tracking_detail_bar"):
+            return
+
+        if chip is None:
+            self.tracking_detail_bar.hide()
+            return
+
+        self.detail_episode.setText(f"Episode {chip.episode_number}")
+        self.detail_character.setText(chip.character_name)
+        self.detail_character.setToolTip(chip.character_name)
+        self.detail_progress.setText(
+            f"{chip.recorded_dialogues}/{chip.total_dialogues} dialog"
+        )
+        self.detail_status.setText(
+            STATUS_LABELS.get(
+                chip.display_status,
+                chip.display_status,
+            )
+        )
+
+        background, foreground, border = status_palette(
+            chip.display_status
+        )
+        self.detail_status.setStyleSheet(
+            f"background: {background}; color: {foreground}; "
+            f"border: 1px solid {border}; border-radius: 6px; "
+            "padding: 4px 9px; font-weight: 750;"
+        )
+
+        self.detail_revision_button.setText(
+            "Clear Revision"
+            if chip.display_status == REVISION
+            else "Mark Revision"
+        )
+        self.tracking_detail_bar.show()
+
+    def _tracking_revision_clicked(self) -> None:
+        chip = self._detail_chip
+        if chip is None:
+            return
+
+        requested = (
+            NOT_READY
+            if chip.display_status == REVISION
+            else REVISION
+        )
+        self.apply_selected_status(requested)
+
+    def _go_to_selected_dialog(self) -> None:
+        chip = self._detail_chip
+        if chip is None:
+            return
+        open_dialog_scope(self.window(), chip)
 
     def show_workspace(self, key: str) -> None:
         normalized = str(key or "").strip().casefold()
@@ -287,115 +466,80 @@ class CompactTrackingPage(TrackingPage):
     # ------------------------------------------------------------------
 
     def _compact_status_legend(self) -> None:
-        shell_layout = self.layout()
-        if shell_layout is None or shell_layout.count() < 1:
-            return
-        context = shell_layout.itemAt(0).widget()
-        root = getattr(context, "layout_root", None)
-        if root is None:
-            return
+        self.status_legend_widget = QFrame()
+        self.status_legend_widget.setObjectName("TrackingLegendBar")
 
-        status_index = -1
-        episode_index = -1
-        old_status_labels: list[QLabel] = []
+        layout = QHBoxLayout(self.status_legend_widget)
+        layout.setContentsMargins(10, 5, 10, 5)
+        layout.setSpacing(5)
 
-        for index in range(root.count()):
-            item = root.itemAt(index)
-            widget = item.widget()
-            if isinstance(widget, QLabel) and widget.objectName() == "SectionTitle":
-                if widget.text() == "STATUS":
-                    status_index = index
-                elif widget.text() == "EPISODE" and status_index >= 0:
-                    episode_index = index
-                    break
+        title = QLabel("STATUS")
+        title.setObjectName("TrackingFilterLabel")
+        layout.addWidget(title)
 
-        if status_index < 0:
-            return
-
-        stop = episode_index if episode_index >= 0 else root.count()
-        for index in range(status_index + 1, stop):
-            widget = root.itemAt(index).widget()
-            if isinstance(widget, QLabel) and widget.objectName() != "SectionTitle":
-                old_status_labels.append(widget)
-
-        for label in old_status_labels:
-            label.hide()
-
-        holder = QWidget()
-        grid = QGridLayout(holder)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(6)
-        grid.setVerticalSpacing(6)
-        for index, status in enumerate(STATUS_ORDER):
+        for status in STATUS_ORDER:
             label = self._status_legend_label(status)
             label.setMinimumWidth(0)
-            grid.addWidget(label, index // 2, index % 2)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
+            layout.addWidget(label)
 
-        root.insertWidget(status_index + 1, holder)
-
-    # ------------------------------------------------------------------
-    # OUTPUT HEALTH SIDEBAR
-    # ------------------------------------------------------------------
+        layout.addStretch(1)
 
     def _add_output_health_sidebar(self) -> None:
-        shell_layout = self.layout()
-        context = shell_layout.itemAt(0).widget() if shell_layout else None
-        root = getattr(context, "layout_root", None)
-        if root is None:
-            return
-
         self.output_health_title = QLabel("OUTPUT HEALTH")
-        self.output_health_title.setObjectName("SectionTitle")
+        self.output_health_title.setObjectName("TrackingFooterTitle")
 
         holder = QFrame()
-        holder.setObjectName("DashboardCard")
+        holder.setObjectName("TrackingHealthStrip")
+        holder.setMaximumWidth(300)
         health_layout = QGridLayout(holder)
-        health_layout.setContentsMargins(8, 8, 8, 8)
-        health_layout.setHorizontalSpacing(6)
-        health_layout.setVerticalSpacing(5)
+        health_layout.setContentsMargins(10, 8, 10, 8)
+        health_layout.setHorizontalSpacing(10)
+        health_layout.setVerticalSpacing(4)
 
-        self.stemmed_health_label = QLabel("Stemmed Episodes")
+        self.stemmed_health_label = QLabel("Stemmed")
         self.stemmed_health_value = QLabel("0/0")
-        self.delivered_health_label = QLabel("Delivered Episodes")
+        self.delivered_health_label = QLabel("Delivered")
         self.delivered_health_value = QLabel("0/0")
         self.warning_health_label = QLabel("Warnings")
         self.warning_health_value = QLabel("0")
+
+        for label in (
+            self.stemmed_health_label,
+            self.delivered_health_label,
+            self.warning_health_label,
+        ):
+            label.setObjectName("TrackingHealthLabel")
 
         for value in (
             self.stemmed_health_value,
             self.delivered_health_value,
             self.warning_health_value,
         ):
+            value.setObjectName("TrackingHealthValue")
             value.setAlignment(Qt.AlignmentFlag.AlignRight)
-            value.setStyleSheet("font-weight: 700;")
 
-        health_layout.addWidget(self.stemmed_health_label, 0, 0)
-        health_layout.addWidget(self.stemmed_health_value, 0, 1)
-        health_layout.addWidget(self.delivered_health_label, 1, 0)
-        health_layout.addWidget(self.delivered_health_value, 1, 1)
-        health_layout.addWidget(self.warning_health_label, 2, 0)
-        health_layout.addWidget(self.warning_health_value, 2, 1)
-
-        explanation = QLabel(
-            "Episode complete jika semua expected track pada talent ini "
-            "tersedia dan valid."
-        )
-        explanation.setWordWrap(True)
-        explanation.setObjectName("MutedLabel")
-        health_layout.addWidget(explanation, 3, 0, 1, 2)
+        health_layout.addWidget(self.output_health_title, 0, 0, 1, 2)
+        health_layout.addWidget(self.stemmed_health_label, 1, 0)
+        health_layout.addWidget(self.stemmed_health_value, 1, 1)
+        health_layout.addWidget(self.delivered_health_label, 2, 0)
+        health_layout.addWidget(self.delivered_health_value, 2, 1)
+        health_layout.addWidget(self.warning_health_label, 3, 0)
+        health_layout.addWidget(self.warning_health_value, 3, 1)
 
         self.go_output_health_button = QPushButton("Go to Output Health")
         self.go_output_health_button.setProperty("secondary", True)
         self.go_output_health_button.clicked.connect(
             lambda: self.show_workspace(WORKSPACE_OUTPUT_HEALTH)
         )
-        health_layout.addWidget(self.go_output_health_button, 4, 0, 1, 2)
+        health_layout.addWidget(
+            self.go_output_health_button,
+            4,
+            0,
+            1,
+            2,
+        )
 
-        insert_at = max(0, root.count() - 1)
-        root.insertWidget(insert_at, self.output_health_title)
-        root.insertWidget(insert_at + 1, holder)
+        self.output_health_summary = holder
 
     # ------------------------------------------------------------------
     # TRACK FILES WORKSPACE
@@ -822,9 +966,12 @@ class CompactTrackingPage(TrackingPage):
             str(total_warning_count)
         )
         self.output_summary_values["warnings"].setStyleSheet(
-            "font-size: 14pt; font-weight: 700; color: #b3261e;"
+            f"font-size: 14pt; font-weight: 700; color: {COLORS['error']};"
             if total_warning_count
-            else "font-size: 14pt; font-weight: 700; color: #176b2c;"
+            else (
+                f"font-size: 14pt; font-weight: 700; "
+                f"color: {COLORS['recorded']};"
+            )
         )
 
         by_episode: dict[int, list[TrackFileRow]] = {}
@@ -871,7 +1018,7 @@ class CompactTrackingPage(TrackingPage):
 
             if warning_count:
                 self.output_episode_table.item(row_index, 3).setForeground(
-                    QColor("#b3261e")
+                    QColor(COLORS["error_text"])
                 )
 
         warning_rows.sort(
@@ -1036,9 +1183,9 @@ class CompactTrackingPage(TrackingPage):
         )
         self.warning_health_value.setText(str(scoped_warning_count))
         self.warning_health_value.setStyleSheet(
-            "font-weight: 700; color: #b3261e;"
+            f"font-weight: 700; color: {COLORS['error']};"
             if scoped_warning_count
-            else "font-weight: 700; color: #176b2c;"
+            else f"font-weight: 700; color: {COLORS['recorded']};"
         )
 
         self._refresh_track_name_suggestions()
@@ -1116,7 +1263,7 @@ class CompactTrackingPage(TrackingPage):
                     f"{rename_item.detail}\n\n"
                     "Right-click or double-click to preview rename."
                 )
-                output.setForeground(QColor("#9a5a00"))
+                output.setForeground(QColor(COLORS["attention_text"]))
             else:
                 output = QTableWidgetItem(
                     self._file_cell_text(row.output, pending=False)
@@ -1155,19 +1302,19 @@ class CompactTrackingPage(TrackingPage):
                 )
 
             if row.output.valid and not simplified_candidate:
-                output.setForeground(QColor("#176b2c"))
+                output.setForeground(QColor(COLORS["recorded_text"]))
             elif row.output.exists and not simplified_candidate:
-                output.setForeground(QColor("#9a5a00"))
+                output.setForeground(QColor(COLORS["attention_text"]))
 
             if row.delivered.valid:
-                delivered.setForeground(QColor("#176b2c"))
+                delivered.setForeground(QColor(COLORS["recorded_text"]))
             elif row.delivered.exists:
-                delivered.setForeground(QColor("#9a5a00"))
+                delivered.setForeground(QColor(COLORS["attention_text"]))
             elif delivery_pending:
-                delivered.setForeground(QColor("#6b7075"))
+                delivered.setForeground(QColor(COLORS["text_secondary"]))
 
             if row.warnings:
-                suggestion.setBackground(QColor("#FFF4CE"))
+                suggestion.setBackground(QColor(COLORS["attention_soft"]))
                 suggestion.setToolTip(
                     suggestion.toolTip()
                     + "\n\nWarnings:\n"
@@ -1194,7 +1341,7 @@ class CompactTrackingPage(TrackingPage):
             suggestion = QTableWidgetItem(
                 f"⚠ {episode_label}{status_label}"
             )
-            suggestion.setBackground(QColor("#FFF4CE"))
+            suggestion.setBackground(QColor(COLORS["attention_soft"]))
             suggestion.setToolTip(
                 rename_item.detail
                 + "\n\nDouble-click Stem / Export untuk memilih "
@@ -1204,7 +1351,7 @@ class CompactTrackingPage(TrackingPage):
             output = QTableWidgetItem(
                 f"↻ {Path(rename_item.source_path).name}"
             )
-            output.setForeground(QColor("#9a5a00"))
+            output.setForeground(QColor(COLORS["attention_text"]))
             output.setToolTip(
                 f"{rename_item.detail}\n\n"
                 "Right-click atau double-click untuk manual match."
