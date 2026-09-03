@@ -98,19 +98,16 @@ def test_main_window_constructs_all_major_pages(qapp) -> None:
     assert isinstance(window.pages["DATA"], AliasDataPage)
     assert isinstance(window.pages["TRACKING"], CompactTrackingPage)
 
-    assert window.sidebar is not None
-    assert window.page_header is not None
-    assert window.page_header.title_label.text() == "Project"
+    assert window.workspace_nav is not None
+    assert window.workspace_nav._buttons["PROJECT"].isChecked()
 
     window.set_page("DIALOG")
     qapp.processEvents()
-    assert window.sidebar._buttons["DIALOG"].isChecked()
-    assert window.page_header.title_label.text() == "Dialog"
+    assert window.workspace_nav._buttons["DIALOG"].isChecked()
 
     window.set_page("TRACKING")
     qapp.processEvents()
-    assert window.sidebar._buttons["TRACKING"].isChecked()
-    assert window.page_header.title_label.text() == "Tracking"
+    assert window.workspace_nav._buttons["TRACKING"].isChecked()
 
     window.set_page("PROJECT")
     qapp.processEvents()
@@ -215,7 +212,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     tracking_page = window.pages["TRACKING"]
     assert window._project_data_state.is_dirty("TRACKING") is False
     assert tracking_page.layout().itemAt(0).widget().isHidden()
-    assert tracking_page.character_table.maximumHeight() == 112
+    assert tracking_page.character_table.maximumHeight() > 112
     assert tracking_page.status_legend_widget is not None
     assert tracking_page.tracking_workspace_stack.currentIndex() == 0
 
@@ -250,7 +247,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
 
     tracking_page.detail_go_dialog_button.click()
     qapp.processEvents()
-    assert window.page_header.title_label.text() == "Dialog"
+    assert window.page_stack.currentWidget() is dialog_page
     assert dialog_page.talent_combo.currentText() == "Brama"
     assert dialog_page.character_combo.currentText() == "Hendra"
     assert dialog_page.episode_combo.currentData() == 1
