@@ -130,7 +130,7 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "action_requested = Signal(str)" in page
-    assert '"WHAT NEEDS ATTENTION"' in page
+    assert '"NEEDS ATTENTION"' in page
     assert '"RECENT ACTIVITY"' in page
     assert "self.action_requested.emit(key)" in page
 
