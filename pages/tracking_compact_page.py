@@ -239,6 +239,7 @@ class CompactTrackingPage(TrackingPage):
 
         self.drive_button.hide()
         self.title_label.hide()
+        root.removeWidget(self.grid_header)
         root.removeWidget(self.scroll)
 
         filter_bar = QFrame()
@@ -281,7 +282,8 @@ class CompactTrackingPage(TrackingPage):
         matrix_panel = QWidget()
         matrix_layout = QVBoxLayout(matrix_panel)
         matrix_layout.setContentsMargins(0, 0, 0, 0)
-        matrix_layout.setSpacing(8)
+        matrix_layout.setSpacing(6)
+        matrix_layout.addWidget(self.grid_header)
         matrix_layout.addWidget(self.scroll, 1)
         matrix_layout.addWidget(self._build_tracking_detail_bar())
         body.addWidget(matrix_panel)
