@@ -315,7 +315,7 @@ class ProjectPage(QWidget):
         )
         layout.addWidget(self.open_recent_button)
 
-        self.recover_button = QPushButton("Recover")
+        self.recover_button = QPushButton("Recover Project")
         self.recover_button.setProperty("secondary", True)
         self.recover_button.clicked.connect(
             lambda: self.action_requested.emit("project.recover")
