@@ -219,9 +219,14 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert tracking_page.status_legend_widget is not None
     assert tracking_page.tracking_workspace_stack.currentIndex() == 0
 
-    tracking_page.talent_combo.setCurrentIndex(
-        tracking_page.talent_combo.findText("Brama")
-    )
+    talent_index = tracking_page.talent_combo.findText("Brama")
+    assert talent_index > 0
+    tracking_page.talent_combo.setCurrentIndex(talent_index)
+    qapp.processEvents()
+
+    episode_index = tracking_page.episode_combo.findData(1)
+    assert episode_index > 0
+    tracking_page.episode_combo.setCurrentIndex(episode_index)
     qapp.processEvents()
 
     assert tracking_page.episode_combo.currentData() == 1
