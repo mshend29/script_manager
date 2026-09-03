@@ -311,6 +311,43 @@ def test_character_to_stem_queue_shows_recorded_or_revision_only(tmp_path):
         ("Joko", REVISION)
     ]
 
+    # Auto-file Stemmed/Delivered statuses are completion states, so they
+    # leave the "Tracks to Stem" work queue and remain visible in the main
+    # Tracking matrix / Delivery workspace instead.
+    with database.connect() as connection:
+        connection.execute(
+            """
+            UPDATE stem_status
+            SET status = 'STEMMED', note = ?
+            WHERE episode_id = ? AND talent_id = ? AND character_id = ?
+            """,
+            (
+                AUTO_FILE_STATUS_NOTE,
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+            ),
+        )
+
+    assert service.get_characters_to_stem(ids["brama"], 1) == []
+
+    with database.connect() as connection:
+        connection.execute(
+            """
+            UPDATE stem_status
+            SET status = 'DELIVERED', note = ?
+            WHERE episode_id = ? AND talent_id = ? AND character_id = ?
+            """,
+            (
+                AUTO_FILE_STATUS_NOTE,
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+            ),
+        )
+
+    assert service.get_characters_to_stem(ids["brama"], 1) == []
+
 
 def test_schema_v3_allows_two_characters_for_same_talent_episode(tmp_path):
     database = Database(tmp_path / "project.db")
