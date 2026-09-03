@@ -6,11 +6,11 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from app.main_window import MainWindow
-from app.theme import (
-    APP_STYLESHEET,
+from app.light_runtime import (
     apply_light_theme,
     install_light_window_chrome,
 )
+from app.theme import APP_STYLESHEET
 from core.application_logging import configure_application_logging
 from core.resource_paths import application_icon_path
 from core.version import APP_VERSION
