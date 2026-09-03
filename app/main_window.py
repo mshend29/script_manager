@@ -843,7 +843,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.sidebar.select_tab("TOOLS")
+        self.set_page("TOOLS")
         page = self.pages["TOOLS"]
         page.set_project(project, run_diagnostics=False)
         page.audit_table.setFocus()
@@ -1610,6 +1610,7 @@ class MainWindow(QMainWindow):
             )
             return
 
+        self.set_page("DATA")
         page = self.pages["DATA"]
         page.set_database(project.database)
         try:
