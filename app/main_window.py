@@ -4,13 +4,14 @@ import webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Qt, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
     QLabel,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QProgressBar,
     QStackedWidget,
@@ -26,6 +27,7 @@ from core.project_manager import ProjectManager
 from core.recent_projects import RecentProjectsStore
 from core.version import APP_VERSION
 from dialogs.new_project_dialog import NewProjectDialog
+from dialogs.recent_projects_dialog import RecentProjectsDialog
 from dialogs.project_settings_dialog import ProjectSettingsDialog
 from dialogs.source_refresh_preview_dialog import SourceRefreshPreviewDialog
 from import_engine.source_sync import (
@@ -44,8 +46,7 @@ from services.application_info_service import ApplicationInfoService
 from services.backup_service import BackupService
 from services.problem_report_service import ProblemReportService
 from services.project_dashboard_service import ProjectDashboardService
-from widgets.page_header import PageHeader
-from widgets.sidebar_nav import SidebarNavigation
+from widgets.workspace_nav import WorkspaceNavigation
 
 
 class MainWindow(QMainWindow):
@@ -81,25 +82,19 @@ class MainWindow(QMainWindow):
 
         central = QWidget()
         central.setObjectName("AppShell")
-        root = QHBoxLayout(central)
+        root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self.sidebar = SidebarNavigation()
-        root.addWidget(self.sidebar)
-
-        workspace = QWidget()
-        workspace_layout = QVBoxLayout(workspace)
-        workspace_layout.setContentsMargins(0, 0, 0, 0)
-        workspace_layout.setSpacing(0)
-
-        self.page_header = PageHeader()
-        workspace_layout.addWidget(self.page_header)
-
         self.page_stack = QStackedWidget()
-        workspace_layout.addWidget(self.page_stack, 1)
+        root.addWidget(self.page_stack, 1)
 
-        root.addWidget(workspace, 1)
+        self.workspace_nav = WorkspaceNavigation()
+        root.addWidget(self.workspace_nav)
+
+        # Temporary compatibility alias for older internal navigation helpers.
+        # No sidebar widget is rendered; navigation is the bottom workspace bar.
+        self.sidebar = self.workspace_nav
 
         self.pages = {
             "PROJECT": ProjectPage(),
@@ -115,9 +110,9 @@ class MainWindow(QMainWindow):
             self.page_stack.addWidget(self.pages[page_name])
 
         self.setCentralWidget(central)
+        self._build_menu_bar()
 
-        self.sidebar.page_requested.connect(self.set_page)
-        self.page_header.action_requested.connect(self.handle_ribbon_action)
+        self.workspace_nav.page_requested.connect(self.set_page)
 
         project_page = self.pages["PROJECT"]
         project_page.new_button.clicked.connect(self.new_project)
@@ -174,6 +169,153 @@ class MainWindow(QMainWindow):
         self.set_page("PROJECT")
         self.refresh_project_page()
 
+    def _build_menu_bar(self) -> None:
+        menu_bar = self.menuBar()
+        menu_bar.clear()
+
+        file_menu = menu_bar.addMenu("&File")
+        self._add_menu_action(file_menu, "New Project", self.new_project, "Ctrl+N")
+        self._add_menu_action(file_menu, "Open Project", self.open_project, "Ctrl+O")
+
+        self._recent_menu = file_menu.addMenu("Recent Project")
+        self._recent_menu.aboutToShow.connect(self._refresh_recent_menu)
+
+        file_menu.addSeparator()
+        self._add_menu_action(file_menu, "Save Project", self.save_project, "Ctrl+S")
+        self._add_menu_action(
+            file_menu,
+            "Save As",
+            self.save_project_as,
+            "Ctrl+Shift+S",
+        )
+        self._add_menu_action(file_menu, "Recover", self.recover_project)
+        file_menu.addSeparator()
+        self._add_menu_action(file_menu, "Close Project", self.close_project, "Ctrl+W")
+        self._add_menu_action(file_menu, "Quit", self.close, "Alt+F4")
+
+        project_menu = menu_bar.addMenu("&Project")
+        self._add_menu_action(
+            project_menu,
+            "Project Setting",
+            self.open_project_settings,
+        )
+        self._add_menu_action(
+            project_menu,
+            "Open Client Link / Drive",
+            self.open_client_drive,
+        )
+
+        data_menu = menu_bar.addMenu("&Data")
+        self._add_menu_action(data_menu, "Sync Source", self.sync_source, "F5")
+        data_menu.addSeparator()
+        for label, section in (
+            ("Overview", "overview"),
+            ("Cast Mapping", "characters"),
+            ("Talents", "talents"),
+            ("Unresolved", "unresolved"),
+            ("Sources", "sources"),
+            ("Validation", "validation"),
+        ):
+            self._add_menu_action(
+                data_menu,
+                label,
+                lambda checked=False, section=section:
+                    self.show_data_section(section),
+            )
+        data_menu.addSeparator()
+        self._add_menu_action(data_menu, "Rebuild Index", self.rebuild_data_indexes)
+        self._add_menu_action(data_menu, "Backup", self.backup_database)
+
+        tools_menu = menu_bar.addMenu("&Tools")
+        self._add_menu_action(
+            tools_menu,
+            "Tools & Maintenance",
+            self.show_tools_maintenance,
+        )
+
+        help_menu = menu_bar.addMenu("&Help")
+        self._add_menu_action(
+            help_menu,
+            "Getting Started",
+            self.open_getting_started,
+            "F1",
+        )
+        self._add_menu_action(help_menu, "User Guide", self.open_user_guide)
+        self._add_menu_action(
+            help_menu,
+            "Shortcut",
+            self.open_keyboard_shortcuts,
+        )
+        help_menu.addSeparator()
+        self._add_menu_action(
+            help_menu,
+            "Check for Update",
+            self.check_for_updates,
+        )
+        self._add_menu_action(help_menu, "About", self.open_about)
+        self._add_menu_action(
+            help_menu,
+            "Report a Problem",
+            self.report_problem,
+        )
+
+    @staticmethod
+    def _add_menu_action(
+        menu: QMenu,
+        label: str,
+        handler,
+        shortcut: str | None = None,
+    ) -> QAction:
+        action = QAction(label, menu)
+        if shortcut:
+            action.setShortcut(QKeySequence(shortcut))
+        action.triggered.connect(handler)
+        menu.addAction(action)
+        return action
+
+    def _refresh_recent_menu(self) -> None:
+        self._recent_menu.clear()
+        recent = self.recent_projects.list(existing_only=True)[:5]
+
+        if not recent:
+            empty = self._recent_menu.addAction("No Recent Project")
+            empty.setEnabled(False)
+            return
+
+        for item in recent:
+            name = item.project_name or Path(item.file_path).stem
+            action = self._recent_menu.addAction(name)
+            action.setToolTip(item.file_path)
+            action.triggered.connect(
+                lambda checked=False, path=item.file_path:
+                    self.open_project_path(path)
+            )
+
+    def show_startup_recent_projects(self) -> None:
+        if self.project_manager.is_open:
+            return
+
+        dialog = RecentProjectsDialog(
+            self.recent_projects.list(existing_only=True)[:5],
+            self,
+        )
+        dialog.exec()
+
+        if dialog.action == RecentProjectsDialog.ACTION_OPEN:
+            if not self.open_project_path(dialog.project_path):
+                self.show_startup_recent_projects()
+            return
+
+        if dialog.action == RecentProjectsDialog.ACTION_NEW:
+            self.new_project()
+            return
+
+        if dialog.action == RecentProjectsDialog.ACTION_CLOSE:
+            self.close()
+
+    def show_tools_maintenance(self) -> None:
+        self.set_page("TOOLS")
+
     def _init_keyboard_shortcuts(self) -> None:
         self._keyboard_shortcuts: list[QShortcut] = []
 
@@ -206,8 +348,7 @@ class MainWindow(QMainWindow):
             self.pages["TOOLS"].set_project(project)
 
         self.page_stack.setCurrentWidget(self.pages[page_name])
-        self.sidebar.select_page(page_name)
-        self.page_header.set_page(page_name)
+        self.workspace_nav.select_page(page_name)
         self.statusBar().showMessage(f"{page_name.title()} page")
 
     # ------------------------------------------------------------------
@@ -692,7 +833,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.sidebar.select_tab("TOOLS")
+        self.set_page("TOOLS")
         page = self.pages["TOOLS"]
         page.set_project(project, run_diagnostics=False)
         page.refresh_view()
@@ -1309,7 +1450,7 @@ class MainWindow(QMainWindow):
             return
 
         if key == "needs_review":
-            self.sidebar.select_tab("DATA")
+            self.set_page("DATA")
             page = self.pages["DATA"]
             page.set_database(project.database)
             page.show_section("Unresolved")
@@ -1323,7 +1464,7 @@ class MainWindow(QMainWindow):
             return
 
         if key == "recording":
-            self.sidebar.select_tab("DIALOG")
+            self.set_page("DIALOG")
             self.pages["DIALOG"].set_database(project.database)
             return
 
@@ -1333,7 +1474,7 @@ class MainWindow(QMainWindow):
             "pending_delivery",
             "file_warnings",
         }:
-            self.sidebar.select_tab("TRACKING")
+            self.set_page("TRACKING")
             page = self.pages["TRACKING"]
             if hasattr(page, "configure_track_files"):
                 page.configure_track_files(project.settings)
@@ -1388,7 +1529,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.sidebar.select_tab("SCRIPT")
+        self.set_page("SCRIPT")
         self.focus_script_search()
 
     def open_dialog_source(self) -> None:
@@ -1445,6 +1586,7 @@ class MainWindow(QMainWindow):
             )
             return
 
+        self.set_page("DATA")
         self.pages["DATA"].set_database(project.database)
         self.pages["DATA"].show_section(section)
 
@@ -1552,25 +1694,25 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def open_getting_started(self) -> None:
-        self.sidebar.select_tab("HELP")
+        self.set_page("HELP")
         page = self.pages["HELP"]
         page.show_getting_started()
         self.statusBar().showMessage("Getting Started", 3000)
 
     def open_user_guide(self) -> None:
-        self.sidebar.select_tab("HELP")
+        self.set_page("HELP")
         page = self.pages["HELP"]
         page.show_user_guide()
         self.statusBar().showMessage("User Guide", 3000)
 
     def open_keyboard_shortcuts(self) -> None:
-        self.sidebar.select_tab("HELP")
+        self.set_page("HELP")
         page = self.pages["HELP"]
         page.show_keyboard_shortcuts()
         self.statusBar().showMessage("Keyboard Shortcuts", 3000)
 
     def check_for_updates(self) -> None:
-        self.sidebar.select_tab("HELP")
+        self.set_page("HELP")
         page = self.pages["HELP"]
 
         if self._update_check_running():
@@ -1660,7 +1802,7 @@ class MainWindow(QMainWindow):
             )
 
     def open_about(self) -> None:
-        self.sidebar.select_tab("HELP")
+        self.set_page("HELP")
         info = ApplicationInfoService().build()
         self.pages["HELP"].show_about(info)
         self.statusBar().showMessage(
@@ -1669,7 +1811,7 @@ class MainWindow(QMainWindow):
         )
 
     def report_problem(self) -> None:
-        self.sidebar.select_tab("HELP")
+        self.set_page("HELP")
         report = ProblemReportService().build()
         self.pages["HELP"].show_report_problem(report)
         self.statusBar().showMessage(
