@@ -3,15 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl, Qt, Signal
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QBrush, QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QCheckBox,
     QComboBox,
+    QFrame,
     QHeaderView,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -21,15 +23,17 @@ from PySide6.QtWidgets import (
 )
 
 from core.database import Database
+from app.theme import COLORS
 from services.recording_service import RecordingDialogueRow, RecordingService
-from widgets.context_panel import ContextPanel
-from widgets.page_shell import PageShell
 
 
-class DialogPage(PageShell):
+class DialogPage(QWidget):
     data_changed = Signal()
 
     def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("DialogWorkspace")
+
         self._database: Database | None = None
         self._service: RecordingService | None = None
         self._loading_controls = False
@@ -39,68 +43,63 @@ class DialogPage(PageShell):
         self._dialogue_items: dict[int, QTableWidgetItem] = {}
         self._dialogue_rows: list[RecordingDialogueRow] = []
 
-        context = ContextPanel("DIALOG")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 14, 18, 16)
+        root.setSpacing(10)
 
-        context.add_widget(QLabel("Talent"))
+        filter_bar = QFrame()
+        filter_bar.setObjectName("DialogFilterBar")
+        filter_layout = QHBoxLayout(filter_bar)
+        filter_layout.setContentsMargins(12, 10, 12, 10)
+        filter_layout.setSpacing(8)
+
+        talent_label = QLabel("Talent")
+        talent_label.setObjectName("DialogFilterLabel")
+        filter_layout.addWidget(talent_label)
+
         self.talent_combo = QComboBox()
+        self.talent_combo.setObjectName("DialogTalentFilter")
         self.talent_combo.addItem("Pilih talent", None)
-        context.add_widget(self.talent_combo)
+        self.talent_combo.setMinimumWidth(150)
+        filter_layout.addWidget(self.talent_combo)
 
-        context.add_widget(QLabel("Tokoh"))
+        character_label = QLabel("Tokoh")
+        character_label.setObjectName("DialogFilterLabel")
+        filter_layout.addWidget(character_label)
+
         self.character_combo = QComboBox()
+        self.character_combo.setObjectName("DialogCharacterFilter")
         self.character_combo.addItem("Pilih tokoh", None)
         self.character_combo.setEnabled(False)
-        context.add_widget(self.character_combo)
+        self.character_combo.setMinimumWidth(150)
+        filter_layout.addWidget(self.character_combo)
 
-        context.add_widget(QLabel("Episode"))
+        episode_label = QLabel("Episode")
+        episode_label.setObjectName("DialogFilterLabel")
+        filter_layout.addWidget(episode_label)
+
         self.episode_combo = QComboBox()
+        self.episode_combo.setObjectName("DialogEpisodeFilter")
         self.episode_combo.addItem("Pilih episode", None)
         self.episode_combo.setEnabled(False)
-        context.add_widget(self.episode_combo)
+        self.episode_combo.setMinimumWidth(128)
+        filter_layout.addWidget(self.episode_combo)
 
-        episode_nav = QWidget()
-        episode_nav_layout = QHBoxLayout(episode_nav)
-        episode_nav_layout.setContentsMargins(0, 0, 0, 0)
-        episode_nav_layout.setSpacing(6)
         self.prev_episode_button = QPushButton("‹ Prev")
-        self.prev_episode_button.setProperty("secondary", True)
+        self.prev_episode_button.setProperty("dialogNav", True)
         self.next_episode_button = QPushButton("Next ›")
-        self.next_episode_button.setProperty("secondary", True)
-        episode_nav_layout.addWidget(self.prev_episode_button)
-        episode_nav_layout.addWidget(self.next_episode_button)
-        context.add_widget(episode_nav)
+        self.next_episode_button.setProperty("dialogNav", True)
+        filter_layout.addWidget(self.prev_episode_button)
+        filter_layout.addWidget(self.next_episode_button)
 
-        self.open_source_button = QPushButton("Open Source File")
-        self.open_source_button.setProperty("secondary", True)
-        self.open_source_button.setEnabled(False)
-        context.add_widget(self.open_source_button)
+        filter_layout.addSpacing(6)
 
-        context.add_section_title("CAST EPISODE")
-        self.cast_table = QTableWidget(0, 2)
-        self.cast_table.setHorizontalHeaderLabels(["TOKOH", "TALENT"])
-        self.cast_table.setMinimumHeight(190)
-        self.cast_table.setAlternatingRowColors(True)
-        self.cast_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.cast_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.cast_table.verticalHeader().setVisible(False)
-        cast_header = self.cast_table.horizontalHeader()
-        cast_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        cast_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        context.add_widget(self.cast_table)
-        context.add_stretch()
-
-        workspace = QWidget()
-        layout = QVBoxLayout(workspace)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(10)
-
-        title = QLabel("Dialog")
-        title.setObjectName("PageTitle")
-
-        self.selection_info = QLabel(
-            "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
-        )
-        self.selection_info.setObjectName("PageSubtitle")
+        self.search_edit = QLineEdit()
+        self.search_edit.setObjectName("DialogSearch")
+        self.search_edit.setPlaceholderText("Search dialog…")
+        self.search_edit.setClearButtonEnabled(True)
+        self.search_edit.setMinimumWidth(180)
+        filter_layout.addWidget(self.search_edit, 1)
 
         self.copy_all_button = QPushButton("Copy All Dialog")
         self.copy_all_button.setProperty("secondary", True)
@@ -108,41 +107,112 @@ class DialogPage(PageShell):
         self.copy_all_button.setToolTip(
             "Salin seluruh dialog yang sedang tampil, satu dialog per baris."
         )
+        filter_layout.addWidget(self.copy_all_button)
 
-        layout.addWidget(title)
-        info_row = QHBoxLayout()
-        info_row.setSpacing(8)
-        info_row.addWidget(self.selection_info, 1)
-        info_row.addWidget(self.copy_all_button)
-        layout.addLayout(info_row)
+        root.addWidget(filter_bar)
 
         self.table = QTableWidget(0, 4)
+        self.table.setObjectName("DialogTable")
         self.table.setHorizontalHeaderLabels(["✓", "IN", "OUT", "DIALOG"])
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)
         self.table.setWordWrap(False)
         self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self.table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(34)
+        self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.setShowGrid(False)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(
+            1,
+            QHeaderView.ResizeMode.ResizeToContents,
+        )
+        header.setSectionResizeMode(
+            2,
+            QHeaderView.ResizeMode.ResizeToContents,
+        )
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
-        self.table.setColumnWidth(0, 48)
-        self.table.setColumnWidth(1, 115)
-        self.table.setColumnWidth(2, 115)
-        layout.addWidget(self.table, 1)
+        self.table.setColumnWidth(0, 46)
+        self.table.setColumnWidth(1, 112)
+        self.table.setColumnWidth(2, 112)
+        root.addWidget(self.table, 1)
 
-        super().__init__(context, workspace, parent)
+        session = QFrame()
+        session.setObjectName("DialogSessionFooter")
+        session_layout = QVBoxLayout(session)
+        session_layout.setContentsMargins(12, 9, 12, 10)
+        session_layout.setSpacing(7)
 
-        self.talent_combo.currentIndexChanged.connect(self._talent_changed)
-        self.character_combo.currentIndexChanged.connect(self._character_changed)
-        self.episode_combo.currentIndexChanged.connect(self._episode_changed)
+        summary_row = QHBoxLayout()
+        summary_row.setContentsMargins(0, 0, 0, 0)
+        summary_row.setSpacing(8)
+
+        self.selection_info = QLabel(
+            "Pilih talent, tokoh, dan episode untuk menampilkan dialog."
+        )
+        self.selection_info.setObjectName("DialogSessionSummary")
+        self.selection_info.setWordWrap(True)
+        summary_row.addWidget(self.selection_info, 1)
+
+        cast_label = QLabel("CAST EPISODE")
+        cast_label.setObjectName("DialogFooterLabel")
+        summary_row.addWidget(cast_label)
+
+        session_layout.addLayout(summary_row)
+
+        self.cast_table = QTableWidget(0, 2)
+        self.cast_table.setObjectName("DialogCastTable")
+        self.cast_table.setHorizontalHeaderLabels(["TOKOH", "TALENT"])
+        self.cast_table.setMaximumHeight(112)
+        self.cast_table.setAlternatingRowColors(False)
+        self.cast_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.cast_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.NoSelection
+        )
+        self.cast_table.verticalHeader().setVisible(False)
+        self.cast_table.verticalHeader().setDefaultSectionSize(27)
+        self.cast_table.setShowGrid(False)
+        cast_header = self.cast_table.horizontalHeader()
+        cast_header.setSectionResizeMode(
+            0,
+            QHeaderView.ResizeMode.Stretch,
+        )
+        cast_header.setSectionResizeMode(
+            1,
+            QHeaderView.ResizeMode.Stretch,
+        )
+        session_layout.addWidget(self.cast_table)
+
+        root.addWidget(session)
+
+        # The page header owns the visible Open Source action. This hidden
+        # compatibility control preserves the existing action routing and
+        # enabled-state contract in MainWindow.
+        self.open_source_button = QPushButton("Open Source File", self)
+        self.open_source_button.setVisible(False)
+        self.open_source_button.setEnabled(False)
+
+        self.talent_combo.currentIndexChanged.connect(
+            self._talent_changed
+        )
+        self.character_combo.currentIndexChanged.connect(
+            self._character_changed
+        )
+        self.episode_combo.currentIndexChanged.connect(
+            self._episode_changed
+        )
         self.prev_episode_button.clicked.connect(
             lambda: self._select_adjacent_episode(-1)
         )
@@ -150,7 +220,10 @@ class DialogPage(PageShell):
             lambda: self._select_adjacent_episode(1)
         )
         self.open_source_button.clicked.connect(self._open_source_file)
-        self.copy_all_button.clicked.connect(self._copy_all_dialogues_clicked)
+        self.copy_all_button.clicked.connect(
+            self._copy_all_dialogues_clicked
+        )
+        self.search_edit.textChanged.connect(self._apply_search_filter)
         self._update_episode_navigation()
 
     # ------------------------------------------------------------------
