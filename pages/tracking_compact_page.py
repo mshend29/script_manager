@@ -365,10 +365,7 @@ class CompactTrackingPage(TrackingPage):
         layout.addWidget(self.detail_go_dialog_button)
 
         self.detail_revision_button = QPushButton("Mark Revision")
-        self.detail_revision_button.setProperty(
-            "trackingRevisionAction",
-            True,
-        )
+        self.detail_revision_button.setProperty("trackingRevisionAction", True)
         self.detail_revision_button.clicked.connect(
             self._tracking_revision_clicked
         )
