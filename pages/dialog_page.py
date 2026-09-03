@@ -782,6 +782,8 @@ class DialogPage(QWidget):
                     checkbox.setChecked(checked)
                     checkbox.setProperty("source_revised", False)
                     checkbox.setToolTip("")
+                    checkbox.style().unpolish(checkbox)
+                    checkbox.style().polish(checkbox)
                 finally:
                     checkbox.blockSignals(False)
         finally:
@@ -828,6 +830,8 @@ class DialogPage(QWidget):
         if checkbox is not None:
             checkbox.setProperty("source_revised", False)
             checkbox.setToolTip("")
+            checkbox.style().unpolish(checkbox)
+            checkbox.style().polish(checkbox)
 
         item = self._dialogue_items.get(int(dialogue_id))
         if item is None:
