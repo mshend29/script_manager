@@ -6,30 +6,53 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_project_page_uses_single_phase10_workspace() -> None:
-    source = (ROOT / "pages" / "project_page.py").read_text(
-        encoding="utf-8"
-    )
+def _read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
-    assert "class ProjectPage(QWidget)" in source
-    assert "ContextPanel" not in source
-    assert "PageShell" not in source
-    assert '"ProjectWorkspace"' in source
-    assert '"ProjectIdentityCard"' in source
-    assert '"PROJECT DATA"' in source
-    assert '"PRODUCTION PIPELINE"' in source
-    assert '"NEEDS ATTENTION"' in source
-    assert '"RECENT ACTIVITY"' in source
-    assert '"Project Dashboard"' not in source
+
+def test_project_workspace_has_home_and_preserved_dashboard() -> None:
+    home = _read("pages/project_page.py")
+    dashboard = _read("pages/project_dashboard_page.py")
+
+    assert "class ProjectPage(DashboardProjectPage)" in home
+    assert '"ProjectHome"' in home
+    assert '"ProjectHomeSidebar"' in home
+    assert 'QPushButton("Create New")' in home
+    assert 'QPushButton("Open Project")' in home
+    assert 'QLabel("Recent Projects")' in home
+    assert '["PROJECT", "LAST OPENED"]' in home
+    assert "self.show_home()" in home
+    assert "self.show_dashboard()" in home
+
+    assert "class ProjectPage(QWidget)" in dashboard
+    assert "ContextPanel" not in dashboard
+    assert "PageShell" not in dashboard
+    assert '"ProjectWorkspace"' in dashboard
+    assert '"ProjectIdentityCard"' in dashboard
+    assert '"PROJECT DATA"' in dashboard
+    assert '"PRODUCTION PIPELINE"' in dashboard
+    assert '"NEEDS ATTENTION"' in dashboard
+    assert '"RECENT ACTIVITY"' in dashboard
+
+
+def test_project_home_recent_list_supports_search_sort_and_open() -> None:
+    source = _read("pages/project_page.py")
+
+    assert 'setPlaceholderText("Search recent projects…")' in source
+    assert "textChanged.connect(self._filter_recent_projects)" in source
+    assert "setSortingEnabled(True)" in source
+    assert "setSectionsClickable(True)" in source
+    assert "setSortIndicatorShown(True)" in source
+    assert "Qt.SortOrder.DescendingOrder" in source
+    assert "itemDoubleClicked.connect(" in source
+    assert "itemActivated.connect(" in source
+    assert 'getattr(self.window(), "open_project_path", None)' in source
+    assert "existing_only=False" in source
 
 
 def test_project_identity_uses_real_metadata_without_fake_media() -> None:
-    source = (ROOT / "pages" / "project_page.py").read_text(
-        encoding="utf-8"
-    )
-    main = (ROOT / "app" / "main_window.py").read_text(
-        encoding="utf-8"
-    )
+    source = _read("pages/project_dashboard_page.py")
+    main = _read("app/main_window.py")
 
     assert "def set_project_metadata(" in source
     assert "project_code" in source
@@ -48,15 +71,13 @@ def test_project_identity_uses_real_metadata_without_fake_media() -> None:
         "talent photo",
         "online presence",
     )
-    lowered = source.casefold()
+    lowered = (source + _read("pages/project_page.py")).casefold()
     for value in forbidden:
         assert value not in lowered
 
 
 def test_project_metrics_keep_existing_dashboard_semantics() -> None:
-    source = (ROOT / "pages" / "project_page.py").read_text(
-        encoding="utf-8"
-    )
+    source = _read("pages/project_dashboard_page.py")
 
     for attribute in (
         "episodes_card",
@@ -83,10 +104,8 @@ def test_project_metrics_keep_existing_dashboard_semantics() -> None:
 
 
 def test_needs_attention_uses_dashboard_severity_and_existing_action_keys() -> None:
-    source = (ROOT / "pages" / "project_page.py").read_text(
-        encoding="utf-8"
-    )
-    theme = (ROOT / "app" / "theme.py").read_text(encoding="utf-8")
+    source = _read("pages/project_dashboard_page.py")
+    theme = _read("app/theme.py")
 
     assert 'button.setProperty("attentionAction", True)' in source
     assert '"dashboardSeverity"' in source
