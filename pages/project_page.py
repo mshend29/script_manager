@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.recent_projects import RecentProjectsStore
+from core.resource_paths import project_file_icon_path
 from pages.project_dashboard_page import ProjectPage as DashboardProjectPage
 
 
@@ -27,11 +29,70 @@ class RecentDateItem(QTableWidgetItem):
     def __init__(self, text: str, sort_key: str):
         super().__init__(text)
         self.sort_key = str(sort_key or "")
+        self.setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
 
     def __lt__(self, other) -> bool:
         if isinstance(other, RecentDateItem):
             return self.sort_key < other.sort_key
         return super().__lt__(other)
+
+
+class RecentProjectCell(QWidget):
+    """Excel-like recent-project row: icon, project name, and compact path."""
+
+    def __init__(
+        self,
+        project_name: str,
+        display_path: str,
+        full_path: str,
+        *,
+        missing: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("ProjectRecentProjectCell")
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            True,
+        )
+        self.setToolTip(full_path)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(11)
+
+        icon_label = QLabel()
+        icon_label.setObjectName("ProjectRecentIcon")
+        icon_label.setFixedSize(38, 38)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        icon = QIcon(str(project_file_icon_path()))
+        pixmap = icon.pixmap(QSize(30, 30))
+        if pixmap.isNull():
+            icon_label.setText("SM")
+            icon_label.setObjectName("ProjectRecentIconFallback")
+        else:
+            icon_label.setPixmap(pixmap)
+        layout.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(2)
+
+        name_label = QLabel(project_name)
+        name_label.setObjectName("ProjectRecentName")
+        name_label.setProperty("missing", missing)
+        name_label.setToolTip(full_path)
+        text_layout.addWidget(name_label)
+
+        path_label = QLabel(display_path)
+        path_label.setObjectName("ProjectRecentPath")
+        path_label.setToolTip(full_path)
+        text_layout.addWidget(path_label)
+
+        layout.addLayout(text_layout, 1)
 
 
 class ProjectPage(DashboardProjectPage):
@@ -138,17 +199,20 @@ class ProjectPage(DashboardProjectPage):
         self.recent_table.setSelectionMode(
             QAbstractItemView.SelectionMode.SingleSelection
         )
-        self.recent_table.setAlternatingRowColors(True)
+        self.recent_table.setAlternatingRowColors(False)
+        self.recent_table.setShowGrid(False)
+        self.recent_table.setWordWrap(False)
         self.recent_table.verticalHeader().setVisible(False)
+        self.recent_table.verticalHeader().setDefaultSectionSize(62)
         self.recent_table.setSortingEnabled(True)
+
         header = self.recent_table.horizontalHeader()
         header.setSectionsClickable(True)
         header.setSortIndicatorShown(True)
+        header.setMinimumSectionSize(120)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(
-            1,
-            QHeaderView.ResizeMode.ResizeToContents,
-        )
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        self.recent_table.setColumnWidth(1, 240)
         header.setSortIndicator(1, Qt.SortOrder.DescendingOrder)
 
         self.recent_table.itemDoubleClicked.connect(
@@ -196,15 +260,19 @@ class ProjectPage(DashboardProjectPage):
         for row_index, item in enumerate(items):
             path = Path(item.file_path).expanduser()
             exists = path.is_file()
-            project_name = item.project_name or path.stem or "Untitled Project"
-            if not exists:
-                project_name = f"{project_name}  (Missing)"
+            raw_project_name = item.project_name or path.stem or "Untitled Project"
+            project_name = (
+                f"{raw_project_name}  (Missing)"
+                if not exists
+                else raw_project_name
+            )
+            display_path = self._compact_project_path(item.file_path)
 
             project_item = QTableWidgetItem(project_name)
             project_item.setData(Qt.ItemDataRole.UserRole, item.file_path)
             project_item.setData(
                 Qt.ItemDataRole.UserRole + 1,
-                f"{project_name}\n{item.file_path}".casefold(),
+                f"{raw_project_name}\n{item.file_path}".casefold(),
             )
             project_item.setToolTip(item.file_path)
 
@@ -213,16 +281,52 @@ class ProjectPage(DashboardProjectPage):
                 item.last_opened_at,
             )
             opened_item.setData(Qt.ItemDataRole.UserRole, item.file_path)
+            opened_item.setToolTip(
+                f"Last opened: {self._format_last_opened(item.last_opened_at)}"
+            )
 
             self.recent_table.insertRow(row_index)
             self.recent_table.setItem(row_index, 0, project_item)
             self.recent_table.setItem(row_index, 1, opened_item)
+            self.recent_table.setCellWidget(
+                row_index,
+                0,
+                RecentProjectCell(
+                    project_name,
+                    display_path,
+                    item.file_path,
+                    missing=not exists,
+                ),
+            )
 
         self.recent_table.setSortingEnabled(True)
         self.recent_table.sortItems(sort_column, sort_order)
         self._filter_recent_projects(self.recent_search.text())
         self.recent_empty.setVisible(self.recent_table.rowCount() == 0)
         self.recent_table.setVisible(self.recent_table.rowCount() > 0)
+
+    @staticmethod
+    def _compact_project_path(value: str) -> str:
+        """Return a short Explorer-like parent path for the Recent list."""
+        text = str(value or "").strip()
+        if not text:
+            return "—"
+
+        normalized = text.replace("\\", "/")
+        parts = [part for part in normalized.split("/") if part]
+        if len(parts) <= 1:
+            return text
+
+        # The filename is already represented by the project name. Show only
+        # its location, similar to Excel's Recent view.
+        folders = parts[:-1]
+        if not folders:
+            return "—"
+
+        if len(folders) > 5:
+            folders = [folders[0], "…", *folders[-4:]]
+
+        return " › ".join(folders)
 
     @staticmethod
     def _format_last_opened(value: str) -> str:
