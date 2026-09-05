@@ -53,9 +53,16 @@ def test_primary_desktop_sizes_keep_core_workspaces_reachable(
     window.set_page("PROJECT")
     qapp.processEvents()
     project = window.pages["PROJECT"]
+    project_home = project.findChild(QWidget, "ProjectHome")
+    project_sidebar = project.findChild(QWidget, "ProjectHomeSidebar")
     project_scroll = project.findChild(QWidget, "ProjectScrollArea")
+    assert project_home is not None
+    assert project_sidebar is not None
     assert project_scroll is not None
-    assert project_scroll.width() > 800
+    assert project_home.isVisibleTo(window)
+    assert project_home.width() > 1000
+    assert project_sidebar.width() == 230
+    assert project_scroll.isHidden()
 
     window.set_page("DIALOG")
     qapp.processEvents()
