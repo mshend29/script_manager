@@ -104,7 +104,6 @@ def test_recover_from_snapshot_restores_data_to_new_smproj(tmp_path):
     assert _talents(recovered) == ["Before"]
 
 
-
 def test_recovery_rejects_backup_from_different_project(tmp_path):
     manager = ProjectManager()
     first = manager.create(
@@ -176,7 +175,10 @@ def test_project_lifecycle_actions_are_wired_to_ui():
     root = Path(__file__).resolve().parents[1]
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
     header = (root / "widgets" / "page_header.py").read_text(encoding="utf-8")
-    page = (root / "pages" / "project_page.py").read_text(encoding="utf-8")
+    home = (root / "pages" / "project_page.py").read_text(encoding="utf-8")
+    dashboard = (
+        root / "pages" / "project_dashboard_page.py"
+    ).read_text(encoding="utf-8")
 
     for action in (
         "project.open_recent",
@@ -187,5 +189,7 @@ def test_project_lifecycle_actions_are_wired_to_ui():
         assert action in main
         assert action in header
 
-    assert "Open Recent" in page
-    assert "Recover Project" in page
+    assert 'QPushButton("Create New")' in home
+    assert 'QPushButton("Open Project")' in home
+    assert '"Recent Projects"' in home
+    assert "Recover Project" in dashboard
