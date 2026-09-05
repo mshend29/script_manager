@@ -34,6 +34,24 @@ def test_project_home_replaces_startup_recent_dialog_visually() -> None:
     assert "Qt.SortOrder.DescendingOrder" in source
 
 
+def test_recent_project_rows_follow_excel_like_file_list_reference() -> None:
+    source = _read("pages/project_page.py")
+
+    assert "class RecentProjectCell(QWidget)" in source
+    assert "project_file_icon_path" in source
+    assert 'icon_label.setFixedSize(38, 38)' in source
+    assert 'name_label = QLabel(project_name)' in source
+    assert 'path_label = QLabel(display_path)' in source
+    assert 'self._compact_project_path(item.file_path)' in source
+    assert 'return " › ".join(folders)' in source
+    assert "verticalHeader().setDefaultSectionSize(62)" in source
+
+    # Last Opened remains sortable but gets a deliberately wider readable
+    # column instead of shrinking to its minimum contents width.
+    assert "QHeaderView.ResizeMode.Interactive" in source
+    assert "self.recent_table.setColumnWidth(1, 240)" in source
+
+
 def test_recent_history_supports_longer_project_home_list() -> None:
     source = _read("core/recent_projects.py")
     assert "RECENT_PROJECTS_LIMIT = 30" in source
