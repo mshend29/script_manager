@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -269,6 +269,10 @@ class ProjectPage(DashboardProjectPage):
             display_path = self._compact_project_path(item.file_path)
 
             project_item = QTableWidgetItem(project_name)
+            # Column 0 uses a custom cell widget. Keep the native item text for
+            # sorting/search metadata, but make its paint fully transparent so
+            # it cannot appear underneath the project icon/name widget.
+            project_item.setForeground(QColor(0, 0, 0, 0))
             project_item.setData(Qt.ItemDataRole.UserRole, item.file_path)
             project_item.setData(
                 Qt.ItemDataRole.UserRole + 1,

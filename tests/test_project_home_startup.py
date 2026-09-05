@@ -46,6 +46,12 @@ def test_recent_project_rows_follow_excel_like_file_list_reference() -> None:
     assert 'return " › ".join(folders)' in source
     assert "verticalHeader().setDefaultSectionSize(62)" in source
 
+    # The QTableWidgetItem still carries its text for sorting, but its native
+    # paint must be transparent because the custom cell widget renders the
+    # visible project name/path. Otherwise the text overlaps the project icon.
+    assert "from PySide6.QtGui import QColor, QIcon" in source
+    assert "project_item.setForeground(QColor(0, 0, 0, 0))" in source
+
     # Last Opened remains sortable but gets a deliberately wider readable
     # column instead of shrinking to its minimum contents width.
     assert "QHeaderView.ResizeMode.Interactive" in source
