@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 VISUAL_IMPLEMENTATION_FILES = (
     "pages/project_page.py",
+    "pages/project_dashboard_page.py",
     "pages/dialog_page.py",
     "pages/delivery_page.py",
     "pages/tracking_page.py",
@@ -82,12 +83,11 @@ def test_shared_shell_components_are_reused_by_main_window() -> None:
     assert not (ROOT / "app" / "ribbon.py").exists()
 
 
-
 def test_phase10_keyboard_focus_and_long_label_contracts() -> None:
     theme = _read("app/theme.py")
     dialog = _read("pages/dialog_page.py")
     tracking = _read("pages/tracking_page.py")
-    project = _read("pages/project_page.py")
+    project = _read("pages/project_dashboard_page.py")
 
     assert "QLineEdit:focus" in theme
     assert "QComboBox:focus" in theme
@@ -132,8 +132,6 @@ def test_phase10_pr_does_not_modify_business_rule_modules() -> None:
     )
     parts = result.stdout.strip().split()
 
-    # GitHub PR CI checks out refs/pull/<n>/merge, which has two parents.
-    # Ordinary local/main commits do not, so there is no PR delta to inspect.
     if len(parts) < 3:
         pytest.skip("Business-rule diff guard only applies to PR merge refs.")
 

@@ -64,7 +64,6 @@ def _seed(database: Database) -> None:
             (dialogue,),
         )
 
-        # Separate unresolved/no-cast dialogue creates a human review action.
         connection.execute(
             """
             INSERT INTO dialogues(
@@ -126,7 +125,9 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    page = (root / "pages" / "project_page.py").read_text(encoding="utf-8")
+    page = (
+        root / "pages" / "project_dashboard_page.py"
+    ).read_text(encoding="utf-8")
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "action_requested = Signal(str)" in page

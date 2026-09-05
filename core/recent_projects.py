@@ -9,7 +9,7 @@ from typing import Iterable
 from core.app_paths import app_data_root
 
 
-RECENT_PROJECTS_LIMIT = 10
+RECENT_PROJECTS_LIMIT = 30
 
 
 @dataclass(frozen=True)
