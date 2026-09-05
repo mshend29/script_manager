@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
@@ -106,23 +106,20 @@ def main():
         for value in arguments
         if not value.startswith("--")
     ]
-    opened_from_argument = False
     if project_args:
         candidate = Path(project_args[0]).expanduser()
         if candidate.exists():
-            opened_from_argument = window.open_project_path(candidate)
+            window.open_project_path(candidate)
 
-    # "Full screen" for the desktop workflow means maximized while preserving
-    # the native title bar/minimize/maximize/close controls.
+    # Maximized while preserving native title bar/minimize/maximize/close.
     window.showMaximized()
     app.processEvents()
 
     if splash is not None:
         splash.finish(window)
 
-    if not opened_from_argument:
-        QTimer.singleShot(0, window.show_startup_recent_projects)
-
+    # No startup Recent Projects dialog. When no project is open, the PROJECT
+    # workspace itself is the Recent-project home screen.
     return app.exec()
 
 
