@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.10 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.11 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -589,31 +589,40 @@ Checkpoint test setelah 11.10:
 
 ## 11.11 — Help `?` untuk Folder & Google Drive
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.05
 
 Tujuan: menyediakan bantuan singkat langsung dari wizard dan Settings.
 
 Isi minimum:
 
-- [ ] arti filesystem path;
-- [ ] arti Google Drive Desktop path;
-- [ ] contoh `G:\My Drive\Client\AA23\Scripts`;
-- [ ] arti browser URL;
-- [ ] contoh `https://drive.google.com/drive/folders/...`;
-- [ ] URL browser tidak digunakan untuk membaca file;
-- [ ] Drive Desktop harus tersedia/sync agar filesystem path dapat dipakai;
-- [ ] jangan memasukkan URL ke field Folder.
+- [x] arti filesystem path;
+- [x] arti Google Drive Desktop path;
+- [x] contoh `G:\My Drive\Client\AA23\Scripts`;
+- [x] arti browser URL;
+- [x] contoh `https://drive.google.com/drive/folders/...`;
+- [x] URL browser tidak digunakan untuk membaca file;
+- [x] Drive Desktop harus tersedia/sync agar filesystem path dapat dipakai;
+- [x] jangan memasukkan URL ke field Folder.
 
 UI:
 
-- [ ] popup/modal ringan;
-- [ ] reusable oleh New Project dan Project Settings;
-- [ ] tidak bergantung internet.
+- [x] popup/modal ringan;
+- [x] reusable oleh New Project dan Project Settings;
+- [x] tidak bergantung internet.
 
 Catatan:
 
 - visual dokumentasi Help global akan dibahas terpisah; pekerjaan ini hanya bantuan kontekstual wizard/settings.
+
+Checkpoint test setelah 11.11:
+
+- full suite: `387 passed, 34 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk reusable folder/Drive help + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- tombol `?` wizard dan Pengaturan Proyek memakai helper dialog yang sama;
+- konten help mencakup seluruh minimum Phase 11 dan tidak melakukan network request.
 
 ---
 
@@ -1254,6 +1263,12 @@ Status: LOCKED
 
 Milestone Folder & Tautan menampilkan Folder Naskah/Stem/Setoran sebagai ringkasan read-only dari konfigurasi filesystem sebelumnya. Drive Utama, Material, dan Setoran adalah browser URL opsional. Bila diisi harus berupa URL `http/https` yang valid; validation hanya memeriksa sintaks lokal dan tidak melakukan network request sehingga workflow offline tetap dapat dilanjutkan.
 
+## D-016 — Bantuan Folder & Drive memakai satu dialog reusable
+
+Status: LOCKED
+
+Wizard Proyek Baru dan Pengaturan Proyek membuka `FolderDriveHelpDialog` yang sama. Help menjelaskan filesystem path, Google Drive Desktop path, browser URL, contoh masing-masing, dan larangan menempatkan URL ke field Folder. Dialog bersifat lokal/offline dan tidak melakukan request jaringan.
+
 ---
 
 # Progress Log
@@ -1340,6 +1355,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: tidak ada network request pada validation; folder dan browser link tetap dua jenis konfigurasi yang berbeda.
 - commit/PR: `e3bf1ca6c0cd16a0175f2b75f224deaaeb0c6893`, `ff5e2c8cf8a9e3d6381ecb28b0673395107cd081`, `973d220636ae6985f1aad6a5b05d85b7e2ec6a9a`, `72e1a720527ff38fa52aebfff9a93d8f8c4cce5f`, `164f4c3c049dba186a639fb569d84e8831efd80c`, `6f6d8d21708bda9433de8363abf097cc738e85e7` / PR #75.
 - next: 11.11 Help Folder & Google Drive.
+
+2026-09-06 — 11.11
+- perubahan: reusable `FolderDriveHelpDialog`; tombol `?` wizard dan Pengaturan Proyek memakai helper yang sama; bantuan menjelaskan filesystem path, Google Drive Desktop, browser URL, serta contoh dan aturan field.
+- test: full suite `387 passed, 34 skipped`; compile success; Qt runtime + wizard scale smoke success.
+- keputusan: contextual help sepenuhnya offline dan tidak melakukan network request; visual Help global tetap out of scope.
+- commit/PR: `a8d2929422b1e556d995faebfa947e2f06974076`, `4af63517708b338f0994b9d0173b38f28e225d5f`, `f9d0e78c64d30be463a50a5b74b4dfb4835c3e41`, `2aaeb51471e10faf800ff052cfc669e81779e76a`, `9e0d076d98d3529b0716c965c966bc4af3b1a3ad`, `a4ae6251ff7330b529a268e9d63d4cdc739827f6` / PR #75.
+- next: 11.12 Milestone 5 — Review & Buat Proyek.
 
 ---
 
