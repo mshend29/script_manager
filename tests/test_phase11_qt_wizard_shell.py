@@ -91,7 +91,7 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
 
     # Shell navigation test does not need to re-run the parser; inject the
     # already-tested successful preflight state so the generic navigation
-    # contract can continue through later placeholder steps.
+    # contract can continue through later steps.
     mapping = source_result.mappings[0]
     dialog._source_preflight_finished(
         SourcePreflightReport(
@@ -110,6 +110,17 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     )
     assert dialog._step_states[1] == WizardMilestoneState.VALID
     assert dialog.next_button.isEnabled() is True
+
+    # Milestone 3 is now a real validation gate. Give the shell test valid
+    # folders so this test continues to exercise navigation rather than the
+    # audio validator itself (covered by test_phase11_qt_audio_setup.py).
+    stem = tmp_path / "stem-shell"
+    delivery = tmp_path / "delivery-shell"
+    stem.mkdir()
+    delivery.mkdir()
+    dialog.stem_output_folder.setText(str(stem))
+    dialog.delivery_folder.setText(str(delivery))
+    qapp.processEvents()
 
     while dialog.current_step < 4:
         dialog._go_next()
