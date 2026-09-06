@@ -12,6 +12,7 @@ from core.project import (
     Project,
     ProjectFormatError,
 )
+from core.project_filename import new_project_destination
 from core.project_settings import ProjectSettings
 
 
@@ -27,6 +28,25 @@ class ProjectManager:
     def is_open(self) -> bool:
         return self.current is not None
 
+    def preview_new_project_file(
+        self,
+        settings: ProjectSettings,
+        parent_folder: str | Path,
+    ) -> Path:
+        normalized = settings.normalized()
+        project_name = normalized.project_name.strip()
+        if not project_name:
+            raise ProjectError("Project Name wajib diisi.")
+
+        # New Project UI requires an explicit code, while the manager keeps a
+        # safe fallback for backward-compatible programmatic/test callers.
+        project_code = normalized.project_code.strip() or project_name
+        return new_project_destination(
+            Path(parent_folder).expanduser(),
+            project_code,
+            project_name,
+        )
+
     def create(
         self,
         settings: ProjectSettings,
@@ -41,14 +61,7 @@ class ProjectManager:
         parent = Path(parent_folder).expanduser()
         parent.mkdir(parents=True, exist_ok=True)
 
-        raw_name = normalized.project_code or project_name
-        if raw_name.casefold().endswith(
-            PROJECT_FILE_EXTENSION.casefold()
-        ):
-            raw_name = raw_name[:-len(PROJECT_FILE_EXTENSION)]
-
-        file_stem = self._safe_file_stem(raw_name)
-        project_file = parent / f"{file_stem}{PROJECT_FILE_EXTENSION}"
+        project_file = self.preview_new_project_file(normalized, parent)
 
         if project_file.exists():
             raise ProjectError(
@@ -309,6 +322,7 @@ class ProjectManager:
 
     @staticmethod
     def _safe_file_stem(value: str) -> str:
+        """Legacy helper kept for compatibility with older external callers."""
         cleaned = "".join(
             char if char.isalnum() or char in (" ", "-", "_") else "_"
             for char in value.strip()

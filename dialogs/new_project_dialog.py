@@ -1,32 +1,38 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QDate
+from pathlib import Path
+
 from PySide6.QtWidgets import (
-    QDateEdit,
     QDialog,
     QDialogButtonBox,
-    QFileDialog,
-    QFormLayout,
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
-    QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from core.project_filename import new_project_destination
 from core.project_settings import ProjectSettings
+from widgets.project_configuration import (
+    AudioOutputSection,
+    DriveLinksSection,
+    FolderField,
+    ProjectConfigurationSections,
+    ProjectIdentitySection,
+    SourceConfigurationSection,
+)
 
 
 class NewProjectDialog(QDialog):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
-        self.setWindowTitle('Proyek Baru')
-        self.resize(680, 560)
-        self.setMinimumWidth(620)
+        self.setWindowTitle("Proyek Baru")
+        self.resize(780, 720)
+        self.setMinimumSize(680, 620)
 
         self._settings = ProjectSettings()
         self._parent_folder = ""
@@ -35,7 +41,7 @@ class NewProjectDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
 
-        title = QLabel('Proyek Baru')
+        title = QLabel("Proyek Baru")
         title.setObjectName("PageTitle")
         root.addWidget(title)
 
@@ -48,95 +54,90 @@ class NewProjectDialog(QDialog):
         subtitle.setWordWrap(True)
         root.addWidget(subtitle)
 
-        group = QGroupBox('Proyek')
-        form = QFormLayout(group)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(2, 2, 8, 2)
+        content_layout.setSpacing(12)
 
-        self.project_name = QLineEdit()
-        self.project_code = QLineEdit()
-        self.client_name = QLineEdit()
-
-        self.start_date = QDateEdit()
-        self.start_date.setCalendarPopup(True)
-        self.start_date.setDate(QDate.currentDate())
-        self.start_date.setDisplayFormat("dd MMMM yyyy")
-
-        location_widget = QWidget()
-        location_layout = QHBoxLayout(location_widget)
-        location_layout.setContentsMargins(0, 0, 0, 0)
-        location_layout.setSpacing(6)
-
-        self.location_edit = QLineEdit()
-        self.location_edit.setPlaceholderText(
-            "Folder tempat file .smproj akan disimpan"
+        self.identity_section = ProjectIdentitySection(self._settings)
+        self.source_section = SourceConfigurationSection(self._settings)
+        self.audio_section = AudioOutputSection(self._settings)
+        self.links_section = DriveLinksSection(self._settings)
+        self.sections = ProjectConfigurationSections(
+            identity=self.identity_section,
+            source=self.source_section,
+            audio=self.audio_section,
+            links=self.links_section,
         )
-        location_layout.addWidget(self.location_edit, 1)
 
-        browse = QPushButton('Telusuri…')
-        browse.setProperty("secondary", True)
-        browse.clicked.connect(self._browse_location)
-        location_layout.addWidget(browse)
+        # Compatibility aliases for callers/tests that already use the dialog
+        # fields directly. The reusable sections are the single source of data.
+        self.project_name = self.identity_section.project_name
+        self.project_code = self.identity_section.project_code
+        self.client_name = self.identity_section.client_name
+        self.start_date = self.identity_section.start_date
+        self.source_folder = self.source_section.source_folder.edit
+        self.episode_before = self.source_section.episode_before
+        self.episode_after = self.source_section.episode_after
+        self.stem_output_folder = self.audio_section.stem_output_folder
+        self.delivery_folder = self.audio_section.delivery_folder
+        self.audio_sample_rate = self.audio_section.audio_sample_rate
+        self.audio_bit_depth = self.audio_section.audio_bit_depth
+        self.audio_channels = self.audio_section.audio_channels
+        self.main_drive_url = self.links_section.main_drive_url
+        self.material_drive_url = self.links_section.material_drive_url
+        self.delivery_drive_url = self.links_section.delivery_drive_url
 
-        form.addRow('Nama Proyek', self.project_name)
-        form.addRow('Kode Proyek', self.project_code)
-        form.addRow('Klien', self.client_name)
-        form.addRow('Tanggal Mulai', self.start_date)
-        form.addRow('Simpan Proyek Di', location_widget)
+        content_layout.addWidget(self.identity_section)
 
-        root.addWidget(group)
+        destination_group = QWidget()
+        destination_layout = QVBoxLayout(destination_group)
+        destination_layout.setContentsMargins(0, 0, 0, 0)
+        destination_layout.setSpacing(6)
 
-        source_group = QGroupBox('Sumber Awal')
-        source_form = QFormLayout(source_group)
-
-        source_widget = QWidget()
-        source_layout = QHBoxLayout(source_widget)
-        source_layout.setContentsMargins(0, 0, 0, 0)
-        source_layout.setSpacing(6)
-
-        self.source_folder = QLineEdit()
-        self.source_folder.setPlaceholderText(
-            "Boleh dikosongkan dan diatur kemudian"
+        location_row = QHBoxLayout()
+        location_row.setContentsMargins(0, 0, 0, 0)
+        location_row.setSpacing(8)
+        location_label = QLabel("Simpan Proyek Di")
+        location_label.setMinimumWidth(130)
+        self.location_field = FolderField(
+            browse_caption="Pilih Lokasi Proyek"
         )
-        source_layout.addWidget(self.source_folder, 1)
+        self.location_edit = self.location_field.edit
+        location_row.addWidget(location_label)
+        location_row.addWidget(self.location_field, 1)
+        destination_layout.addLayout(location_row)
 
-        source_browse = QPushButton('Telusuri…')
-        source_browse.setProperty("secondary", True)
-        source_browse.clicked.connect(self._browse_source)
-        source_layout.addWidget(source_browse)
+        self.destination_preview = QLabel("File proyek: -")
+        self.destination_preview.setObjectName("PageSubtitle")
+        self.destination_preview.setWordWrap(True)
+        destination_layout.addWidget(self.destination_preview)
+        content_layout.addWidget(destination_group)
 
-        self.episode_before = QLineEdit()
-        self.episode_after = QLineEdit()
-        self.episode_before.setPlaceholderText("contoh: EP")
-        self.episode_after.setPlaceholderText("contoh: _")
-
-        source_form.addRow('Folder Sumber', source_widget)
-        source_form.addRow('Sebelum Nomor Episode', self.episode_before)
-        source_form.addRow('Setelah Nomor Episode', self.episode_after)
-
-        root.addWidget(source_group)
-
-        drive_group = QGroupBox('Drive Klien')
-        drive_form = QFormLayout(drive_group)
-
-        self.main_drive_url = QLineEdit()
-        self.main_drive_url.setPlaceholderText("optional")
-
-        drive_form.addRow('URL Drive Utama', self.main_drive_url)
-
-        root.addWidget(drive_group)
-        root.addStretch(1)
+        content_layout.addWidget(self.source_section)
+        content_layout.addWidget(self.audio_section)
+        content_layout.addWidget(self.links_section)
+        content_layout.addStretch(1)
+        scroll.setWidget(content)
+        root.addWidget(scroll, 1)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel
         )
-        save_button = buttons.button(QDialogButtonBox.Save)
-        save_button.setText('Buat Proyek')
-
+        self.create_button = buttons.button(QDialogButtonBox.Save)
+        self.create_button.setText("Buat Proyek")
         buttons.accepted.connect(self._accept)
         buttons.rejected.connect(self.reject)
-
         root.addWidget(buttons)
 
         self.project_name.textChanged.connect(self._sync_project_code)
+        self.project_name.textChanged.connect(self._update_destination_preview)
+        self.project_code.textChanged.connect(self._update_destination_preview)
+        self.location_edit.textChanged.connect(self._update_destination_preview)
+        self._update_destination_preview()
 
     @property
     def settings(self) -> ProjectSettings:
@@ -150,55 +151,69 @@ class NewProjectDialog(QDialog):
         if not self.project_code.text().strip():
             self.project_code.setText(value.strip())
 
-    def _browse_location(self) -> None:
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            'Pilih Lokasi Proyek',
-            self.location_edit.text().strip(),
-        )
-        if folder:
-            self.location_edit.setText(folder)
-
-    def _browse_source(self) -> None:
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            'Pilih Folder Naskah Sumber',
-            self.source_folder.text().strip(),
-        )
-        if folder:
-            self.source_folder.setText(folder)
-
-    def _accept(self) -> None:
+    def _update_destination_preview(self) -> None:
+        parent = self.location_edit.text().strip()
         name = self.project_name.text().strip()
-        location = self.location_edit.text().strip()
+        code = self.project_code.text().strip() or name
 
-        if not name:
-            QMessageBox.warning(
-                self,
-                'Proyek Baru',
-                'Nama Proyek wajib diisi.',
-            )
+        if not parent or not name:
+            self.destination_preview.setText("File proyek: -")
+            self.create_button.setEnabled(True)
             return
 
+        destination = new_project_destination(parent, code, name)
+        if destination.exists():
+            self.destination_preview.setText(
+                f"✕ File proyek sudah ada: {destination}"
+            )
+            self.create_button.setEnabled(False)
+        else:
+            self.destination_preview.setText(f"File proyek: {destination}")
+            self.create_button.setEnabled(True)
+
+    def _accept(self) -> None:
+        location = self.location_edit.text().strip()
         if not location:
             QMessageBox.warning(
                 self,
-                'Proyek Baru',
-                'Lokasi penyimpanan proyek wajib dipilih.',
+                "Proyek Baru",
+                "Lokasi penyimpanan proyek wajib dipilih.",
             )
             return
 
-        self._settings = ProjectSettings(
-            project_name=name,
-            project_code=self.project_code.text().strip(),
-            client_name=self.client_name.text().strip(),
-            start_date=self.start_date.date().toString("yyyy-MM-dd"),
-            project_folder="",
-            source_folder=self.source_folder.text().strip(),
-            episode_before=self.episode_before.text(),
-            episode_after=self.episode_after.text(),
-            main_drive_url=self.main_drive_url.text().strip(),
-        ).normalized()
+        settings = self.sections.to_settings()
+        issues = self.sections.validate_basic(strict_new_project=False)
+        if issues:
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                issues[0].message,
+            )
+            return
 
+        destination = new_project_destination(
+            location,
+            settings.project_code or settings.project_name,
+            settings.project_name,
+        )
+        if destination.exists():
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                f"File proyek sudah ada:\n{destination}",
+            )
+            self._update_destination_preview()
+            return
+
+        parent = Path(location).expanduser()
+        if parent.exists() and not parent.is_dir():
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                "Lokasi penyimpanan proyek bukan folder.",
+            )
+            return
+
+        self._settings = settings
         self._parent_folder = location
         self.accept()

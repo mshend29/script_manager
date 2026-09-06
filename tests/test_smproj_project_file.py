@@ -26,7 +26,7 @@ def test_new_project_is_single_writable_smproj_file(tmp_path):
         tmp_path,
     )
 
-    expected = tmp_path / "AA23.smproj"
+    expected = tmp_path / "AA23 - AA23.smproj"
     assert project.project_file == expected
     assert project.database_file == expected
     assert project.root == tmp_path
@@ -64,7 +64,7 @@ def test_project_code_with_smproj_extension_does_not_duplicate_extension(
         tmp_path,
     )
 
-    assert project.project_file.name == "AA23.smproj"
+    assert project.project_file.name == "AA23 - AA23.smproj"
 
 
 def test_smproj_reopens_as_same_project(tmp_path):
