@@ -26,11 +26,26 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          path = Path('services/tracking_service.py')
-          text = path.read_text(encoding='utf-8')
-          text = text.replace("DELIVERED = 'DISETOR'", 'DELIVERED = "DELIVERED"')
-          text = text.replace('DELIVERED = "DISETOR"', 'DELIVERED = "DELIVERED"')
-          path.write_text(text, encoding='utf-8')
+          replacements = {
+              Path('services/tracking_service.py'): [
+                  ("DELIVERED = 'DISETOR'", 'DELIVERED = "DELIVERED"'),
+                  ('DELIVERED = "DISETOR"', 'DELIVERED = "DELIVERED"'),
+              ],
+              Path('services/project_diagnostics_service.py'): [
+                  ("STATUS_WARNING = 'PERINGATAN'", 'STATUS_WARNING = "WARNING"'),
+                  ('STATUS_WARNING = "PERINGATAN"', 'STATUS_WARNING = "WARNING"'),
+              ],
+              Path('services/validation_service.py'): [
+                  ("WARNING = 'PERINGATAN'", 'WARNING = "WARNING"'),
+                  ('WARNING = "PERINGATAN"', 'WARNING = "WARNING"'),
+              ],
+          }
+
+          for path, pairs in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in pairs:
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
           PY
 
       - name: Semantic safety audit
