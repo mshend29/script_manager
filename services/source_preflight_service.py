@@ -1,0 +1,311 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, field
+
+from import_engine.inspector import (
+    WorkbookInspection,
+    WorkbookInspectionError,
+    WorkbookInspector,
+)
+from import_engine.parser import (
+    ScriptParseError,
+    ScriptParseResult,
+    ScriptParser,
+)
+from services.source_setup_validation import SourceFilenameValidation
+
+
+@dataclass(frozen=True)
+class SourcePreflightProgress:
+    stage: str
+    current: int
+    total: int
+    message: str
+    file_name: str = ""
+
+
+ProgressCallback = Callable[[SourcePreflightProgress], None]
+CancelCallback = Callable[[], bool]
+
+
+@dataclass(frozen=True)
+class SourcePreflightFileResult:
+    file_path: str
+    file_name: str
+    episode_number: int
+    inspected: bool = False
+    parsed: bool = False
+    dialogue_count: int = 0
+    layout_detection: str = ""
+    warnings: tuple[str, ...] = ()
+    error: str = ""
+
+
+@dataclass
+class SourcePreflightReport:
+    files: list[SourcePreflightFileResult] = field(default_factory=list)
+    inspections: dict[str, WorkbookInspection] = field(default_factory=dict)
+    parse_results: dict[str, ScriptParseResult] = field(default_factory=dict)
+    problems: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    cancelled: bool = False
+
+    @property
+    def inspected_files(self) -> int:
+        return sum(1 for item in self.files if item.inspected)
+
+    @property
+    def parsed_files(self) -> int:
+        return sum(1 for item in self.files if item.parsed)
+
+    @property
+    def parsed_dialogues(self) -> int:
+        return sum(item.dialogue_count for item in self.files)
+
+    @property
+    def is_valid(self) -> bool:
+        return (
+            not self.cancelled
+            and not self.problems
+            and bool(self.files)
+            and self.parsed_files == len(self.files)
+        )
+
+
+class SourcePreflightService:
+    """Read-only workbook preflight using the production inspector and parser.
+
+    This service deliberately has no Project/Database dependency. It consumes a
+    successful filename validation from Milestone 2, then reuses exactly the
+    WorkbookInspector and ScriptParser classes used by SourceSyncEngine.prepare().
+    """
+
+    def __init__(
+        self,
+        *,
+        inspector: WorkbookInspector | None = None,
+        parser: ScriptParser | None = None,
+    ) -> None:
+        self.inspector = inspector or WorkbookInspector()
+        self.parser = parser or ScriptParser()
+
+    def run(
+        self,
+        filename_validation: SourceFilenameValidation,
+        *,
+        progress_callback: ProgressCallback | None = None,
+        cancel_callback: CancelCallback | None = None,
+    ) -> SourcePreflightReport:
+        report = SourcePreflightReport()
+
+        if not filename_validation.is_valid:
+            report.problems.extend(
+                issue.message for issue in filename_validation.errors
+            )
+            if not report.problems:
+                report.problems.append(
+                    "Validasi nama file sumber belum siap untuk preflight."
+                )
+            return report
+
+        mappings = tuple(filename_validation.mappings)
+        if not mappings:
+            report.problems.append("Tidak ada workbook yang siap untuk preflight.")
+            return report
+
+        total = len(mappings)
+        file_results: dict[str, SourcePreflightFileResult] = {
+            item.file_path: SourcePreflightFileResult(
+                file_path=item.file_path,
+                file_name=item.file_name,
+                episode_number=item.episode_number,
+            )
+            for item in mappings
+        }
+
+        self._emit(
+            progress_callback,
+            stage="inspecting",
+            current=0,
+            total=total,
+            message=f"Memeriksa workbook 0/{total}",
+        )
+
+        for index, item in enumerate(mappings, start=1):
+            if self._cancelled(cancel_callback):
+                report.cancelled = True
+                report.files = list(file_results.values())
+                self._emit_cancelled(progress_callback, index - 1, total)
+                return report
+
+            try:
+                inspection = self.inspector.inspect(item.file_path)
+            except WorkbookInspectionError as exc:
+                message = f"{item.file_name}: {exc}"
+                report.problems.append(message)
+                file_results[item.file_path] = SourcePreflightFileResult(
+                    file_path=item.file_path,
+                    file_name=item.file_name,
+                    episode_number=item.episode_number,
+                    error=str(exc),
+                )
+            except Exception as exc:  # noqa: BLE001 - preflight boundary
+                message = f"{item.file_name}: Workbook inspection gagal: {exc}"
+                report.problems.append(message)
+                file_results[item.file_path] = SourcePreflightFileResult(
+                    file_path=item.file_path,
+                    file_name=item.file_name,
+                    episode_number=item.episode_number,
+                    error=f"Workbook inspection gagal: {exc}",
+                )
+            else:
+                report.inspections[item.file_path] = inspection
+                file_results[item.file_path] = SourcePreflightFileResult(
+                    file_path=item.file_path,
+                    file_name=item.file_name,
+                    episode_number=item.episode_number,
+                    inspected=True,
+                )
+
+            self._emit(
+                progress_callback,
+                stage="inspecting",
+                current=index,
+                total=total,
+                message=f"Memeriksa workbook {index}/{total}",
+                file_name=item.file_name,
+            )
+
+        report.files = list(file_results.values())
+        if report.problems:
+            return report
+
+        if self._cancelled(cancel_callback):
+            report.cancelled = True
+            self._emit_cancelled(progress_callback, 0, total)
+            return report
+
+        self._emit(
+            progress_callback,
+            stage="parsing",
+            current=0,
+            total=total,
+            message=f"Mem-parse naskah 0/{total}",
+        )
+
+        for index, item in enumerate(mappings, start=1):
+            if self._cancelled(cancel_callback):
+                report.cancelled = True
+                report.files = list(file_results.values())
+                self._emit_cancelled(progress_callback, index - 1, total)
+                return report
+
+            previous = file_results[item.file_path]
+            try:
+                parsed = self.parser.parse(
+                    item.file_path,
+                    episode_number=item.episode_number,
+                )
+            except ScriptParseError as exc:
+                message = f"{item.file_name}: {exc}"
+                report.problems.append(message)
+                file_results[item.file_path] = SourcePreflightFileResult(
+                    file_path=item.file_path,
+                    file_name=item.file_name,
+                    episode_number=item.episode_number,
+                    inspected=previous.inspected,
+                    error=str(exc),
+                )
+            except Exception as exc:  # noqa: BLE001 - preflight boundary
+                message = f"{item.file_name}: Parsing naskah gagal: {exc}"
+                report.problems.append(message)
+                file_results[item.file_path] = SourcePreflightFileResult(
+                    file_path=item.file_path,
+                    file_name=item.file_name,
+                    episode_number=item.episode_number,
+                    inspected=previous.inspected,
+                    error=f"Parsing naskah gagal: {exc}",
+                )
+            else:
+                warnings = tuple(parsed.warnings)
+                report.parse_results[item.file_path] = parsed
+                report.warnings.extend(
+                    f"{item.file_name}: {warning}" for warning in warnings
+                )
+                file_results[item.file_path] = SourcePreflightFileResult(
+                    file_path=item.file_path,
+                    file_name=item.file_name,
+                    episode_number=item.episode_number,
+                    inspected=previous.inspected,
+                    parsed=True,
+                    dialogue_count=parsed.dialogue_count,
+                    layout_detection=parsed.layout.detection,
+                    warnings=warnings,
+                )
+
+            self._emit(
+                progress_callback,
+                stage="parsing",
+                current=index,
+                total=total,
+                message=f"Mem-parse naskah {index}/{total}",
+                file_name=item.file_name,
+            )
+
+        report.files = list(file_results.values())
+        if report.problems:
+            return report
+
+        self._emit(
+            progress_callback,
+            stage="complete",
+            current=total,
+            total=total,
+            message=(
+                f"Preflight selesai: {report.parsed_files} workbook, "
+                f"{report.parsed_dialogues} dialog siap."
+            ),
+        )
+        return report
+
+    @staticmethod
+    def _cancelled(callback: CancelCallback | None) -> bool:
+        return bool(callback is not None and callback())
+
+    @staticmethod
+    def _emit(
+        callback: ProgressCallback | None,
+        *,
+        stage: str,
+        current: int,
+        total: int,
+        message: str,
+        file_name: str = "",
+    ) -> None:
+        if callback is None:
+            return
+        callback(
+            SourcePreflightProgress(
+                stage=stage,
+                current=current,
+                total=total,
+                message=message,
+                file_name=file_name,
+            )
+        )
+
+    @classmethod
+    def _emit_cancelled(
+        cls,
+        callback: ProgressCallback | None,
+        current: int,
+        total: int,
+    ) -> None:
+        cls._emit(
+            callback,
+            stage="cancelled",
+            current=current,
+            total=total,
+            message="Preflight dibatalkan.",
+        )
