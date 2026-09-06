@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **PLANNED / NOT STARTED**  
+Status: **IN PROGRESS — 11.01–11.04 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -152,25 +152,33 @@ Jika sebuah pekerjaan membuka kebutuhan baru, tambahkan sebagai subtask pada pek
 
 ## 11.01 — Freeze baseline sebelum perubahan
 
-Status: [ ] NOT STARTED
+Status: [x] COMPLETE
 
 Tujuan: memastikan phase dimulai dari aplikasi yang stabil.
 
 Pekerjaan:
 
-- [ ] Verifikasi `main` terbaru.
-- [ ] Jalankan full test baseline.
-- [ ] Jalankan Qt runtime baseline.
-- [ ] Catat jumlah pass / skip / fail.
-- [ ] Pastikan tidak ada perubahan packaging EXE.
-- [ ] Pastikan existing `.smproj` dapat dibuka.
-- [ ] Pastikan Open / Save / Save As / Duplicate / Recover / Recent Project tetap hijau.
-- [ ] Identifikasi file zona risiko tinggi:
+- [x] Verifikasi `main` terbaru.
+- [x] Jalankan full test baseline.
+- [x] Jalankan Qt runtime baseline.
+- [x] Catat jumlah pass / skip / fail.
+- [x] Pastikan tidak ada perubahan packaging EXE.
+- [x] Pastikan existing `.smproj` dapat dibuka.
+- [x] Pastikan Open / Save / Save As / Duplicate / Recover / Recent Project tetap hijau.
+- [x] Identifikasi file zona risiko tinggi:
   - `core/project_manager.py`
   - source sync pipeline
   - project data invalidation
   - Tracking / Delivery filesystem invalidation
-- [ ] Buat feature branch phase dari `main` terbaru.
+- [x] Buat feature branch phase dari `main` terbaru.
+
+Baseline evidence:
+
+- PR #73 / commit `6d2041e01ceba9969262619136946bf8f7ec0a27`: `344 passed, 15 skipped`;
+- Qt runtime baseline: success;
+- `main` Phase 11 start: `86224ad777033b0668999799fab97674a8cf9bec` (hanya menambah dokumen Phase 11 dibanding baseline code);
+- feature branch: `phase-11-new-project-setup`;
+- packaging EXE tidak disentuh.
 
 Exit criteria:
 
@@ -182,7 +190,7 @@ Exit criteria:
 
 ## 11.02 — Definisikan kontrak konfigurasi tunggal
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.01
 
 Tujuan: Proyek Baru dan Pengaturan Proyek memiliki sumber field yang sama.
@@ -191,43 +199,43 @@ Kontrak field:
 
 ### Inisialisasi Proyek
 
-- [ ] Nama Proyek
-- [ ] Kode Proyek
-- [ ] Klien
-- [ ] Tanggal Mulai
-- [ ] lokasi penyimpanan project baru
+- [x] Nama Proyek
+- [x] Kode Proyek
+- [x] Klien
+- [x] Tanggal Mulai
+- [x] lokasi penyimpanan project baru
 
 ### Sumber Naskah
 
-- [ ] Folder Sumber
-- [ ] Sebelum Nomor Episode
-- [ ] Setelah Nomor Episode
+- [x] Folder Sumber
+- [x] Sebelum Nomor Episode
+- [x] Setelah Nomor Episode
 
 ### Sumber Audio
 
-- [ ] Folder Stem / Mixdown / Export
-- [ ] Folder Setoran
-- [ ] Format WAV
-- [ ] Sample rate
-- [ ] Bit depth
-- [ ] Channel
+- [x] Folder Stem / Mixdown / Export
+- [x] Folder Setoran
+- [x] Format WAV
+- [x] Sample rate
+- [x] Bit depth
+- [x] Channel
 
 ### Folder & Tautan
 
-- [ ] ringkasan Folder Naskah
-- [ ] ringkasan Folder Stem
-- [ ] ringkasan Folder Setoran
-- [ ] Drive Utama URL
-- [ ] Material URL
-- [ ] Setoran URL
+- [x] ringkasan Folder Naskah
+- [x] ringkasan Folder Stem
+- [x] ringkasan Folder Setoran
+- [x] Drive Utama URL
+- [x] Material URL
+- [x] Setoran URL
 
 Pekerjaan:
 
-- [ ] Pastikan `ProjectSettings` mencakup seluruh data persistent yang diperlukan.
-- [ ] Jangan menambah schema baru jika field existing sudah cukup.
-- [ ] Pertahankan `project_folder` sebagai runtime/read-only untuk existing project.
-- [ ] Definisikan field blocking, warning, dan optional.
-- [ ] Definisikan normalization tunggal untuk New Project dan Settings.
+- [x] Pastikan `ProjectSettings` mencakup seluruh data persistent yang diperlukan.
+- [x] Jangan menambah schema baru jika field existing sudah cukup.
+- [x] Pertahankan `project_folder` sebagai runtime/read-only untuk existing project.
+- [x] Definisikan field blocking, warning, dan optional.
+- [x] Definisikan normalization tunggal untuk New Project dan Settings.
 
 Exit criteria:
 
@@ -238,27 +246,27 @@ Exit criteria:
 
 ## 11.03 — Pisahkan reusable configuration widgets
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.02
 
 Tujuan: menghindari dua implementasi form yang dapat drift.
 
 Target komponen konseptual:
 
-- [ ] `ProjectIdentitySection`
-- [ ] `SourceConfigurationSection`
-- [ ] `AudioOutputSection`
-- [ ] `DriveLinksSection`
-- [ ] reusable `FolderField`
+- [x] `ProjectIdentitySection`
+- [x] `SourceConfigurationSection`
+- [x] `AudioOutputSection`
+- [x] `DriveLinksSection`
+- [x] reusable `FolderField`
 
 Pekerjaan:
 
-- [ ] Extract komponen dari `NewProjectDialog` dan `ProjectSettingsDialog` dengan perubahan visual seminimal mungkin terlebih dahulu.
-- [ ] Pastikan widget dapat dipakai di wizard maupun tab Settings.
-- [ ] Pusatkan collection `ProjectSettings` dari widget.
-- [ ] Pusatkan load existing `ProjectSettings` ke widget.
-- [ ] Pusatkan basic validation.
-- [ ] Tambahkan test roundtrip widget → settings → widget.
+- [x] Extract komponen dari `NewProjectDialog` dan `ProjectSettingsDialog` dengan perubahan visual seminimal mungkin terlebih dahulu.
+- [x] Pastikan widget dapat dipakai di wizard maupun tab Settings.
+- [x] Pusatkan collection `ProjectSettings` dari widget.
+- [x] Pusatkan load existing `ProjectSettings` ke widget.
+- [x] Pusatkan basic validation.
+- [x] Tambahkan test roundtrip widget → settings → widget.
 
 Guardrail:
 
@@ -274,7 +282,7 @@ Exit criteria:
 
 ## 11.04 — Implement formatter nama file `.smproj`
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.02
 
 Tujuan: file project baru selalu menggunakan gabungan kode + nama proyek.
@@ -287,28 +295,34 @@ KODE - NAMA PROYEK.smproj
 
 Pekerjaan:
 
-- [ ] Buat formatter resmi di layer yang sesuai; jangan menyusun filename hanya di UI.
-- [ ] Sanitasi karakter Windows invalid.
-- [ ] Bersihkan whitespace berlebih.
-- [ ] Cegah suffix `.smproj` ganda.
-- [ ] Pertahankan Unicode yang valid.
-- [ ] Preview path destination.
-- [ ] Collision detection sebelum Create aktif.
-- [ ] Pastikan metadata name/code tidak ikut berubah oleh sanitasi filename.
+- [x] Buat formatter resmi di layer yang sesuai; jangan menyusun filename hanya di UI.
+- [x] Sanitasi karakter Windows invalid.
+- [x] Bersihkan whitespace berlebih.
+- [x] Cegah suffix `.smproj` ganda.
+- [x] Pertahankan Unicode yang valid.
+- [x] Preview path destination.
+- [x] Collision detection sebelum Create aktif.
+- [x] Pastikan metadata name/code tidak ikut berubah oleh sanitasi filename.
 
 Test wajib:
 
-- [ ] nama + kode normal;
-- [ ] Unicode;
-- [ ] invalid Windows chars;
-- [ ] code / name berisi `.smproj`;
-- [ ] whitespace;
-- [ ] existing destination;
-- [ ] project existing lama tetap dapat dibuka.
+- [x] nama + kode normal;
+- [x] Unicode;
+- [x] invalid Windows chars;
+- [x] code / name berisi `.smproj`;
+- [x] whitespace;
+- [x] existing destination;
+- [x] project existing lama tetap dapat dibuka.
 
 Exit criteria:
 
 - `ProjectManager.create()` dan preview UI menggunakan rule filename yang sama.
+
+Checkpoint test setelah 11.02–11.04:
+
+- full suite PR #75: `356 passed, 16 skipped`;
+- compile Python sources: success;
+- Qt runtime smoke tests: success.
 
 ---
 
@@ -1149,6 +1163,18 @@ Status: LOCKED
 
 Tidak melakukan packaging EXE pada Phase 11.
 
+## D-009 — Destination project baru bersifat transient
+
+Status: LOCKED
+
+Folder tujuan `.smproj` baru adalah state wizard dan tidak ditambahkan ke schema persistent. `project_folder` tetap runtime/read-only dan menunjuk file `.smproj` yang sudah dibuat.
+
+## D-010 — Strict validation berada di wizard
+
+Status: LOCKED
+
+Wizard Proyek Baru menerapkan blocker lengkap Phase 11. `ProjectManager.create()` tetap kompatibel untuk caller programatik/test lama, tetapi semua caller memakai formatter filename resmi yang sama dan manager tetap menolak overwrite destination.
+
 ---
 
 # Progress Log
@@ -1165,6 +1191,34 @@ YYYY-MM-DD — 11.xx
 - commit/PR:
 - next:
 ```
+
+2026-09-06 — 11.01
+- perubahan: baseline dikunci; branch `phase-11-new-project-setup` dibuat dari `86224ad777033b0668999799fab97674a8cf9bec`.
+- test: baseline PR #73 `344 passed, 15 skipped`; Qt runtime success.
+- keputusan: packaging tetap out of scope; zona risiko tinggi dikunci sesuai dokumen.
+- commit/PR: baseline code `cc64a8c758693d0c1366a417068d37d839105568` / Phase doc merge `86224ad777033b0668999799fab97674a8cf9bec`.
+- next: 11.02.
+
+2026-09-06 — 11.02
+- perubahan: kontrak field, audio constants, blocking/warning/optional, dan normalization dipusatkan pada `core/project_settings.py`; tidak ada schema baru.
+- test: contract/normalization tests ikut full suite `356 passed, 16 skipped`.
+- keputusan: destination project baru transient; `project_folder` tetap runtime-only.
+- commit/PR: `cc7c589ba3e537fc14f785d83d361da3c91fa03e` / PR #75.
+- next: 11.03.
+
+2026-09-06 — 11.03
+- perubahan: reusable `ProjectIdentitySection`, `SourceConfigurationSection`, `AudioOutputSection`, `DriveLinksSection`, `FolderField`, serta coordinator `ProjectConfigurationSections`; New Project dan Settings memakai section yang sama.
+- test: widget roundtrip test + Qt runtime smoke success; full suite `356 passed, 16 skipped`.
+- keputusan: source filename preview memakai `extract_episode_number()` produksi agar tidak drift.
+- commit/PR: `cc7c589ba3e537fc14f785d83d361da3c91fa03e` / PR #75.
+- next: 11.04.
+
+2026-09-06 — 11.04
+- perubahan: formatter resmi `KODE - NAMA.smproj`, Windows sanitization, whitespace cleanup, Unicode preservation, suffix guard, preview destination, dan collision detection; `ProjectManager.create()` memakai formatter yang sama.
+- test: normal/Unicode/invalid chars/suffix/whitespace/collision/legacy open; full suite `356 passed, 16 skipped`; Qt runtime success.
+- keputusan: metadata name/code tidak disanitasi; project existing tidak di-rename; Save As/Duplicate tetap target user.
+- commit/PR: `cc7c589ba3e537fc14f785d83d361da3c91fa03e` / PR #75.
+- next: 11.05 Wizard shell.
 
 ---
 
