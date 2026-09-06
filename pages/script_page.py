@@ -74,8 +74,11 @@ class ScriptTableModel(QAbstractTableModel):
                 )
 
         if role == Qt.ItemDataRole.ToolTipRole:
-            if column == 3 and row.source_file_name:
-                return f"Sumber: {row.source_file_name}"
+            if column == 3:
+                tooltip = row.dialogue
+                if row.source_file_name:
+                    tooltip += f"\n\nSumber: {row.source_file_name}"
+                return tooltip
             if column in {4, 5} and row.has_unresolved_cast:
                 return "Pemetaan tokoh/talent belum sepenuhnya selesai."
 
@@ -103,7 +106,7 @@ class ScriptTableModel(QAbstractTableModel):
 
 
 class ScriptCastTableModel(QAbstractTableModel):
-    HEADERS = ("TOKOH", "TALENT")
+    HEADERS = ("TALENT", "TOKOH")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -127,8 +130,12 @@ class ScriptCastTableModel(QAbstractTableModel):
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid() or not (0 <= index.row() < len(self._rows)):
             return None
-        if role == Qt.ItemDataRole.DisplayRole:
-            return self._rows[index.row()][index.column()]
+        value = self._rows[index.row()][index.column()]
+        if role in {
+            Qt.ItemDataRole.DisplayRole,
+            Qt.ItemDataRole.ToolTipRole,
+        }:
+            return value
         return None
 
     def headerData(
@@ -171,6 +178,8 @@ class ScriptPage(PageShell):
         self.cast_model = ScriptCastTableModel(self.cast_table)
         self.cast_table.setModel(self.cast_model)
         self.cast_table.setAlternatingRowColors(False)
+        self.cast_table.setWordWrap(False)
+        self.cast_table.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.cast_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
         )
@@ -178,7 +187,7 @@ class ScriptPage(PageShell):
             QAbstractItemView.SelectionMode.NoSelection
         )
         self.cast_table.verticalHeader().setVisible(False)
-        self.cast_table.verticalHeader().setDefaultSectionSize(28)
+        self.cast_table.verticalHeader().setDefaultSectionSize(30)
         self.cast_table.setShowGrid(False)
         cast_header = self.cast_table.horizontalHeader()
         cast_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -242,7 +251,8 @@ class ScriptPage(PageShell):
         self.table_model = ScriptTableModel(self.table)
         self.table.setModel(self.table_model)
         self.table.setAlternatingRowColors(True)
-        self.table.setWordWrap(True)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.table.setSortingEnabled(False)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(
@@ -252,7 +262,7 @@ class ScriptPage(PageShell):
             QAbstractItemView.SelectionMode.SingleSelection
         )
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(44)
+        self.table.verticalHeader().setDefaultSectionSize(38)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -432,35 +442,50 @@ class ScriptPage(PageShell):
             self.cast_scope_label.setText(f"Gagal membaca tokoh/talent: {exc}")
             return
 
-        pairs: set[tuple[str, str]] = set()
+        talent_cast: dict[str, set[str]] = {}
+        unique_characters: set[str] = set()
+
         for row in rows:
             if not row.characters:
-                pairs.add(("⚠ Belum dipetakan", "—"))
+                talent_cast.setdefault("⚠ Belum dipetakan", set()).add(
+                    "⚠ Belum dipetakan"
+                )
                 continue
 
             for index, character_name in enumerate(row.characters):
+                character_text = str(character_name)
                 talent_name = (
                     row.talents[index]
                     if index < len(row.talents)
                     else None
                 )
-                pairs.add(
-                    (
-                        str(character_name),
-                        str(talent_name) if talent_name else "⚠ Belum dipetakan",
-                    )
+                talent_text = (
+                    str(talent_name)
+                    if talent_name
+                    else "⚠ Belum dipetakan"
                 )
+                talent_cast.setdefault(talent_text, set()).add(character_text)
+                unique_characters.add(character_text)
 
-        ordered_pairs = sorted(
-            pairs,
-            key=lambda item: (item[0].casefold(), item[1].casefold()),
-        )
-        self.cast_model.set_rows(ordered_pairs)
+        grouped_rows = [
+            (
+                talent_name,
+                " / ".join(
+                    sorted(
+                        characters,
+                        key=str.casefold,
+                    )
+                ),
+            )
+            for talent_name, characters in talent_cast.items()
+        ]
+        grouped_rows.sort(key=lambda item: item[0].casefold())
+        self.cast_model.set_rows(grouped_rows)
 
-        unique_characters = {
-            character_name
-            for character_name, _ in ordered_pairs
-            if not character_name.startswith("⚠")
+        unique_talents = {
+            talent_name
+            for talent_name in talent_cast
+            if not talent_name.startswith("⚠")
         }
         scope = (
             "Semua episode"
@@ -468,7 +493,9 @@ class ScriptPage(PageShell):
             else f"Episode {episode_number}"
         )
         self.cast_scope_label.setText(
-            f"{scope} • {self._format_count(len(unique_characters))} tokoh"
+            f"{scope} • "
+            f"{self._format_count(len(unique_talents))} talent • "
+            f"{self._format_count(len(unique_characters))} tokoh"
         )
 
     # ------------------------------------------------------------------
