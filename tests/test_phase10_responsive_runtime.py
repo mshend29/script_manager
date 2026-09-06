@@ -133,6 +133,7 @@ def test_tracking_dense_episode_grid_stays_compact_at_lower_width(qapp) -> None:
             recording_status=NOT_STARTED,
             downstream_status="NOT_READY",
             downstream_note="",
+            revision_number=0,
             display_status=NOT_STARTED,
         )
         for index in range(1, 41)
