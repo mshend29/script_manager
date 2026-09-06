@@ -197,7 +197,7 @@ class HelpPage(PageShell):
         self._set_active_button(self.keyboard_shortcuts_button)
         self.title.setText('Pintasan Keyboard')
         self.subtitle.setText(
-            "Daftar shortcut keyboard yang aktif di Script Manager."
+            'Daftar pintasan keyboard yang aktif di Script Manager.'
         )
 
         try:
@@ -293,7 +293,7 @@ class HelpPage(PageShell):
         self._set_active_button(self.about_button)
         self.title.setText('Tentang Script Manager')
         self.subtitle.setText(
-            "Informasi aplikasi, project format, database schema, dan runtime."
+            'Informasi aplikasi, format proyek, skema database, dan runtime.'
         )
 
         try:

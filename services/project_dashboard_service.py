@@ -185,19 +185,19 @@ class ProjectDashboardService:
             "needs_review",
             'Perlu Ditinjau',
             snapshot.needs_review,
-            "Keputusan manusia masih diperlukan di DATA → Unresolved.",
+            'Keputusan operator masih diperlukan di DATA → Belum Dipetakan.',
             'PERINGATAN',
         )
         add(
             "revision",
             'Revisi',
             snapshot.revisions,
-            "Scope recording yang sedang ditandai Revision.",
+            'Lingkup rekaman yang sedang ditandai Revisi.',
             "ERROR",
         )
         add(
             "recording",
-            "Recording Incomplete",
+            'Rekaman Belum Lengkap',
             snapshot.recording_episodes,
             "Episode masih memiliki line yang belum checked.",
         )
@@ -205,11 +205,11 @@ class ProjectDashboardService:
             "ready_to_stem",
             "Recorded → Stem",
             snapshot.recorded_waiting_stem,
-            "Expected track sudah Recorded tetapi file output belum ada.",
+            'Track yang diharapkan sudah Terekam tetapi file output belum ada.',
         )
         add(
             "pending_delivery",
-            "Stemmed → Delivery",
+            'Selesai Stem → Setoran',
             snapshot.stemmed_waiting_delivery,
             "Stem valid tersedia tetapi belum ditemukan di SETORAN.",
         )
@@ -224,7 +224,7 @@ class ProjectDashboardService:
             "workflow_warnings",
             'Peringatan Alur',
             snapshot.workflow_warnings,
-            "Buka DATA → Validation untuk workflow warning.",
+            'Buka DATA → Validasi untuk peringatan alur.',
             'PERINGATAN',
         )
 

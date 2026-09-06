@@ -203,7 +203,7 @@ class AliasDataPage(DataPage):
                     self.UNRESOLVED_CHARACTER_COLOR,
                 )
                 character_item.setToolTip(
-                    "Double-click untuk membuka Needs Review / Missing Character."
+                    'Klik dua kali untuk membuka Perlu Ditinjau / Tokoh Belum Ada.'
                 )
             elif unresolved_dialogues:
                 self._set_table_row_color(
@@ -212,7 +212,7 @@ class AliasDataPage(DataPage):
                     self.UNRESOLVED_TALENT_COLOR,
                 )
                 unresolved_item.setToolTip(
-                    "Double-click untuk membuka unresolved character ini."
+                    'Klik dua kali untuk membuka tokoh yang belum dipetakan ini.'
                 )
 
     def _character_row_activated(self, row_index: int, column: int) -> None:

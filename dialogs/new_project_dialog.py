@@ -176,7 +176,7 @@ class NewProjectDialog(QDialog):
             QMessageBox.warning(
                 self,
                 'Proyek Baru',
-                "Project Name wajib diisi.",
+                'Nama Proyek wajib diisi.',
             )
             return
 
@@ -184,7 +184,7 @@ class NewProjectDialog(QDialog):
             QMessageBox.warning(
                 self,
                 'Proyek Baru',
-                "Lokasi penyimpanan project wajib dipilih.",
+                'Lokasi penyimpanan proyek wajib dipilih.',
             )
             return
 

@@ -163,9 +163,9 @@ class ProjectDiagnosticsService:
                     ),
                     value=f"{result.output_warnings} warning",
                     detail=(
-                        "Buka TRACKING → Output Health untuk detail."
+                        'Buka TRACKING → Kondisi Output untuk detail.'
                         if result.output_warnings
-                        else "Tidak ada warning file yang terdeteksi."
+                        else 'Tidak ada peringatan file yang terdeteksi.'
                     ),
                 )
             )
@@ -181,7 +181,7 @@ class ProjectDiagnosticsService:
                 detail=(
                     f"Backup terbaru: {backups[0].name}"
                     if backups
-                    else "Belum ada database backup."
+                    else 'Belum ada cadangan database.'
                 ),
             )
         )
@@ -269,7 +269,7 @@ class ProjectDiagnosticsService:
                 label=label,
                 status=STATUS_ERROR if required else STATUS_WARNING,
                 value="Not configured",
-                detail="Isi path melalui Project Settings.",
+                detail='Isi path melalui Pengaturan Proyek.',
             )
 
         path = Path(raw)

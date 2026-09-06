@@ -104,7 +104,7 @@ class ReviewService:
             ).fetchone()
             if existing_cast is not None:
                 raise ValueError(
-                    "Hanya row tanpa character/cast yang dapat ditandai sebagai Narration / Non-Dialogue."
+                    'Hanya baris tanpa tokoh/talent yang dapat ditandai sebagai Narasi / Non-Dialog.'
                 )
 
             connection.execute(

@@ -231,7 +231,7 @@ class ProjectPage(QWidget):
         self.project_name.setWordWrap(True)
         identity.addWidget(self.project_name)
 
-        self.project_identity = QLabel("Project belum dibuka")
+        self.project_identity = QLabel('Proyek belum dibuka')
         self.project_identity.setObjectName("ProjectIdentityMeta")
         self.project_identity.setMinimumWidth(0)
         self.project_identity.setWordWrap(True)
@@ -312,7 +312,7 @@ class ProjectPage(QWidget):
         info_layout.addWidget(info_separator)
 
         self.info_text = QLabel(
-            "Buat project baru atau buka project yang sudah ada."
+            'Buat proyek baru atau buka proyek yang sudah ada.'
         )
         self.info_text.setObjectName("ProjectHealthText")
         self.info_text.setWordWrap(True)
@@ -490,7 +490,7 @@ class ProjectPage(QWidget):
         layout.setSpacing(8)
 
         hint = QLabel(
-            "Mulai dengan membuat project baru atau membuka file .smproj."
+            'Mulai dengan membuat proyek baru atau membuka file .smproj.'
         )
         hint.setObjectName("ProjectEmptyHint")
         layout.addWidget(hint, 1)
@@ -782,7 +782,7 @@ class ProjectPage(QWidget):
 
     def reset_view(self) -> None:
         self.project_name.setText('Belum ada proyek terbuka')
-        self.project_identity.setText("Project belum dibuka")
+        self.project_identity.setText('Proyek belum dibuka')
         self.project_location.setText('File proyek: -')
         self.source_path.setText('Folder sumber: -')
         self.start_date.setText('Tanggal mulai: -')
@@ -800,5 +800,5 @@ class ProjectPage(QWidget):
 
         self.info_title.setText('Belum ada proyek terbuka')
         self.info_text.setText(
-            "Buat project baru atau buka project yang sudah ada."
+            'Buat proyek baru atau buka proyek yang sudah ada.'
         )

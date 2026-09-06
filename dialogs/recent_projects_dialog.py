@@ -48,7 +48,7 @@ class RecentProjectsDialog(QDialog):
         root.addWidget(title)
 
         subtitle = QLabel(
-            "Pilih project terakhir untuk langsung melanjutkan pekerjaan."
+            'Pilih proyek terakhir untuk langsung melanjutkan pekerjaan.'
         )
         subtitle.setObjectName("RecentProjectsSubtitle")
         root.addWidget(subtitle)
@@ -81,7 +81,7 @@ class RecentProjectsDialog(QDialog):
                 grid.addWidget(card, index // 2, index % 2)
         else:
             empty = QLabel(
-                "Belum ada recent project. Gunakan Create New untuk membuat project pertama."
+                'Belum ada proyek terbaru. Gunakan Buat Baru untuk membuat proyek pertama.'
             )
             empty.setObjectName("RecentProjectsSubtitle")
             empty.setWordWrap(True)

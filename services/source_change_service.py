@@ -364,7 +364,7 @@ class SourceChangeService:
                 f"{pair.character} / {pair.talent}"
                 for pair in row.cast_pairs
             )
-        characters = ", ".join(row.characters) or "Character Unknown"
+        characters = ", ".join(row.characters) or 'Tokoh Tidak Dikenal'
         talents = ", ".join(row.talents) or "Talent Unknown"
         return f"{characters} / {talents}"
 
@@ -400,7 +400,7 @@ class SourceChangeService:
             ).fetchall()
 
         if not rows:
-            return "Character Unknown / Talent Unknown"
+            return 'Tokoh Tidak Dikenal / Talent Tidak Dikenal'
         return ", ".join(
             f"{row['character_name']} / {row['talent_name']}"
             for row in rows

@@ -118,7 +118,7 @@ class SourceRefreshPreviewDialog(QDialog):
             root.addWidget(warning_label)
 
         if not preview.has_changes:
-            no_change = QLabel("✓ Tidak ada perubahan source yang perlu diterapkan.")
+            no_change = QLabel('✓ Tidak ada perubahan sumber yang perlu diterapkan.')
             no_change.setStyleSheet("font-weight: 700; color: #176b2c;")
             root.addWidget(no_change)
 

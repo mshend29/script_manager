@@ -333,7 +333,7 @@ class TrackingService:
 
             if total < 1:
                 raise ValueError(
-                    "Kombinasi episode, talent, dan character tidak memiliki dialog aktif."
+                    'Kombinasi episode, talent, dan tokoh tidak memiliki dialog aktif.'
                 )
 
             labels = connection.execute(
@@ -385,7 +385,7 @@ class TrackingService:
             if normalized_status == REVISION:
                 if recorded < total:
                     raise ValueError(
-                        "Revision hanya dapat ditandai setelah recording lengkap."
+                        'Revisi hanya dapat ditandai setelah rekaman lengkap.'
                     )
                 if (
                     existing_status != REVISION
@@ -395,7 +395,7 @@ class TrackingService:
                     )
                 ):
                     raise ValueError(
-                        "Revision hanya dapat ditandai setelah track Stemmed atau Delivered."
+                        'Revisi hanya dapat ditandai setelah track Selesai Stem atau Disetor.'
                     )
 
                 # Mark Revision allocates the next expected export generation.

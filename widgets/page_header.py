@@ -42,7 +42,7 @@ PAGE_HEADER_SPECS = {
         overflow=(
             HeaderAction("project.new", 'Proyek Baru'),
             HeaderAction("project.open_recent", 'Buka Terbaru'),
-            HeaderAction("project.save", "Save"),
+            HeaderAction("project.save", 'Simpan'),
             HeaderAction("project.save_as", 'Simpan Sebagai'),
             HeaderAction("project.duplicate", "Duplicate"),
             HeaderAction("project.recover", 'Pulihkan'),
@@ -105,9 +105,9 @@ PAGE_HEADER_SPECS = {
             HeaderAction("tools.open_delivery_folder", 'Buka Setoran'),
             HeaderAction("tools.open_backups", 'Buka Cadangan'),
             HeaderAction("tools.open_logs", 'Buka Log'),
-            HeaderAction("tools.open_main_drive", "Open Main Drive"),
-            HeaderAction("tools.open_material_drive", "Open Material Drive"),
-            HeaderAction("tools.open_delivery_drive", "Open Delivery Drive"),
+            HeaderAction("tools.open_main_drive", 'Buka Drive Utama'),
+            HeaderAction("tools.open_material_drive", 'Buka Drive Material'),
+            HeaderAction("tools.open_delivery_drive", 'Buka Drive Setoran'),
         ),
     ),
     "HELP": PageHeaderSpec(

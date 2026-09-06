@@ -292,7 +292,7 @@ class DataPage(PageShell):
         self.sources_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
-        self.sources_table.setToolTip("Double-click source untuk membuka workbook.")
+        self.sources_table.setToolTip('Klik dua kali sumber untuk membuka workbook.')
         layout.addWidget(self.sources_table)
         self.tabs.addTab(tab, 'Sumber')
 
@@ -483,7 +483,7 @@ class DataPage(PageShell):
                 f"{summary.workflow_warnings} workflow warning."
             )
         else:
-            self.health_label.setText("✓ Project data healthy.")
+            self.health_label.setText('✓ Data proyek sehat.')
 
     def _load_characters(self) -> None:
         if not self._controller.is_bound:
@@ -538,7 +538,7 @@ class DataPage(PageShell):
                     self.UNRESOLVED_CHARACTER_COLOR,
                 )
                 character_item.setToolTip(
-                    "Double-click untuk membuka Needs Review / Missing Character."
+                    'Klik dua kali untuk membuka Perlu Ditinjau / Tokoh Belum Ada.'
                 )
             elif unresolved_dialogues:
                 self._set_table_row_color(
@@ -547,7 +547,7 @@ class DataPage(PageShell):
                     self.UNRESOLVED_TALENT_COLOR,
                 )
                 unresolved_item.setToolTip(
-                    "Double-click untuk membuka unresolved character ini."
+                    'Klik dua kali untuk membuka tokoh yang belum dipetakan ini.'
                 )
 
     def _load_talents(self) -> None:
@@ -710,7 +710,7 @@ class DataPage(PageShell):
                 add_talent = menu.addAction('Tambah Talent…')
                 add_talent.setEnabled(row.character_id is not None)
                 if row.character_id is None:
-                    hint = menu.addAction("Add Character terlebih dahulu")
+                    hint = menu.addAction('Tambahkan Tokoh terlebih dahulu')
                     hint.setEnabled(False)
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is add_talent:
@@ -954,7 +954,7 @@ class DataPage(PageShell):
             QMessageBox.information(
                 self,
                 'Pemetaan Tokoh & Talent',
-                "Pilih character dan talent terlebih dahulu.",
+                'Pilih tokoh dan talent terlebih dahulu.',
             )
             return
         row = self.characters_table.currentRow()
@@ -1190,12 +1190,12 @@ class DataPage(PageShell):
 
     def backup_database(self) -> Path:
         if not self._controller.is_bound:
-            raise RuntimeError("Belum ada project yang dibuka.")
+            raise RuntimeError('Belum ada proyek yang dibuka.')
         return self._controller.backup_database()
 
     def rebuild_indexes(self) -> None:
         if not self._controller.is_bound:
-            raise RuntimeError("Belum ada project yang dibuka.")
+            raise RuntimeError('Belum ada proyek yang dibuka.')
         self._controller.rebuild_indexes()
         self.reload()
 

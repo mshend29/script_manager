@@ -381,7 +381,7 @@ class MainWindow(QMainWindow):
         )
         self._record_recent_project(project)
         self.statusBar().showMessage(
-            f"Proyek created: {project.project_file}",
+            f"Proyek dibuat: {project.project_file}",
             5000,
         )
 
@@ -398,9 +398,9 @@ class MainWindow(QMainWindow):
 
         project_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Open Script Management Project",
+            'Buka Proyek Script Manager',
             start_dir,
-            "Script Management Project (*.smproj);;All Files (*)",
+            'Proyek Script Manager (*.smproj);;Semua File (*)',
         )
 
         if not project_path:
@@ -419,7 +419,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(
                     self,
                     'Buka Proyek',
-                    "Sync Source sedang berjalan.",
+                    'Sinkronisasi sumber sedang berjalan.',
                 )
             return False
 
@@ -442,7 +442,7 @@ class MainWindow(QMainWindow):
         )
         self._record_recent_project(project)
         self.statusBar().showMessage(
-            f"Proyek opened: {project.project_file}",
+            f"Proyek dibuka: {project.project_file}",
             5000,
         )
         return True
@@ -456,7 +456,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Buka Terbaru',
-                "Belum ada recent project yang masih tersedia.",
+                'Belum ada proyek terbaru yang masih tersedia.',
             )
             return
 
@@ -473,7 +473,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Simpan Proyek',
-                "Belum ada project yang dibuka.",
+                'Belum ada proyek yang dibuka.',
             )
             return
 
@@ -491,7 +491,7 @@ class MainWindow(QMainWindow):
         current = self.project_manager.current
         if current is not None:
             self._record_recent_project(current)
-        self.statusBar().showMessage("Project saved", 3000)
+        self.statusBar().showMessage('Proyek tersimpan', 3000)
 
     def save_project_as(self) -> None:
         if self._block_project_change_during_sync('Simpan Proyek Sebagai'):
@@ -502,7 +502,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Simpan Proyek Sebagai',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -513,7 +513,7 @@ class MainWindow(QMainWindow):
             self,
             'Simpan Proyek Sebagai',
             str(default_path),
-            "Script Management Project (*.smproj)",
+            'Proyek Script Manager (*.smproj)',
         )
         if not target:
             return
@@ -537,7 +537,7 @@ class MainWindow(QMainWindow):
         )
         self._refresh_after_project_switch(saved)
         self.statusBar().showMessage(
-            f"Proyek saved as: {saved.project_file}",
+            f"Proyek disimpan sebagai: {saved.project_file}",
             5000,
         )
 
@@ -550,7 +550,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Duplikat Proyek',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -561,7 +561,7 @@ class MainWindow(QMainWindow):
             self,
             'Duplikat Proyek',
             str(default_path),
-            "Script Management Project (*.smproj)",
+            'Proyek Script Manager (*.smproj)',
         )
         if not target:
             return
@@ -592,7 +592,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Pulihkan Proyek',
-                "Belum ada project history untuk mencari backup.",
+                'Belum ada riwayat proyek untuk mencari cadangan.',
             )
             return
 
@@ -611,7 +611,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Pulihkan Proyek',
-                "Tidak ada backup .smproj yang tersedia.",
+                'Tidak ada cadangan .smproj yang tersedia.',
             )
             return
 
@@ -638,7 +638,7 @@ class MainWindow(QMainWindow):
             self,
             'Pilih Cadangan Pemulihan',
             str(backups[0].parent),
-            "Script Management Project Backup (*.smproj)",
+            'Cadangan Proyek Script Manager (*.smproj)',
         )
         if not backup_path:
             return
@@ -653,7 +653,7 @@ class MainWindow(QMainWindow):
             self,
             'Simpan Proyek Hasil Pemulihan',
             str(default_target),
-            "Script Management Project (*.smproj)",
+            'Proyek Script Manager (*.smproj)',
         )
         if not target:
             return
@@ -725,7 +725,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Script Manager")
         self.refresh_project_page()
         self.set_page("PROJECT")
-        self.statusBar().showMessage("Project closed", 3000)
+        self.statusBar().showMessage('Proyek ditutup', 3000)
 
     def _clear_data_pages(self) -> None:
         self.pages["SCRIPT"].set_database(None)
@@ -746,7 +746,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Pengaturan Proyek',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -789,7 +789,7 @@ class MainWindow(QMainWindow):
                 )
 
         self.statusBar().showMessage(
-            "Project settings saved",
+            'Pengaturan proyek tersimpan',
             3000,
         )
 
@@ -800,7 +800,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Drive Klien',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -810,7 +810,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Drive Klien',
-                "Main Drive URL belum diisi di Project Settings.",
+                'URL Drive Utama belum diisi di Pengaturan Proyek.',
             )
             return
 
@@ -826,7 +826,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Diagnostik Proyek',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -834,7 +834,7 @@ class MainWindow(QMainWindow):
         page = self.pages["TOOLS"]
         page.set_project(project, run_diagnostics=False)
         page.refresh_view()
-        self.statusBar().showMessage("Project diagnostics refreshed", 3000)
+        self.statusBar().showMessage('Diagnostik proyek dimuat ulang', 3000)
 
     def focus_tools_audit(self) -> None:
         project = self.project_manager.current
@@ -842,7 +842,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Riwayat Audit',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -859,7 +859,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Buka Folder',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -885,7 +885,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Buka Folder',
-                "Folder belum dikonfigurasi di Project Settings.",
+                'Folder belum dikonfigurasi di Pengaturan Proyek.',
             )
             return
 
@@ -914,7 +914,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Tautan Drive',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -929,7 +929,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Tautan Drive',
-                "Drive URL belum dikonfigurasi di Project Settings.",
+                'URL Drive belum dikonfigurasi di Pengaturan Proyek.',
             )
             return
 
@@ -944,7 +944,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Pulihkan Cadangan',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -953,7 +953,7 @@ class MainWindow(QMainWindow):
             self,
             'Pulihkan Cadangan Database',
             str(project.backups_folder),
-            "Script Management Project Backup (*.smproj);;All Files (*)",
+            'Cadangan Proyek Script Manager (*.smproj);;Semua File (*)',
         )
         if not backup_path:
             return
@@ -998,7 +998,7 @@ class MainWindow(QMainWindow):
         self._clear_data_pages()
         self.refresh_project_page()
         self.pages["TOOLS"].set_project(project)
-        self.statusBar().showMessage("Database backup restored", 5000)
+        self.statusBar().showMessage('Cadangan database dipulihkan', 5000)
 
         QMessageBox.information(
             self,
@@ -1090,7 +1090,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 title,
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -1154,7 +1154,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 title,
-                "Source preview tidak dapat dibuat.",
+                'Pratinjau sumber tidak dapat dibuat.',
             )
             return
 
@@ -1175,7 +1175,7 @@ class MainWindow(QMainWindow):
         if not preview.has_changes:
             self._refresh_tracking_files_state()
             self.statusBar().showMessage(
-                f"{title}: sumber tidak berubah; Track Files diperbarui",
+                f"{title}: sumber tidak berubah; File Track diperbarui",
                 5000,
             )
             return
@@ -1186,7 +1186,7 @@ class MainWindow(QMainWindow):
             title=title,
         )
         self.statusBar().showMessage(
-            "Preview disetujui — menunggu apply phase...",
+            'Pratinjau disetujui — menunggu tahap penerapan...',
             3000,
         )
 
@@ -1389,7 +1389,7 @@ class MainWindow(QMainWindow):
         settings = project.settings
 
         page.project_name.setText(
-            settings.project_name or "Unnamed Project"
+            settings.project_name or 'Proyek Tanpa Nama'
         )
         page.set_project_metadata(
             project_code=settings.project_code,
@@ -1442,7 +1442,7 @@ class MainWindow(QMainWindow):
         )
         if snapshot is None:
             page.info_text.setText(
-                "Project aktif. Dashboard workflow belum dapat dihitung."
+                'Proyek aktif. Alur dashboard belum dapat dihitung.'
             )
         elif snapshot.actions:
             page.info_text.setText(
@@ -1451,7 +1451,7 @@ class MainWindow(QMainWindow):
             )
         else:
             page.info_text.setText(
-                "✓ Project data healthy dan tidak ada action penting yang tertunda."
+                '✓ Data proyek sehat dan tidak ada tindakan penting yang tertunda.'
             )
 
     def handle_project_dashboard_action(self, action_key: str) -> None:
@@ -1516,7 +1516,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Muat Ulang Tampilan',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -1535,14 +1535,14 @@ class MainWindow(QMainWindow):
         page = self.pages["SCRIPT"]
         page.search_edit.setFocus()
         page.search_edit.selectAll()
-        self.statusBar().showMessage("Script search focused", 2000)
+        self.statusBar().showMessage('Pencarian naskah difokuskan', 2000)
 
     def open_script_search(self) -> None:
         if self.project_manager.current is None:
             QMessageBox.information(
                 self,
                 'Cari Naskah',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -1553,7 +1553,7 @@ class MainWindow(QMainWindow):
         page = self.pages["DIALOG"]
         if not page.open_source_button.isEnabled():
             self.statusBar().showMessage(
-                "Pilih character dan episode yang memiliki source file.",
+                'Pilih tokoh dan episode yang memiliki file sumber.',
                 3000,
             )
             return
@@ -1599,7 +1599,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "Data",
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -1613,7 +1613,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Validasi Database',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -1651,7 +1651,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Cadangkan Database',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 
@@ -1684,7 +1684,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 'Bangun Ulang Indeks',
-                "Buka atau buat project terlebih dahulu.",
+                'Buka atau buat proyek terlebih dahulu.',
             )
             return
 

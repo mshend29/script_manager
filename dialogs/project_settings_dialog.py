@@ -271,7 +271,7 @@ class ProjectSettingsDialog(QDialog):
         filename_layout.addWidget(self.source_pattern_details)
 
         self.filename_preview = QLabel(
-            "Episode Preview: klik Get Source Filenames terlebih dahulu."
+            'Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu.'
         )
         self.filename_preview.setWordWrap(True)
         self.filename_preview.setObjectName("PageSubtitle")
@@ -414,11 +414,11 @@ class ProjectSettingsDialog(QDialog):
         self.source_filename_example.clear()
         self.copy_source_filename_button.setEnabled(False)
         self.source_pattern_status.setText(
-            "Source Folder berubah. Klik Get Source Filenames untuk membaca ulang."
+            'Folder Sumber berubah. Klik Baca Nama File Sumber untuk membaca ulang.'
         )
         self.source_pattern_details.clear()
         self.filename_preview.setText(
-            "Episode Preview: klik Get Source Filenames terlebih dahulu."
+            'Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu.'
         )
 
     def _read_source_filenames(self) -> None:
@@ -443,7 +443,7 @@ class ProjectSettingsDialog(QDialog):
             self.source_filename_example.clear()
             self.copy_source_filename_button.setEnabled(False)
             self.source_pattern_status.setText(
-                "⚠ Tidak ada file .xlsx/.xlsm pada Source Folder."
+                '⚠ Tidak ada file .xlsx/.xlsm pada Folder Sumber.'
             )
             self.source_pattern_details.clear()
             self._update_episode_preview()
@@ -495,7 +495,7 @@ class ProjectSettingsDialog(QDialog):
     def _update_episode_preview(self) -> None:
         if not self._source_filename_examples:
             self.filename_preview.setText(
-                "Episode Preview: klik Get Source Filenames terlebih dahulu."
+                'Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu.'
             )
             return
 

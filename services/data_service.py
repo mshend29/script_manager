@@ -349,7 +349,7 @@ class DataService:
         clean_name = name.strip()
         normalized = normalize_key(clean_name)
         if not normalized:
-            raise ValueError("Nama character tidak boleh kosong.")
+            raise ValueError('Nama tokoh tidak boleh kosong.')
 
         now = datetime.now().isoformat(timespec="seconds")
         with self.database.connect() as connection:
@@ -440,7 +440,7 @@ class DataService:
             if dialogue is None:
                 raise ValueError("Dialog tidak ditemukan atau sudah inactive.")
             if character is None:
-                raise ValueError("Character tidak ditemukan atau sudah inactive.")
+                raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
 
             existing_cast = connection.execute(
                 "SELECT 1 FROM dialog_cast WHERE dialogue_id = ? LIMIT 1",
@@ -448,7 +448,7 @@ class DataService:
             ).fetchone()
             if existing_cast is not None:
                 raise ValueError(
-                    "Dialog ini sudah memiliki character/cast. Gunakan Character Mapping untuk perubahan mapping."
+                    'Dialog ini sudah memiliki tokoh/talent. Gunakan Pemetaan Tokoh untuk perubahan pemetaan.'
                 )
 
             connection.execute(
@@ -522,7 +522,7 @@ class DataService:
                 (talent_id,),
             ).fetchone()
             if character is None:
-                raise ValueError("Character tidak ditemukan atau sudah inactive.")
+                raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
             if talent is None:
                 raise ValueError("Talent tidak ditemukan atau sudah inactive.")
 
@@ -679,7 +679,7 @@ class DataService:
                 (character_id,),
             ).fetchone()
             if character is None:
-                raise ValueError("Character tidak ditemukan atau sudah inactive.")
+                raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
 
             current_lock = connection.execute(
                 """
@@ -1074,7 +1074,7 @@ class DataService:
             event_type="DATABASE",
             action="MANUAL_BACKUP",
             entity_type="project",
-            summary="Manual database backup created.",
+            summary='Cadangan database manual dibuat.',
             details={"backup_path": str(target)},
         )
         return target
