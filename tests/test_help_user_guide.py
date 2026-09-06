@@ -22,7 +22,7 @@ def test_user_guide_covers_current_application_areas():
         "TRACKING",
         "DATA",
         "Peralatan &amp; Pemeliharaan",
-        "Alias Tokoh",
+        "Tokoh Alias",
         "Kondisi Output",
         "Pulihkan Cadangan",
         "Pulihkan Proyek",

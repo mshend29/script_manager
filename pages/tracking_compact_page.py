@@ -889,8 +889,8 @@ class CompactTrackingPage(TrackingPage):
                 else:
                     rename_message = (
                         f"{Path(rename_item.source_path).name} belum cocok "
-                        "otomatis. Klik dua kali untuk memilih expected "
-                        "filename secara manual."
+                        "otomatis. Klik dua kali untuk memilih nama file "
+                        "yang diharapkan secara manual."
                     )
 
                 synthetic = TrackFileWarning(
@@ -1455,7 +1455,7 @@ class CompactTrackingPage(TrackingPage):
             QMessageBox.information(
                 self,
                 'Ubah Nama File Track',
-                "Tidak ada file yang cocok pada scope ini.",
+                "Tidak ada file yang cocok pada lingkup ini.",
             )
             return
 

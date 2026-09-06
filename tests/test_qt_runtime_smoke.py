@@ -306,7 +306,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     tracking_page.detail_revision_button.click()
     qapp.processEvents()
     assert tracking_page._detail_chip.display_status == "REVISION"
-    assert tracking_page.detail_revision_button.text() == "Clear Revision"
+    assert tracking_page.detail_revision_button.text() == "Batalkan Revisi"
 
     tracking_page.detail_go_dialog_button.click()
     qapp.processEvents()

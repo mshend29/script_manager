@@ -63,7 +63,7 @@ def test_help_documents_use_unified_sync_source_mental_model() -> None:
 
     assert "Sinkronkan Sumber" in getting_started
     assert "Sinkronisasi pertama" in getting_started
-    assert "sinkronisasi lanjutan" in getting_started
+    assert "Sinkronisasi berikutnya" in getting_started
 
     assert "Sinkronkan Sumber" in user_guide
     guide_lower = user_guide.casefold()

@@ -136,7 +136,7 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
 
     # Talent summary stays compact while file tools remain dedicated workspaces.
     assert "header_row.addWidget(self.summary_label, 1)" in tracking
-    assert 'QLabel("TRACK FILES")' in compact
+    assert "FILE TRACK" in compact
     assert '["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]' in compact
     assert 'QLabel("OUTPUT HEALTH")' in compact
 
@@ -200,7 +200,7 @@ def test_track_name_suggestion_is_single_scroll_column_without_pagination():
     assert "QApplication.clipboard().setText" in compact
     assert "QToolTip.showText" in compact
     assert "Tersalin" in compact
-    assert "Aliases:" in compact
+    assert "Alias:" in compact
 
 
 def test_track_files_layout_uses_twenty_eighty_split():
@@ -217,7 +217,7 @@ def test_output_health_workspace_explains_episode_counts_and_warning_details():
 
     assert "RINGKASAN OUTPUT" in compact
     assert "STATUS EPISODE" in compact
-    assert 'QLabel("WARNINGS")' in compact
+    assert "PERINGATAN" in compact
     assert '["EPS", "STEM", "DELIVERY", "WARNING"]' in compact
     assert '["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]' in compact
     assert '"Expected Tracks"' in compact
@@ -233,7 +233,7 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
 
     assert "Cocokkan & Ubah Nama Episode" in compact
     assert "Cocokkan & Ubah Nama Talent" in compact
-    assert '"Match / Rename Stem / Export…"' in compact
+    assert "Cocokkan / Ubah Nama Stem / Export…" in compact
     assert "cellDoubleClicked.connect" in compact
     assert "TrackRenamePreviewDialog" in compact
     assert "self._track_rename_service.execute(plan)" in compact
@@ -276,7 +276,7 @@ def test_unmatched_episode_exports_remain_visible_and_can_be_manually_mapped():
     assert "Pilih nama yang diharapkan…" in dialog
     assert "_manual_choice_changed" in dialog
     assert "assign_manual_expected" in dialog
-    assert "File Unmatched atau Ambiguous" in dialog
+    assert "File Tidak Cocok atau Ambigu" in dialog
 
     assert "The episode is known" in service
     assert "choices=self._choices(episode_rows)" in service

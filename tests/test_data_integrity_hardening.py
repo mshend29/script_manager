@@ -70,7 +70,7 @@ def test_characterless_active_dialogue_is_visible_and_validated(tmp_path):
     assert unresolved[0].dialogue_id == ids["dialogue"]
     assert unresolved[0].episode_number == 53
     assert unresolved[0].character_id is None
-    assert unresolved[0].character_name == "⚠ Missing Character"
+    assert unresolved[0].character_name == "⚠ Tokoh Tidak Dikenal"
 
     issues = service.validate()
     issue = next(

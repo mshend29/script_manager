@@ -136,7 +136,7 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     assert "self.action_requested.emit(key)" in page
 
     assert "handle_project_dashboard_action" in main
-    assert 'page.show_section("Unresolved")' in main
+    assert "page.show_section('Belum Dipetakan')" in main
     assert 'page.show_section("Validation")' in main
     assert 'self.set_page("TRACKING")' in main
 

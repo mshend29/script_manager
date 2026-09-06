@@ -1099,8 +1099,8 @@ class MainWindow(QMainWindow):
                 self,
                 title,
                 (
-                    "Source Folder belum diisi.\n\n"
-                    "Isi melalui PROJECT → Project Settings."
+                    "Folder Sumber belum diisi.\n\n"
+                    "Isi melalui Proyek → Pengaturan Proyek."
                 ),
             )
             return
@@ -1117,9 +1117,9 @@ class MainWindow(QMainWindow):
         operation: str,
     ) -> None:
         phase_text = (
-            "preparing preview"
+            "menyiapkan pratinjau"
             if operation == "prepare"
-            else "applying changes"
+            else "menerapkan perubahan"
         )
         self.statusBar().showMessage(
             f"{title} — {phase_text}; aplikasi tetap dapat digunakan"
@@ -1136,7 +1136,7 @@ class MainWindow(QMainWindow):
 
         if project is None:
             self.statusBar().showMessage(
-                f"{title} preview selesai, tetapi proyek sudah tidak tersedia",
+                f"{title}: pratinjau selesai, tetapi proyek sudah tidak tersedia",
                 5000,
             )
             return
@@ -1144,7 +1144,7 @@ class MainWindow(QMainWindow):
         if report.has_errors:
             self._show_source_sync_errors(title, report)
             self.statusBar().showMessage(
-                f"{title} preview selesai dengan masalah",
+                f"{title}: pratinjau selesai dengan masalah",
                 5000,
             )
             return
@@ -1364,7 +1364,7 @@ class MainWindow(QMainWindow):
                 )
 
             sections.append(
-                "DUPLICATE EPISODE:\n"
+                "EPISODE DUPLIKAT:\n"
                 + "\n".join(duplicate_lines)
             )
 
@@ -1529,7 +1529,7 @@ class MainWindow(QMainWindow):
             project,
             force=True,
         )
-        self.statusBar().showMessage(f"{page_name.title()} view refreshed", 3000)
+        self.statusBar().showMessage(f"Workspace {page_name.title()} dimuat ulang", 3000)
 
     def focus_script_search(self) -> None:
         page = self.pages["SCRIPT"]
