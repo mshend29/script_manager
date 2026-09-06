@@ -24,6 +24,10 @@ from services.audio_setup_validation import (
     create_audio_output_folder,
     validate_audio_setup,
 )
+from services.folder_links_setup_validation import (
+    FolderLinksSetupValidation,
+    validate_folder_links_setup,
+)
 from services.project_setup_validation import (
     create_project_destination_folder,
     validate_project_identity_destination,
@@ -31,6 +35,7 @@ from services.project_setup_validation import (
 from services.source_preflight_service import SourcePreflightReport
 from services.source_setup_validation import SourceFilenameValidation
 from widgets.audio_setup_panel import AudioSetupPanel
+from widgets.folder_links_summary_panel import FolderLinksSummaryPanel
 from widgets.project_configuration import (
     AudioOutputSection,
     DriveLinksSection,
@@ -80,6 +85,7 @@ class NewProjectDialog(QDialog):
         self._source_preflight_worker: SourcePreflightWorker | None = None
         self._preflight_running = False
         self._audio_validation: AudioSetupValidation | None = None
+        self._folder_links_validation: FolderLinksSetupValidation | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 16, 18, 16)
@@ -129,6 +135,7 @@ class NewProjectDialog(QDialog):
         self.audio_section = AudioOutputSection(self._settings)
         self.audio_setup_panel = AudioSetupPanel()
         self.links_section = DriveLinksSection(self._settings)
+        self.folder_links_summary_panel = FolderLinksSummaryPanel()
         self.sections = ProjectConfigurationSections(
             identity=self.identity_section,
             source=self.source_section,
@@ -228,7 +235,9 @@ class NewProjectDialog(QDialog):
         self.page_stack.addWidget(
             self._make_page(
                 "4. Folder & Tautan",
-                "Tautan browser bersifat opsional dan terpisah dari filesystem path.",
+                "Periksa ringkasan filesystem path dan isi tautan browser bila "
+                "dibutuhkan. Validasi tautan dilakukan lokal tanpa akses jaringan.",
+                self.folder_links_summary_panel,
                 self.links_section,
             )
         )
@@ -317,6 +326,9 @@ class NewProjectDialog(QDialog):
         self.audio_setup_panel.create_delivery_requested.connect(
             lambda: self._create_audio_folder("delivery")
         )
+        self.main_drive_url.textChanged.connect(self._links_configuration_changed)
+        self.material_drive_url.textChanged.connect(self._links_configuration_changed)
+        self.delivery_drive_url.textChanged.connect(self._links_configuration_changed)
 
         self._refresh_identity_validation()
         self._show_step(0)
@@ -340,6 +352,10 @@ class NewProjectDialog(QDialog):
     @property
     def audio_validation(self) -> AudioSetupValidation | None:
         return self._audio_validation
+
+    @property
+    def folder_links_validation(self) -> FolderLinksSetupValidation | None:
+        return self._folder_links_validation
 
     def _make_page(
         self,
@@ -407,6 +423,8 @@ class NewProjectDialog(QDialog):
             self.source_section.validate_source_filenames()
         elif index == 2:
             self._refresh_audio_validation()
+        elif index == 3:
+            self._refresh_folder_links_validation()
 
     def _go_back(self) -> None:
         if self._preflight_running:
@@ -434,6 +452,8 @@ class NewProjectDialog(QDialog):
                 )
         elif self._current_step == 2:
             self._refresh_audio_validation(verify_writable=True)
+        elif self._current_step == 3:
+            self._refresh_folder_links_validation()
 
         if not self._can_advance_current_step():
             return
@@ -530,6 +550,7 @@ class NewProjectDialog(QDialog):
         result: SourceFilenameValidation | None,
     ) -> None:
         self._source_preflight_report = None
+        self._invalidate_folder_links_step()
         self.source_preflight_panel.set_filename_validation(result)
 
         if result is None:
@@ -686,6 +707,7 @@ class NewProjectDialog(QDialog):
 
     def _audio_configuration_changed(self, _value: object = None) -> None:
         self._audio_validation = None
+        self._invalidate_folder_links_step()
         if self._current_step == 2:
             self._refresh_audio_validation()
         else:
@@ -732,6 +754,54 @@ class NewProjectDialog(QDialog):
             self._refresh_audio_validation()
             return
         self._refresh_audio_validation(verify_writable=True)
+
+    def _invalidate_folder_links_step(self) -> None:
+        self._folder_links_validation = None
+        if self._current_step == 3:
+            self._refresh_folder_links_validation()
+        else:
+            self.set_step_state(3, WizardMilestoneState.PENDING, "")
+
+    def _links_configuration_changed(self, _value: object = None) -> None:
+        self._folder_links_validation = None
+        if self._current_step == 3:
+            self._refresh_folder_links_validation()
+        else:
+            self.set_step_state(3, WizardMilestoneState.PENDING, "")
+
+    def _refresh_folder_links_validation(self) -> FolderLinksSetupValidation:
+        settings = self.sections.to_settings()
+        result = validate_folder_links_setup(settings)
+        self._folder_links_validation = result
+        self.folder_links_summary_panel.set_settings(settings)
+        self.folder_links_summary_panel.set_validation(result)
+
+        if result.errors:
+            self.set_step_state(
+                3,
+                WizardMilestoneState.ERROR,
+                result.errors[0].message,
+            )
+        else:
+            filled_links = sum(
+                bool(value.strip())
+                for value in (
+                    settings.main_drive_url,
+                    settings.material_drive_url,
+                    settings.delivery_drive_url,
+                )
+            )
+            suffix = (
+                f" {filled_links} tautan browser tersimpan."
+                if filled_links
+                else " Tautan browser opsional dan boleh dikosongkan."
+            )
+            self.set_step_state(
+                3,
+                WizardMilestoneState.VALID,
+                f"✓ Folder operasional siap.{suffix}",
+            )
+        return result
 
     def _create_destination_folder(self) -> None:
         try:
@@ -821,6 +891,17 @@ class NewProjectDialog(QDialog):
             )
             self._show_step(2)
             self._refresh_audio_validation(verify_writable=True)
+            return
+
+        folder_links_validation = validate_folder_links_setup(settings)
+        if not folder_links_validation.is_valid:
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                folder_links_validation.errors[0].message,
+            )
+            self._show_step(3)
+            self._refresh_folder_links_validation()
             return
 
         issues = self.sections.validate_basic(strict_new_project=False)
