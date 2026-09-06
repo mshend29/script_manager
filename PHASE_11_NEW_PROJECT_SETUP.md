@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.11 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.13 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -628,46 +628,56 @@ Checkpoint test setelah 11.11:
 
 ## 11.12 — Milestone 5: Review & Buat Proyek
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.06–11.11
 
 Tujuan: user melihat seluruh konfigurasi sebelum commit.
 
 Review sections:
 
-- [ ] Inisialisasi;
-- [ ] destination `.smproj`;
-- [ ] source folder;
-- [ ] jumlah workbook;
-- [ ] episode range;
-- [ ] delimiter;
-- [ ] preflight source;
-- [ ] audio output;
-- [ ] Stem folder;
-- [ ] Setoran folder;
-- [ ] Drive links.
+- [x] Inisialisasi;
+- [x] destination `.smproj`;
+- [x] source folder;
+- [x] jumlah workbook;
+- [x] episode range;
+- [x] delimiter;
+- [x] preflight source;
+- [x] audio output;
+- [x] Stem folder;
+- [x] Setoran folder;
+- [x] Drive links.
 
 State summary:
 
-- [ ] `✓ Siap`
-- [ ] `⚠ Opsional / dapat dilengkapi nanti`
-- [ ] `✕ Harus diperbaiki`
+- [x] `✓ Siap`
+- [x] `⚠ Opsional / dapat dilengkapi nanti`
+- [x] `✕ Harus diperbaiki`
 
 Interaction:
 
-- [ ] `Buat Proyek` disabled bila blocker tersisa.
-- [ ] User dapat kembali ke milestone bermasalah.
-- [ ] Tidak ada create otomatis hanya karena Enter.
+- [x] `Buat Proyek` disabled bila blocker tersisa.
+- [x] User dapat kembali ke milestone bermasalah.
+- [x] Tidak ada create otomatis hanya karena Enter.
 
 Exit criteria:
 
 - tidak ada konfigurasi blocking yang tersembunyi saat Create ditekan.
 
+Checkpoint test setelah 11.12:
+
+- full suite: `387 passed, 36 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk Review milestone + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- Review merangkum destination/source/preflight/audio/folder/links dan status siap/warning/blocking;
+- tombol `Ubah` kembali ke milestone terkait;
+- Enter pada final milestone tidak menerima dialog atau membuat project.
+
 ---
 
 ## 11.13 — Jadikan project creation transactional
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.12
 
 Target transaction:
@@ -683,18 +693,30 @@ Final validation
 
 Pekerjaan:
 
-- [ ] Pertahankan cleanup behavior `ProjectManager.create()` existing.
-- [ ] Extend cleanup untuk failure setelah project file sudah dibuat.
-- [ ] Cleanup `.smproj` bila create belum berhasil final.
-- [ ] Cleanup `-journal`, `-wal`, `-shm`.
-- [ ] Cleanup runtime temp directory.
-- [ ] Project gagal tidak masuk Recent Projects.
-- [ ] Wizard tetap terbuka setelah failure.
-- [ ] Input user tidak hilang setelah failure.
+- [x] Pertahankan cleanup behavior `ProjectManager.create()` existing.
+- [x] Extend cleanup untuk failure setelah project file sudah dibuat.
+- [x] Cleanup `.smproj` bila create belum berhasil final.
+- [x] Cleanup `-journal`, `-wal`, `-shm`.
+- [x] Cleanup runtime temp directory.
+- [x] Project gagal tidak masuk Recent Projects.
+- [x] Wizard tetap terbuka setelah failure.
+- [x] Input user tidak hilang setelah failure.
 
 Exit criteria:
 
 - tidak ada project setengah jadi.
+
+Checkpoint test setelah 11.13:
+
+- full suite: `390 passed, 38 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk transactional New Project UI + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- `ProjectManager.create_transactional()` menghapus `.smproj`, SQLite sidecars, dan runtime temp bila post-create stage gagal;
+- current project sebelumnya dipulihkan setelah rollback;
+- production entrypoint memakai `ApplicationWindow` tipis di atas `MainWindow` stabil;
+- failure membuka kembali instance wizard yang sama dengan input tetap utuh;
+- Recent Projects hanya dicatat setelah transaction success.
 
 ---
 
@@ -1269,6 +1291,18 @@ Status: LOCKED
 
 Wizard Proyek Baru dan Pengaturan Proyek membuka `FolderDriveHelpDialog` yang sama. Help menjelaskan filesystem path, Google Drive Desktop path, browser URL, contoh masing-masing, dan larangan menempatkan URL ke field Folder. Dialog bersifat lokal/offline dan tidak melakukan request jaringan.
 
+## D-017 — Review adalah gate visual terakhir dan Create selalu eksplisit
+
+Status: LOCKED
+
+Milestone 5 merangkum seluruh konfigurasi blocking dan optional dengan status teks `✓`, `⚠`, atau `✕`. Setiap section dapat kembali ke milestone terkait melalui `Ubah`. `Buat Proyek` tetap disabled bila blocker ada dan Enter tidak dipakai sebagai shortcut Create.
+
+## D-018 — Transactional creation berada di ProjectManager, orchestration retry di ApplicationWindow
+
+Status: LOCKED
+
+`ProjectManager.create_transactional()` adalah satu boundary rollback untuk tahap setelah `.smproj` dibuat; cleanup mencakup file utama, SQLite `-journal/-wal/-shm`, runtime temp, dan restore current project sebelumnya. `ApplicationWindow` adalah layer tipis di atas `MainWindow` produksi untuk New Project retry sehingga workspace existing tidak perlu diubah. Instance wizard yang sama dibuka kembali setelah failure dan Recent Projects hanya dicatat setelah transaksi sukses.
+
 ---
 
 # Progress Log
@@ -1362,6 +1396,20 @@ YYYY-MM-DD — 11.xx
 - keputusan: contextual help sepenuhnya offline dan tidak melakukan network request; visual Help global tetap out of scope.
 - commit/PR: `a8d2929422b1e556d995faebfa947e2f06974076`, `4af63517708b338f0994b9d0173b38f28e225d5f`, `f9d0e78c64d30be463a50a5b74b4dfb4835c3e41`, `2aaeb51471e10faf800ff052cfc669e81779e76a`, `9e0d076d98d3529b0716c965c966bc4af3b1a3ad`, `a4ae6251ff7330b529a268e9d63d4cdc739827f6` / PR #75.
 - next: 11.12 Milestone 5 — Review & Buat Proyek.
+
+2026-09-06 — 11.12
+- perubahan: reusable review panel dengan status siap/warning/blocking; summary identity/destination/source/preflight/audio/folder/Drive; tombol `Ubah`; final Create gate; Enter tidak memicu Create.
+- test: full suite `387 passed, 36 skipped`; compile success; Qt runtime + wizard scale smoke success.
+- keputusan: Review adalah gate visual terakhir tetapi tidak menggantikan final validation saat Create ditekan.
+- commit/PR: `c9102a73bbb543c8239581616756a330ab9851d3`, `aa16892276072ba1a53c596a6c9b275412973670`, `488bc88212d043e7bad2f410e0529d8536a9958f`, `e79fc17fbe2d41cf91ab1cc8b62049006b8dfe1c` / PR #75.
+- next: 11.13 Transactional Create.
+
+2026-09-06 — 11.13
+- perubahan: centralized rollback di `ProjectManager`; `create_transactional()`; cleanup file/sidecar/runtime; restore current sebelumnya; production `ApplicationWindow` retry memakai instance wizard yang sama; Recent Projects hanya setelah success.
+- test: full suite `390 passed, 38 skipped`; compile success; Qt runtime + wizard scale smoke success; transactional core dan UI retry tests success.
+- keputusan: `MainWindow` tetap base workspace stabil; orchestration New Project Phase 11 berada di `ApplicationWindow` tipis agar initial sync 11.14 dapat ditambahkan tanpa mengubah workspace lain.
+- commit/PR: `6e507b8ea1d471c69f7e5550cfec5f935faeae9e`, `74284735e5fe2c9f13c7376f43b9f7948391f7b5`, `64f24504e1b00586d1a94f2432e5cfbe2c30b988`, `f58dc43b66835957edfd6b3b31a24534fd8d471e`, `0b567a688c16cb270cd00ed203e54e2a0dad3713`, `647cec33f7e911d68c5eb9f1d0e5fa6ebb3a5b17`, `02346126893463db8e06f47e6409cad22f02057f` / PR #75.
+- next: 11.14 Initial Source Sync otomatis.
 
 ---
 
