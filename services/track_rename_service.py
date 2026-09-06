@@ -8,7 +8,9 @@ from core.database import Database
 from services.audit_service import AuditService
 from services.track_file_service import (
     TrackFileRow,
+    parse_track_filename,
     sanitize_filename_component,
+    split_revision_suffix,
     track_filename_matches,
 )
 
@@ -28,6 +30,7 @@ MATCH_MANUAL = "manual"
 class SimpleExportFilename:
     episode_number: int
     track_name: str
+    revision_number: int = 0
 
 
 @dataclass(frozen=True)
@@ -303,7 +306,8 @@ class TrackRenameService:
         *,
         include_out_of_scope: bool,
     ) -> TrackRenameItem | None:
-        semantic_matches = [
+        parsed = parse_track_filename(path.name)
+        identity_matches = [
             row
             for row in rows
             if track_filename_matches(
@@ -312,6 +316,15 @@ class TrackRenameService:
                 canonical_character=row.character_name,
                 aliases=row.aliases,
                 talent_name=row.talent_name,
+                revision_number=None,
+            )
+        ]
+        semantic_matches = [
+            row
+            for row in identity_matches
+            if (
+                parsed is not None
+                and parsed.revision_number == row.revision_number
             )
         ]
 
@@ -339,6 +352,19 @@ class TrackRenameService:
                 ),
                 choices=self._choices(semantic_matches),
             )
+
+        if (
+            parsed is not None
+            and identity_matches
+            and all(
+                parsed.revision_number < row.revision_number
+                for row in identity_matches
+            )
+            and not include_out_of_scope
+        ):
+            # Normal/REV lama adalah history valid dan tidak boleh ditawarkan
+            # sebagai kandidat rename untuk generation revisi yang lebih baru.
+            return None
 
         simple = parse_simple_export_filename(path.name)
         if simple is None:
@@ -381,13 +407,18 @@ class TrackRenameService:
                 detail="Episode file berada di luar scope rename saat ini.",
             )
 
-        candidates = [
+        identity_candidates = [
             row
             for row in episode_rows
             if (
                 _track_name_key(row.character_name)
                 == _track_name_key(simple.track_name)
             )
+        ]
+        candidates = [
+            row
+            for row in identity_candidates
+            if row.revision_number == simple.revision_number
         ]
 
         if len(candidates) == 1:
@@ -424,8 +455,18 @@ class TrackRenameService:
                 choices=self._choices(candidates),
             )
 
+        if (
+            identity_candidates
+            and all(
+                simple.revision_number < row.revision_number
+                for row in identity_candidates
+            )
+            and not include_out_of_scope
+        ):
+            return None
+
         # The episode is known, so the file must remain visible even though the
-        # track name itself does not match any canonical character.
+        # track name itself does not match the current expected generation.
         return TrackRenameItem(
             source_path=str(path),
             target_path="",
@@ -437,7 +478,7 @@ class TrackRenameService:
             talent_id=episode_rows[0].talent_id,
             talent_name=episode_rows[0].talent_name,
             detail=(
-                "Nama track tidak cocok dengan expected character. "
+                "Nama track atau revision suffix tidak cocok dengan expected track. "
                 "Pilih expected filename secara manual."
             ),
             choices=self._choices(episode_rows),
@@ -559,7 +600,7 @@ def parse_simple_export_filename(
     if path.suffix.casefold() != ".wav":
         return None
 
-    stem = path.stem
+    stem, revision_number = split_revision_suffix(path.stem)
     if "_" not in stem:
         return None
 
@@ -576,6 +617,7 @@ def parse_simple_export_filename(
     return SimpleExportFilename(
         episode_number=int(episode_text),
         track_name=track_name,
+        revision_number=revision_number,
     )
 
 
