@@ -46,11 +46,20 @@ def test_recent_project_rows_follow_excel_like_file_list_reference() -> None:
     assert 'return " › ".join(folders)' in source
     assert "verticalHeader().setDefaultSectionSize(62)" in source
 
-    # The QTableWidgetItem still carries its text for sorting, but its native
-    # paint must be transparent because the custom cell widget renders the
-    # visible project name/path. Otherwise the text overlaps the project icon.
-    assert "from PySide6.QtGui import QColor, QIcon" in source
-    assert "project_item.setForeground(QColor(0, 0, 0, 0))" in source
+    # Native table text must be completely absent, not merely transparent.
+    # Selection palettes can override foreground brushes on Windows and make
+    # hidden backing text overlap the custom icon/name renderer again.
+    assert "class RecentProjectItem(QTableWidgetItem)" in source
+    assert 'super().__init__("")' in source
+    assert "project_item = RecentProjectItem(raw_project_name)" in source
+    assert "QColor" not in source
+
+    # The Recent list behaves like a launcher: no selection highlight and a
+    # single click opens the project.
+    assert "QAbstractItemView.SelectionMode.NoSelection" in source
+    assert "self.recent_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)" in source
+    assert "self.recent_table.itemClicked.connect(self._open_recent_item)" in source
+    assert "itemDoubleClicked.connect" not in source
 
     # Last Opened remains sortable but gets a deliberately wider readable
     # column instead of shrinking to its minimum contents width.
