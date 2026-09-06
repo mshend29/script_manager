@@ -138,7 +138,7 @@ def test_tools_page_and_header_expose_real_maintenance_actions():
     assert "DIAGNOSTIK PROYEK" in page
     assert "FOLDER & TAUTAN DRIVE" in page
     assert "RIWAYAT AUDIT" in page
-    assert '"Pulihkan Cadangan"' in page
+    assert "Pulihkan Cadangan" in page
     assert "ProjectDiagnosticsService" in page
     assert "AuditService" in page
 
