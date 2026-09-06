@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -16,6 +17,8 @@ DELIVERED = "DELIVERED"
 REVISION = "REVISION"
 NOT_READY = "NOT_READY"
 AUTO_FILE_STATUS_NOTE = "auto:file-inventory"
+REVISION_NOTE_PREFIX = "revision:"
+_REVISION_NOTE_RE = re.compile(r"(?:^|;)revision:(\d+)(?:;|$)", re.IGNORECASE)
 
 # Only Revision remains a manual downstream state. STEMMED/DELIVERED are
 # derived from filesystem inventory. READY_TO_STEM is historical-only and is
@@ -34,6 +37,35 @@ STATUS_LABELS = {
     DELIVERED: "Delivered",
     REVISION: "Revision",
 }
+
+
+def revision_number_from_note(note: str) -> int:
+    """Return the persistent revision generation encoded in stem_status.note."""
+    text = str(note or "").strip()
+    match = _REVISION_NOTE_RE.search(text)
+    if match is None:
+        return 0
+    try:
+        return max(0, int(match.group(1)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def revision_status_note(revision_number: int, *, auto_file: bool = False) -> str:
+    revision = max(0, int(revision_number))
+    parts: list[str] = []
+    if auto_file:
+        parts.append(AUTO_FILE_STATUS_NOTE)
+    if revision > 0:
+        parts.append(f"{REVISION_NOTE_PREFIX}{revision}")
+    return ";".join(parts)
+
+
+def is_auto_file_status_note(note: str) -> bool:
+    text = str(note or "").strip()
+    return text == AUTO_FILE_STATUS_NOTE or text.startswith(
+        AUTO_FILE_STATUS_NOTE + ";"
+    )
 
 
 @dataclass(frozen=True)
@@ -55,6 +87,7 @@ class TrackingChip:
     recording_status: str
     downstream_status: str
     downstream_note: str
+    revision_number: int
     display_status: str
 
     @property
@@ -206,6 +239,11 @@ class TrackingService:
             recorded = int(row["recorded_dialogues"] or 0)
             downstream = str(row["downstream_status"] or NOT_READY)
             downstream_note = str(row["downstream_note"] or "")
+            revision_number = revision_number_from_note(downstream_note)
+            if downstream == REVISION and revision_number < 1:
+                # Compatibility for Revision rows created before revision-aware
+                # filenames were introduced.
+                revision_number = 1
             recording_status = derive_recording_status(recorded, total)
             display_status = derive_display_status(
                 recorded_dialogues=recorded,
@@ -226,6 +264,7 @@ class TrackingService:
                 recording_status=recording_status,
                 downstream_status=downstream,
                 downstream_note=downstream_note,
+                revision_number=revision_number,
                 display_status=display_status,
             )
 
@@ -282,6 +321,7 @@ class TrackingService:
             )
 
         now = datetime.now().isoformat(timespec="seconds")
+        active_revision = 0
 
         with self.database.connect() as connection:
             total, recorded = self._get_progress(
@@ -314,21 +354,41 @@ class TrackingService:
                 ),
             ).fetchone()
 
-            if normalized_status == NOT_READY:
-                connection.execute(
-                    """
-                    DELETE FROM stem_status
-                    WHERE episode_id = ?
-                      AND talent_id = ?
-                      AND character_id = ?
-                    """,
-                    (
-                        int(episode_id),
-                        int(talent_id),
-                        int(character_id),
-                    ),
+            existing = connection.execute(
+                """
+                SELECT status, COALESCE(note, '') AS note
+                FROM stem_status
+                WHERE episode_id = ?
+                  AND talent_id = ?
+                  AND character_id = ?
+                """,
+                (
+                    int(episode_id),
+                    int(talent_id),
+                    int(character_id),
+                ),
+            ).fetchone()
+            existing_status = (
+                str(existing["status"] or NOT_READY).strip().upper()
+                if existing is not None
+                else NOT_READY
+            )
+            existing_revision = (
+                revision_number_from_note(existing["note"])
+                if existing is not None
+                else 0
+            )
+            if existing_status == REVISION and existing_revision < 1:
+                existing_revision = 1
+
+            if normalized_status == REVISION:
+                # Mark Revision allocates the next expected export generation.
+                # Calling it again while already in Revision is idempotent.
+                active_revision = (
+                    max(existing_revision, 1)
+                    if existing_status == REVISION
+                    else existing_revision + 1
                 )
-            else:
                 connection.execute(
                     """
                     INSERT INTO stem_status(
@@ -350,11 +410,61 @@ class TrackingService:
                         int(episode_id),
                         int(talent_id),
                         int(character_id),
-                        normalized_status,
-                        note.strip(),
+                        REVISION,
+                        revision_status_note(active_revision),
                         now,
                     ),
                 )
+            else:
+                # Clear Revision means cancel the pending generation. Restore
+                # the previous revision generation so the file scanner can
+                # return to the last known automatic Stemmed/Delivered state.
+                active_revision = (
+                    max(existing_revision - 1, 0)
+                    if existing_status == REVISION
+                    else existing_revision
+                )
+                if active_revision > 0:
+                    connection.execute(
+                        """
+                        INSERT INTO stem_status(
+                            episode_id,
+                            talent_id,
+                            character_id,
+                            status,
+                            note,
+                            updated_at
+                        )
+                        VALUES(?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(episode_id, talent_id, character_id)
+                        DO UPDATE SET
+                            status = excluded.status,
+                            note = excluded.note,
+                            updated_at = excluded.updated_at
+                        """,
+                        (
+                            int(episode_id),
+                            int(talent_id),
+                            int(character_id),
+                            NOT_READY,
+                            revision_status_note(active_revision),
+                            now,
+                        ),
+                    )
+                else:
+                    connection.execute(
+                        """
+                        DELETE FROM stem_status
+                        WHERE episode_id = ?
+                          AND talent_id = ?
+                          AND character_id = ?
+                        """,
+                        (
+                            int(episode_id),
+                            int(talent_id),
+                            int(character_id),
+                        ),
+                    )
 
         episode_number = (
             int(labels["episode_number"])
@@ -374,9 +484,10 @@ class TrackingService:
 
         if normalized_status == REVISION:
             action = "MARK_REVISION"
+            revision_label = "REV" if active_revision == 1 else f"REV{active_revision}"
             summary = (
                 f"Episode {episode_number}: {character_name} / "
-                f"{talent_name} marked Revision."
+                f"{talent_name} marked Revision {revision_label}."
             )
         else:
             action = "CLEAR_REVISION"
@@ -398,6 +509,7 @@ class TrackingService:
                 "episode_number": episode_number,
                 "talent_id": int(talent_id),
                 "character_id": int(character_id),
+                "revision_number": active_revision,
                 "note": note.strip(),
             },
             created_at=now,
@@ -475,7 +587,7 @@ def derive_display_status(
 
     if (
         downstream in {STEMMED, DELIVERED}
-        and str(downstream_note or "").strip() == AUTO_FILE_STATUS_NOTE
+        and is_auto_file_status_note(downstream_note)
     ):
         return downstream
 
