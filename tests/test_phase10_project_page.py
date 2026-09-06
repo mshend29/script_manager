@@ -44,8 +44,9 @@ def test_project_home_recent_list_supports_search_sort_and_open() -> None:
     assert "setSectionsClickable(True)" in source
     assert "setSortIndicatorShown(True)" in source
     assert "Qt.SortOrder.DescendingOrder" in source
-    assert "itemDoubleClicked.connect(" in source
-    assert "itemActivated.connect(" in source
+    assert "itemClicked.connect(self._open_recent_item)" in source
+    assert "itemDoubleClicked.connect(" not in source
+    assert "QAbstractItemView.SelectionMode.NoSelection" in source
     assert 'getattr(self.window(), "open_project_path", None)' in source
     assert "existing_only=False" in source
 
