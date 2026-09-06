@@ -34,67 +34,67 @@ ol, ul { padding-left: 24px; }
 </head>
 <body>
 <h1>Mulai</h1>
-<p>Panduan singkat untuk memulai project manajemen naskah drama pendek vertikal di Script Manager.</p>
+<p>Panduan singkat untuk memulai proyek manajemen naskah drama pendek vertikal di Script Manager.</p>
 
 <h2>1. Buat Proyek</h2>
 <ol>
-  <li>Buka tab <b>PROJECT</b>.</li>
+  <li>Buka tab <b>PROYEK</b>.</li>
   <li>Pilih <b>Proyek Baru</b>.</li>
-  <li>Isi Proyek Name, Proyek Code, Client, Start Date, dan lokasi penyimpanan.</li>
-  <li>Jika sudah tersedia, tentukan Sumber Naskah Folder dan delimiter nomor episode.</li>
+  <li>Isi Nama Proyek, Kode Proyek, Klien, Tanggal Mulai, dan lokasi penyimpanan.</li>
+  <li>Jika sudah tersedia, tentukan Folder Naskah Sumber dan delimiter nomor episode.</li>
   <li>Klik <b>Create Proyek</b>.</li>
 </ol>
 <div class="note">
-Proyek disimpan sebagai satu file <code>.smproj</code>. File ini menyimpan database kerja, mapping, status recording, tracking, settings, dan metadata project.
+Proyek disimpan sebagai satu file <code>.smproj</code>. File ini menyimpan database kerja, mapping, status rekaman, tracking, settings, dan metadata proyek.
 </div>
 
 <h2>2. Siapkan Sumber Excel</h2>
 <p>File Excel tetap berada di folder eksternal. Script Manager tidak memasukkan file Excel ke dalam <code>.smproj</code>.</p>
 <ul>
-  <li>Atur <b>Sumber Naskah Folder</b> melalui Proyek Settings.</li>
+  <li>Atur <b>Folder Naskah Sumber</b> melalui Pengaturan Proyek.</li>
   <li>Pastikan pola nama file episode sesuai delimiter yang ditentukan.</li>
-  <li>File source dapat berupa <code>.xlsx</code> atau <code>.xlsm</code> sesuai dukungan import yang tersedia.</li>
+  <li>File sumber dapat berupa <code>.xlsx</code> atau <code>.xlsm</code> sesuai dukungan import yang tersedia.</li>
 </ul>
 
 <h2>3. Sinkronkan Sumber</h2>
 <ol>
-  <li>Pada tab <b>PROJECT</b>, pilih <b>Sinkronkan Sumber</b>.</li>
-  <li>Script Manager akan scan file, inspect workbook, parse, normalize, resolve character/talent, lalu melakukan validation.</li>
-  <li>Periksa preview perubahan yang akan diterapkan.</li>
+  <li>Pada tab <b>PROYEK</b>, pilih <b>Sinkronkan Sumber</b>.</li>
+  <li>Script Manager akan memindai file, memeriksa workbook, mem-parse, menormalisasi, resolve tokoh/talent, lalu melakukan validasi.</li>
+  <li>Periksa ppeninjauan perubahan yang akan diterapkan.</li>
   <li>Terapkan sync jika hasilnya sesuai.</li>
 </ol>
-<p>Sync pertama mengisi project dari source. Sync berikutnya hanya memproses perubahan yang relevan. Setelah commit berhasil, SCRIPT, DIALOG, TRACKING, dan DATA otomatis membaca state terbaru dari <code>.smproj</code>.</p>
+<p>Sync pertama mengisi proyek dari sumber. Sync berikutnya hanya memproses perubahan yang relevan. Setelah commit berhasil, NASKAH, DIALOG, TRACKING, dan DATA otomatis membaca kondisi terbaru dari <code>.smproj</code>.</p>
 
-<h2>4. Sync Saat Client Mengubah Naskah</h2>
-<p>Jika client mengirim revisi Excel, ganti atau perbarui file di Sumber Naskah Folder lalu pilih <b>Sinkronkan Sumber</b> lagi. Tombol yang sama digunakan untuk initial sync dan incremental sync.</p>
+<h2>4. Sync Saat Klien Mengubah Naskah</h2>
+<p>Jika klien mengirim revisi Excel, ganti atau perbarui file di Folder Naskah Sumber lalu pilih <b>Sinkronkan Sumber</b> lagi. Tombol yang sama digunakan untuk sinkronisasi awal dan sinkronisasi lanjutan.</p>
 <div class="note">
-Sync memproses source yang New, Changed, atau Restored. Rekaman history dan mapping manual dipertahankan. Tracking downstream hanya diinvalidasi pada scope Episode + Talent + Tokoh yang benar-benar terdampak perubahan semantic.
+Sync memproses sumber yang Baru, Berubah, atau Pulihkand. Rekaman history dan mapping manual dipertahankan. Tracking lanjutan hanya diinvalidasi pada lingkup Episode + Talent + Tokoh yang benar-benar terdampak perubahan semantik.
 </div>
 
 <h2>5. Rekaman Dialogue</h2>
-<p>Buka tab <b>DIALOG</b>. Gunakan checkbox recording pada dialog yang sudah selesai direkam. Status ini disimpan langsung di <code>.smproj</code> dan menjadi dasar perhitungan progress recording di TRACKING. Jika source berubah setelah recording, baris tetap tercatat recorded dan diberi indikator <b>Sumber Revised</b> sampai operator menerima hasil re-recording terbaru.</p>
+<p>Buka tab <b>DIALOG</b>. Gunakan checkbox rekaman pada dialog yang sudah selesai direkam. Status ini disimpan langsung di <code>.smproj</code> dan menjadi dasar perhitungan progres rekaman di TRACKING. Jika sumber berubah setelah rekaman, baris tetap tercatat recorded dan diberi indikator <b>Sumber Direvisi</b> sampai operator menerima hasil re-rekaman terbaru.</p>
 
 <h2>6. Tracking</h2>
-<p>Tab <b>TRACKING</b> merangkum progress per talent, character, dan episode. Status recording berasal dari dialog. Status lanjutan seperti stem, delivery, dan revision dikelola sebagai workflow project.</p>
+<p>Tab <b>TRACKING</b> merangkum progres per talent, tokoh, dan episode. Status rekaman berasal dari dialog. Status lanjutan seperti stem, setoran, dan revisi dikelola sebagai alur kerja proyek.</p>
 
 <h2>7. Save, Simpan Sebagai, dan Duplicate</h2>
 <ul>
-  <li><b>Save</b> menyimpan project aktif.</li>
-  <li><b>Simpan Sebagai</b> membuat file baru tetapi mempertahankan identitas project yang sama.</li>
-  <li><b>Duplicate</b> membuat project baru dengan data awal yang sama tetapi identitas project baru.</li>
+  <li><b>Simpan</b> menyimpan proyek aktif.</li>
+  <li><b>Simpan Sebagai</b> membuat file baru tetapi mempertahankan identitas proyek yang sama.</li>
+  <li><b>Duplikat</b> membuat proyek baru dengan data awal yang sama tetapi identitas proyek baru.</li>
 </ul>
 
-<h2>8. Backup dan Recovery</h2>
-<p>Backup dibuat sebagai snapshot <code>.smproj</code> dan disimpan di application data, bukan di folder project. Gunakan <b>Recover Proyek</b> bila perlu membuat file project baru dari snapshot backup.</p>
+<h2>8. Cadangan dan Pulihkany</h2>
+<p>Cadangan dibuat sebagai snapshot <code>.smproj</code> dan disimpan di data aplikasi, bukan di folder proyek. Gunakan <b>Pulihkan Proyek</b> bila perlu membuat file proyek baru dari snapshot cadangan.</p>
 
 <h2>9. Installer dan Portable Build</h2>
-<p>Jika menggunakan installer Windows, file <code>.smproj</code> didaftarkan sebagai Naskah Management Proyek sehingga dapat dibuka dengan double-click. Portable ZIP tidak mengubah file association Windows.</p>
+<p>Jika menggunakan installer Windows, file <code>.smproj</code> didaftarkan sebagai Script Management Project sehingga dapat dibuka dengan klik dua kali. Portable ZIP tidak mengubah file association Windows.</p>
 
 <h2>10. Rekomendasi Penyimpanan</h2>
-<p>Untuk workflow yang rapi, simpan file project dan source dalam struktur folder kerja yang jelas, tetapi biarkan media/source tetap sebagai file eksternal yang direferensikan oleh project.</p>
+<p>Untuk alur kerja yang rapi, simpan file proyek dan sumber dalam struktur folder kerja yang jelas, tetapi biarkan media/sumber tetap sebagai file eksternal yang direferensikan oleh proyek.</p>
 
 <div class="note">
-Gunakan Panduan Pengguna untuk workflow lengkap, Pintasan Keyboard untuk navigasi, Check for Updates untuk memeriksa GitHub Release terbaru, dan Laporkan Masalah untuk menyiapkan laporan teknis tanpa memasukkan isi project secara otomatis.
+Gunakan Panduan Pengguna untuk alur kerja lengkap, Pintasan Keyboard untuk navigasi, Periksa Pembaruan untuk memeriksa GitHub Release terbaru, dan Laporkan Masalah untuk menyiapkan laporan teknis tanpa memasukkan isi proyek secara otomatis.
 </div>
 </body>
 </html>

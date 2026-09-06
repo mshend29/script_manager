@@ -723,7 +723,7 @@ class DialogPage(QWidget):
                 if row.source_revised:
                     checkbox.setToolTip(
                         "Sumber berubah sejak dialog ini terakhir direkam. "
-                        "Rekam ulang lalu update checkbox untuk menerima source terbaru."
+                        "Rekam ulang lalu perbarui checkbox untuk menerima sumber terbaru."
                     )
                 checkbox.stateChanged.connect(
                     lambda state, dialogue_id=row.dialogue_id:
@@ -743,7 +743,7 @@ class DialogPage(QWidget):
                 dialogue_text = self._single_line_dialogue(row.dialogue)
                 dialogue_item = QTableWidgetItem(
                     (
-                        f"⚠ Sumber Revised · {dialogue_text}"
+                        f"⚠ Sumber Direvisi · {dialogue_text}"
                         if row.source_revised
                         else dialogue_text
                     )
@@ -751,7 +751,7 @@ class DialogPage(QWidget):
                 dialogue_item.setToolTip(
                     (
                         "Sumber berubah sejak dialog terakhir direkam. "
-                        "Recording history tetap dipertahankan.\n\n"
+                        "Riwayat rekaman tetap dipertahankan.\n\n"
                         + row.dialogue
                     )
                     if row.source_revised
