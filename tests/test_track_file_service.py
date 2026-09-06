@@ -8,7 +8,9 @@ from core.database import Database
 from services.track_file_service import (
     TrackAudioSpec,
     TrackFileService,
+    build_revision_track_name,
     build_track_suggestion,
+    parse_track_filename,
 )
 from services.tracking_service import (
     AUTO_FILE_STATUS_NOTE,
@@ -17,6 +19,8 @@ from services.tracking_service import (
     REVISION,
     STEMMED,
     TrackingService,
+    is_auto_file_status_note,
+    revision_number_from_note,
 )
 
 
@@ -178,6 +182,7 @@ def test_track_suggestion_uses_canonical_plus_episode_alias_and_uppercase_charac
 
     row = inventory.rows[0]
     assert row.aliases == ("Bapak jas navy",)
+    assert row.revision_number == 0
     assert row.track_suggestion == "4_BAPAK JAS NAVY ANDI_Brama"
     assert row.expected_filename == "4_BAPAK JAS NAVY ANDI_Brama.wav"
     assert "PRIA JAS NAVY" not in row.track_suggestion
@@ -191,6 +196,19 @@ def test_filename_component_uses_spaces_instead_of_windows_invalid_separators():
         "Bra_ma",
     )
     assert suggestion == "4_PRIA NAVY ANDI BAPAK JAS_Bra ma"
+
+
+def test_revision_suffix_helpers_use_rev_then_rev_number():
+    base = "4_BAPAK JAS NAVY ANDI_Brama"
+    assert build_revision_track_name(base, 0) == base
+    assert build_revision_track_name(base, 1) == base + "_REV"
+    assert build_revision_track_name(base, 2) == base + "_REV2"
+    assert build_revision_track_name(base, 3) == base + "_REV3"
+
+    parsed = parse_track_filename(base + "_REV2.wav")
+    assert parsed is not None
+    assert parsed.talent_name == "Brama"
+    assert parsed.revision_number == 2
 
 
 def test_canonical_first_actual_filename_matches_alias_first_suggestion_without_warning(
@@ -261,6 +279,7 @@ def test_valid_output_and_delivery_drive_automatic_statuses(tmp_path):
     tracking = TrackingService(database)
     chip = tracking.get_character_rows(ids["talent"])[0].chips[0]
     assert chip.display_status == STEMMED
+    assert is_auto_file_status_note(chip.downstream_note)
     assert chip.downstream_note == AUTO_FILE_STATUS_NOTE
 
     shutil.copy2(output / expected, delivery / expected)
@@ -327,7 +346,7 @@ def test_removing_output_downgrades_auto_stemmed_back_to_recorded(tmp_path):
     assert chip.display_status == RECORDED
 
 
-def test_revision_is_never_overwritten_by_filesystem_scan(tmp_path):
+def test_revision_changes_expected_name_then_returns_to_stemmed_and_delivered(tmp_path):
     database = Database(tmp_path / "project.db")
     ids = _seed(database)
     output = tmp_path / "output"
@@ -335,11 +354,15 @@ def test_revision_is_never_overwritten_by_filesystem_scan(tmp_path):
     output.mkdir()
     delivery.mkdir()
 
-    expected = "4_ANDI BAPAK JAS NAVY_Brama.wav"
-    _write_wav(output / expected)
-    _write_wav(delivery / expected)
+    base = "4_ANDI BAPAK JAS NAVY_Brama.wav"
+    _write_wav(output / base)
+    _write_wav(delivery / base)
 
+    service = _service(database, output, delivery)
+    service.scan_and_sync()
     tracking = TrackingService(database)
+    assert tracking.get_character_rows(ids["talent"])[0].chips[0].display_status == DELIVERED
+
     tracking.set_downstream_status(
         episode_id=ids["episode"],
         talent_id=ids["talent"],
@@ -347,20 +370,89 @@ def test_revision_is_never_overwritten_by_filesystem_scan(tmp_path):
         status=REVISION,
     )
 
-    _service(database, output, delivery).scan_and_sync()
-
-    with database.connect() as connection:
-        row = connection.execute(
-            """
-            SELECT status FROM stem_status
-            WHERE episode_id = ? AND talent_id = ? AND character_id = ?
-            """,
-            (ids["episode"], ids["talent"], ids["character"]),
-        ).fetchone()
-    assert row["status"] == REVISION
-
+    pending = service.scan_and_sync()
+    row = pending.rows[0]
+    assert row.revision_number == 1
+    assert row.track_suggestion.endswith("_REV")
+    assert row.expected_filename.endswith("_REV.wav")
+    assert row.output.exists is False
+    assert row.delivered.exists is False
+    assert not any(
+        warning.code == "UNEXPECTED_TRACK_FILE"
+        for warning in pending.warnings
+    )
     chip = tracking.get_character_rows(ids["talent"])[0].chips[0]
     assert chip.display_status == REVISION
+    assert chip.revision_number == 1
+
+    rev_output = output / "4_ANDI BAPAK JAS NAVY_Brama_REV.wav"
+    _write_wav(rev_output)
+    stemmed = service.scan_and_sync()
+    assert stemmed.rows[0].file_status == STEMMED
+    chip = tracking.get_character_rows(ids["talent"])[0].chips[0]
+    assert chip.display_status == STEMMED
+    assert chip.revision_number == 1
+    assert revision_number_from_note(chip.downstream_note) == 1
+
+    rev_delivery = delivery / rev_output.name
+    shutil.copy2(rev_output, rev_delivery)
+    delivered = service.scan_and_sync()
+    assert delivered.rows[0].file_status == DELIVERED
+    chip = tracking.get_character_rows(ids["talent"])[0].chips[0]
+    assert chip.display_status == DELIVERED
+    assert chip.revision_number == 1
+
+
+def test_second_revision_uses_rev2_and_old_versions_are_history_not_warnings(tmp_path):
+    database = Database(tmp_path / "project.db")
+    ids = _seed(database)
+    output = tmp_path / "output"
+    delivery = tmp_path / "setoran"
+    output.mkdir()
+    delivery.mkdir()
+
+    base = "4_ANDI BAPAK JAS NAVY_Brama.wav"
+    rev1 = "4_ANDI BAPAK JAS NAVY_Brama_REV.wav"
+    _write_wav(output / base)
+    _write_wav(delivery / base)
+
+    service = _service(database, output, delivery)
+    service.scan_and_sync()
+    tracking = TrackingService(database)
+
+    tracking.set_downstream_status(
+        episode_id=ids["episode"],
+        talent_id=ids["talent"],
+        character_id=ids["character"],
+        status=REVISION,
+    )
+    _write_wav(output / rev1)
+    _write_wav(delivery / rev1)
+    service.scan_and_sync()
+
+    tracking.set_downstream_status(
+        episode_id=ids["episode"],
+        talent_id=ids["talent"],
+        character_id=ids["character"],
+        status=REVISION,
+    )
+    pending = service.scan_and_sync()
+    row = pending.rows[0]
+    assert row.revision_number == 2
+    assert row.expected_filename.endswith("_REV2.wav")
+    assert row.output.exists is False
+    assert row.delivered.exists is False
+    assert not any(
+        warning.code == "UNEXPECTED_TRACK_FILE"
+        for warning in pending.warnings
+    )
+
+    rev2 = output / "4_ANDI BAPAK JAS NAVY_Brama_REV2.wav"
+    _write_wav(rev2)
+    service.scan_and_sync()
+    chip = tracking.get_character_rows(ids["talent"])[0].chips[0]
+    assert chip.display_status == STEMMED
+    assert chip.revision_number == 2
 
 
 def test_delivery_without_output_is_delivered_but_warned_as_mismatch(tmp_path):

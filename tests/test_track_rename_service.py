@@ -27,6 +27,7 @@ def _row(
     talent_id: int = 1,
     talent: str = "Brama",
     expected: str,
+    revision: int = 0,
 ) -> TrackFileRow:
     return TrackFileRow(
         episode_id=episode,
@@ -38,6 +39,7 @@ def _row(
         talent_name=talent,
         total_dialogues=1,
         recorded_dialogues=1,
+        revision_number=revision,
         track_suggestion=expected.removesuffix(".wav"),
         expected_filename=expected,
         output=AudioFileCheck(),
@@ -151,6 +153,53 @@ def test_expected_file_is_not_renamed_again(tmp_path):
     assert plan.matched == 0
     assert plan.already_expected == 1
     assert plan.items[0].status == RENAME_ALREADY_EXPECTED
+
+
+def test_revision_plan_ignores_old_generation_and_only_matches_current_rev(tmp_path):
+    _database, output, service = _service(tmp_path)
+    row = _row(
+        episode=95,
+        character_id=10,
+        character="Andi",
+        aliases=("Bapak jas navy",),
+        expected="95_BAPAK JAS NAVY ANDI_Brama_REV2.wav",
+        revision=2,
+    )
+    old_base = output / "95_ANDI BAPAK JAS NAVY_Brama.wav"
+    old_rev = output / "95_ANDI BAPAK JAS NAVY_Brama_REV.wav"
+    current = output / "95_ANDI BAPAK JAS NAVY_Brama_REV2.wav"
+    old_base.write_bytes(b"base")
+    old_rev.write_bytes(b"rev1")
+    current.write_bytes(b"rev2")
+
+    plan = service.build_plan([row], talent_id=1)
+
+    assert len(plan.items) == 1
+    assert Path(plan.items[0].source_path).name == current.name
+    assert plan.items[0].status == RENAME_MATCHED
+    assert Path(plan.items[0].target_path).name == row.expected_filename
+
+
+def test_simple_revision_export_requires_matching_revision_generation(tmp_path):
+    _database, output, service = _service(tmp_path)
+    row = _row(
+        episode=1,
+        character_id=1,
+        character="A",
+        expected="1_A_Brama_REV2.wav",
+        revision=2,
+    )
+    old = output / "1_A_REV.wav"
+    current = output / "1_A_REV2.wav"
+    old.write_bytes(b"old")
+    current.write_bytes(b"current")
+
+    plan = service.build_plan([row], talent_id=1, episode_number=1)
+
+    assert len(plan.items) == 1
+    assert Path(plan.items[0].source_path).name == current.name
+    assert plan.items[0].match_kind == MATCH_SIMPLE_EXPORT
+    assert Path(plan.items[0].target_path).name == "1_A_Brama_REV2.wav"
 
 
 def test_collision_never_overwrites_existing_expected_file(tmp_path):

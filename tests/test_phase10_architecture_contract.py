@@ -122,7 +122,7 @@ def test_semantic_text_has_accessible_contrast(
     assert _contrast(COLORS[foreground], COLORS[background]) >= 4.5
 
 
-def test_phase10_pr_does_not_modify_business_rule_modules() -> None:
+def test_phase10_pr_does_not_modify_unrelated_business_rule_modules() -> None:
     result = subprocess.run(
         ["git", "rev-list", "--parents", "-n", "1", "HEAD"],
         cwd=ROOT,
@@ -153,8 +153,13 @@ def test_phase10_pr_does_not_modify_business_rule_modules() -> None:
         "core/project_settings.py",
     }
 
+    # Revision-aware Track Files intentionally spans status derivation,
+    # filesystem matching and rename normalization. Other services remain
+    # protected by this architectural diff guard.
     allowed_service_changes = {
         "services/tracking_service.py",
+        "services/track_file_service.py",
+        "services/track_rename_service.py",
     }
     offenders = [
         path
