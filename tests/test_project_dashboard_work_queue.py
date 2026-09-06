@@ -132,7 +132,7 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
 
     assert "action_requested = Signal(str)" in page
     assert "PERLU PERHATIAN" in page
-    assert '"RECENT ACTIVITY"' in page
+    assert "AKTIVITAS TERBARU" in page
     assert "self.action_requested.emit(key)" in page
 
     assert "handle_project_dashboard_action" in main

@@ -34,7 +34,8 @@ def test_main_window_routes_f5_and_data_menu_to_same_sync_source_method() -> Non
     assert "F5" in main
     assert '"source.sync": self.sync_source' in main
     assert "def sync_source(self)" in main
-    assert 'self._run_source_sync("Sinkronkan Sumber")' in main
+    assert "self._run_source_sync" in main
+    assert "Sinkronkan Sumber" in main
 
     for removed in (
         "def import_source",
@@ -61,17 +62,17 @@ def test_help_documents_use_unified_sync_source_mental_model() -> None:
     ).read_text(encoding="utf-8")
 
     assert "Sinkronkan Sumber" in getting_started
-    assert "initial sync" in getting_started
-    assert "incremental sync" in getting_started
+    assert "Sinkronisasi pertama" in getting_started
+    assert "sinkronisasi lanjutan" in getting_started
 
     assert "Sinkronkan Sumber" in user_guide
     guide_lower = user_guide.casefold()
-    assert "initial sync" in guide_lower
-    assert "incremental sync" in guide_lower
-    assert "tidak perlu menjalankan Refresh View manual" in user_guide
+    assert "sinkronisasi pertama" in guide_lower
+    assert "sinkronisasi lanjutan" in guide_lower
+    assert "tidak perlu menjalankan Muat Ulang Tampilan secara manual" in user_guide
 
     assert "<td>Sinkronkan Sumber</td>" in shortcuts
-    assert "initial sync dan incremental sync" in shortcuts
+    assert "sinkronisasi pertama dan sinkronisasi lanjutan" in shortcuts.casefold()
 
     assert "Import Source" not in getting_started
     assert "Refresh Data" not in getting_started

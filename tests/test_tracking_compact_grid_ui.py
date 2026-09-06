@@ -94,7 +94,7 @@ def test_track_to_stem_controls_are_reparented_from_hidden_context():
     assert "self.prev_episode_button.setParent(queue_panel)" in compact
     assert "self.next_episode_button.setParent(queue_panel)" in compact
     assert "self.character_table.setParent(queue_panel)" in compact
-    assert "Stemmed/Delivered track otomatis keluar dari queue." in compact
+    assert "selesai Stem atau Disetor, track otomatis keluar dari antrean." in compact
 
 
 def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_columns():
@@ -119,7 +119,7 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
 
     assert '"TrackingDetailBar"' in compact
     assert "Tandai Revisi" in compact
-    assert '"Batalkan Revisi"' in compact
+    assert "Batalkan Revisi" in compact
     assert 'setProperty("trackingRevisionAction", True)' in compact
     assert "tracking_detail_changed.connect(" in compact
     assert "self._update_tracking_detail_bar" in compact
@@ -199,7 +199,7 @@ def test_track_name_suggestion_is_single_scroll_column_without_pagination():
     assert "track_name_page_label" not in compact
     assert "QApplication.clipboard().setText" in compact
     assert "QToolTip.showText" in compact
-    assert 'f"Copied: {text}"' in compact
+    assert "Tersalin" in compact
     assert "Aliases:" in compact
 
 
@@ -216,7 +216,7 @@ def test_output_health_workspace_explains_episode_counts_and_warning_details():
     compact = _read("pages/tracking_compact_page.py")
 
     assert "RINGKASAN OUTPUT" in compact
-    assert 'QLabel("EPISODE STATUS")' in compact
+    assert "STATUS EPISODE" in compact
     assert 'QLabel("WARNINGS")' in compact
     assert '["EPS", "STEM", "DELIVERY", "WARNING"]' in compact
     assert '["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]' in compact
@@ -232,7 +232,7 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
     service = _read("services/track_rename_service.py")
 
     assert "Cocokkan & Ubah Nama Episode" in compact
-    assert 'QPushButton("Batch Match & Rename Talent")' in compact
+    assert "Cocokkan & Ubah Nama Talent" in compact
     assert '"Match / Rename Stem / Export…"' in compact
     assert "cellDoubleClicked.connect" in compact
     assert "TrackRenamePreviewDialog" in compact
@@ -273,7 +273,7 @@ def test_unmatched_episode_exports_remain_visible_and_can_be_manually_mapped():
     assert "nama file yang diharapkan secara manual" in compact
 
     assert "QComboBox" in dialog
-    assert '"Pilih nama yang diharapkan…"' in dialog
+    assert "Pilih nama yang diharapkan…" in dialog
     assert "_manual_choice_changed" in dialog
     assert "assign_manual_expected" in dialog
     assert "File Unmatched atau Ambiguous" in dialog

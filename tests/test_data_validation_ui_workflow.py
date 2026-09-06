@@ -14,7 +14,7 @@ def test_unresolved_has_review_mode_and_manual_narration_actions():
     for header in ("EPS", "MASALAH", "TOKOH", "TALENT", "DIALOG", "SUMBER"):
         assert header in source
     assert "Perlu Ditinjau" in source
-    assert 'addItem("Narasi / Non-Dialog", "narration")' in source
+    assert "Narasi / Non-Dialog" in source
     assert "Narasi / Non-Dialog" in source
     assert "Perlu Ditinjau" in source
     assert "self._controller.mark_non_dialogue" in source

@@ -51,7 +51,7 @@ class TrackRenamePreviewDialog(QDialog):
             if plan.episode_number is not None
             else plan.talent_name or 'Talent Terpilih'
         )
-        self.setWindowTitle(f"Rename Preview — {scope}")
+        self.setWindowTitle(f"Pratinjau Ubah Nama — {scope}")
         self.resize(1040, 640)
         self.setMinimumSize(800, 500)
 
@@ -59,14 +59,14 @@ class TrackRenamePreviewDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(9)
 
-        title = QLabel(f"Rename Preview — {scope}")
+        title = QLabel(f"Pratinjau Ubah Nama — {scope}")
         title.setObjectName("PageTitle")
         root.addWidget(title)
 
         subtitle = QLabel(
-            "Semua WAV yang dapat dikaitkan dengan scope episode/talent ditampilkan. "
+            "Semua WAV yang dapat dikaitkan dengan lingkup episode/talent ditampilkan. "
             "File Tidak Cocok atau Ambigu dapat dipasangkan manual melalui kolom "
-            "Expected. Tidak ada file yang akan ditimpa."
+            "Diharapkan. Tidak ada file yang akan ditimpa."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
@@ -201,7 +201,7 @@ class TrackRenamePreviewDialog(QDialog):
         if duplicate:
             item.status = RENAME_AMBIGUOUS
             item.detail = (
-                "Nama file yang diharapkan ini juga dipakai file lain pada preview. "
+                "Nama file yang diharapkan ini juga dipakai file lain pada pratinjau. "
                 "Pilih target lain."
             )
 
@@ -245,14 +245,14 @@ class TrackRenamePreviewDialog(QDialog):
 
     def _refresh_summary(self) -> None:
         self.summary.setText(
-            f"Ready: {self.plan.matched}   •   "
-            f"Already OK: {self.plan.already_expected}   •   "
-            f"Ambiguous: {self.plan.ambiguous}   •   "
-            f"Collision: {self.plan.collisions}   •   "
-            f"Unmatched: {self.plan.unmatched}"
+            f"Siap: {self.plan.matched}   •   "
+            f"Sudah Sesuai: {self.plan.already_expected}   •   "
+            f"Ambigu: {self.plan.ambiguous}   •   "
+            f"Bentrok: {self.plan.collisions}   •   "
+            f"Tidak Cocok: {self.plan.unmatched}"
         )
         count = self.plan.matched
         self.rename_button.setText(
-            f"Rename {count} File" + ("s" if count != 1 else "")
+            f"Ubah Nama {count} File"
         )
         self.rename_button.setEnabled(count > 0)

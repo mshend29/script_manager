@@ -84,7 +84,7 @@ th { background: #f5f7fa; }
   <li>DATA dan Validasi</li>
   <li>Peralatan &amp; Pemeliharaan</li>
   <li>Cadangan, Pemulihan Cadangan, dan Pemulihan Proyek</li>
-  <li>Alur Kerja kerja yang direkomendasikan</li>
+  <li>Alur kerja yang direkomendasikan</li>
 </ol>
 </div>
 
@@ -95,7 +95,7 @@ th { background: #f5f7fa; }
 <tr><th>Disimpan di .smproj</th><th>Tetap eksternal</th></tr>
 <tr>
 <td>
-Pengaturan Proyek, metadata source, episode, dialog, tokoh, talent, cast mapping, status rekaman, tracking status, validasi state, dan audit history.
+Pengaturan Proyek, metadata sumber, episode, dialog, tokoh, talent, pemetaan cast, status rekaman, status tracking, status validasi, dan riwayat audit.
 </td>
 <td>
 Sumber Excel, Stem / Mixdown / Export Folder, Setoran Folder, serta Drive Utama / Material / Setoran URL.
@@ -120,11 +120,11 @@ Memindahkan file <code>.smproj</code> tidak otomatis memindahkan Excel sumber at
 <p>Tab <b>PROYEK</b> adalah titik awal untuk membuat, membuka, menyimpan, dan mengelola proyek serta sumber.</p>
 
 <h3>Dashboard Proyek</h3>
-<p>Dashboard menampilkan ringkasan proyek dan pekerjaan yang membutuhkan perhatian, termasuk jumlah episode, tokoh, talent, dialog, kebutuhan peninjauan, progres rekaman, stem/setoran, revisi, dan output warning jika tersedia.</p>
+<p>Dashboard menampilkan ringkasan proyek dan pekerjaan yang membutuhkan perhatian, termasuk jumlah episode, tokoh, talent, dialog, kebutuhan peninjauan, progres rekaman, stem/setoran, revisi, dan peringatan output jika tersedia.</p>
 
 <h3>Pengaturan Proyek — Proyek</h3>
 <table>
-<tr><th>Field</th><th>Fungsi</th></tr>
+<tr><th>Kolom</th><th>Fungsi</th></tr>
 <tr><td>Nama Proyek</td><td>Nama proyek yang ditampilkan di aplikasi.</td></tr>
 <tr><td>Kode Proyek</td><td>Kode proyek yang dapat digunakan sebagai identitas kerja/nama file awal.</td></tr>
 <tr><td>Klien</td><td>Nama klien atau pihak pemilik proyek.</td></tr>
@@ -157,26 +157,26 @@ Memindahkan file <code>.smproj</code> tidak otomatis memindahkan Excel sumber at
 
 <h2>3. Sumber Excel dan Sinkronkan Sumber</h2>
 <h3>Sinkronkan Sumber</h3>
-<p><b>Sinkronkan Sumber</b> adalah satu-satunya tindakan untuk memasukkan dan memperbarui sumber naskah. Initial sync dan sinkronisasi lanjutan memakai tombol yang sama. Alur internalnya mencakup scan/fingerprint, workbook inspection, parsing, normalization, resolusi tokoh/talent, validasi, read-only ppeninjauan, safety cadangan, transactional apply, lalu audit.</p>
+<p><b>Sinkronkan Sumber</b> adalah satu-satunya tindakan untuk memasukkan dan memperbarui sumber naskah. Sinkronisasi pertama dan sinkronisasi lanjutan memakai tombol yang sama. Alur internalnya mencakup pemindaian/fingerprint, pemeriksaan workbook, parsing, normalisasi, resolusi tokoh/talent, validasi, pratinjau hanya-baca, cadangan pengaman, penerapan transaksional, lalu audit.</p>
 
 <div class="warning">
-Jika ditemukan masalah yang membuat sync tidak aman—misalnya duplicate episode, file yang tidak dapat diproses, atau dialog lineage yang ambigu—aplikasi menghentikan commit agar database tidak berubah sebagian.
+Jika ditemukan masalah yang membuat sinkronisasi tidak aman—misalnya episode duplikat, file yang tidak dapat diproses, atau lineage dialog yang ambigu—aplikasi menghentikan penerapan agar database tidak berubah sebagian.
 </div>
 
-<p>Setelah sync pertama, sistem hanya memproses sumber yang perlu diperbarui:</p>
+<p>Setelah sinkronisasi pertama, sistem hanya memproses sumber yang perlu diperbarui:</p>
 <ul>
   <li><b>Baru</b> — file sumber baru.</li>
   <li><b>Berubah</b> — sumber yang berubah.</li>
-  <li><b>Pulihkand</b> — sumber yang sebelumnya tidak ditemukan lalu tersedia kembali.</li>
-  <li><b>Tidak Berubah</b> — tidak perlu dimem-parse ulang.</li>
+  <li><b>Dipulihkan</b> — sumber yang sebelumnya tidak ditemukan lalu tersedia kembali.</li>
+  <li><b>Tidak Berubah</b> — tidak perlu diparse ulang.</li>
 </ul>
 
 <div class="note">
-Persistent dialog identity dipisahkan dari sumber signature. Rekaman history dan mapping manual tetap dipertahankan ketika sumber direvisi. Jika rekaman lama tidak lagi sesuai sumber terbaru, DIALOG menampilkan <b>Sumber Direvisi</b>. Tracking lanjutan hanya diinvalidasi pada lingkup Episode + Talent + Tokoh yang benar-benar terkena perubahan semantik.
+Identitas dialog persisten dipisahkan dari signature sumber. Riwayat rekaman dan pemetaan manual tetap dipertahankan ketika sumber direvisi. Jika rekaman lama tidak lagi sesuai sumber terbaru, DIALOG menampilkan <b>Sumber Direvisi</b>. Status Tracking lanjutan hanya direset pada lingkup Episode + Talent + Tokoh yang benar-benar terkena perubahan semantik.
 </div>
 
 <div class="tip">
-Setelah Apply berhasil, PROYEK dashboard dan workspace aktif langsung membaca data terbaru. NASKAH, DIALOG, TRACKING, dan DATA yang belum dibuka ditandai perlu dimuat ulang dan otomatis memuat ulang saat dibuka. Pengguna tidak perlu menjalankan Refresh View manual.
+Setelah Terapkan berhasil, Dashboard Proyek dan workspace aktif langsung membaca data terbaru. NASKAH, DIALOG, TRACKING, dan DATA yang belum dibuka ditandai perlu dimuat ulang dan otomatis memuat ulang saat dibuka. Pengguna tidak perlu menjalankan Muat Ulang Tampilan secara manual.
 </div>
 
 <h2>4. NASKAH</h2>
@@ -184,13 +184,13 @@ Setelah Apply berhasil, PROYEK dashboard dan workspace aktif langsung membaca da
 
 <p>Kontrol utama:</p>
 <ul>
-  <li><b>Episode</b> — pilih episode tertentu atau All.</li>
+  <li><b>Episode</b> — pilih episode tertentu atau Semua.</li>
   <li><b>Cari</b> — cari isi yang ditampilkan pada tampilan Naskah.</li>
 
 </ul>
 
 <div class="tip">
-NASKAH membaca data yang sudah di-commit ke <code>.smproj</code>. Mengubah Excel tidak mengubah database sampai sumber diproses melalui Sinkronkan Sumber. Setelah Apply berhasil, tampilan otomatis mengikuti proyek revisi terbaru.
+NASKAH membaca data yang sudah disimpan ke <code>.smproj</code>. Mengubah Excel tidak mengubah database sampai sumber diproses melalui Sinkronkan Sumber. Setelah Terapkan berhasil, tampilan otomatis mengikuti revisi proyek terbaru.
 </div>
 
 <h2>5. DIALOG dan Rekaman</h2>
@@ -217,20 +217,20 @@ NASKAH membaca data yang sudah di-commit ke <code>.smproj</code>. Mengubah Excel
 </ul>
 
 <div class="note">
-Rekaman status disimpan di proyek dan dipakai oleh TRACKING untuk menghitung progres. Karena itu checkbox DIALOG adalah data alur kerja, bukan sekadar tampilan.
+Status rekaman disimpan di proyek dan dipakai oleh TRACKING untuk menghitung progres. Karena itu checkbox DIALOG adalah data alur kerja, bukan sekadar tampilan.
 </div>
 
 <h2>6. TRACKING</h2>
 <p>TRACKING merangkum status pekerjaan per talent, tokoh, dan episode.</p>
 
-<h3>Episode status</h3>
-<p>View tracking menampilkan detail episode dan status. Pemilihan episode dapat menggunakan tombol Sebelumnya/Berikutnya dan filter yang tersedia pada workspace.</p>
+<h3>Status Episode</h3>
+<p>Tampilan Tracking menampilkan detail episode dan status. Pemilihan episode dapat menggunakan tombol Sebelumnya/Berikutnya dan filter yang tersedia pada workspace.</p>
 
 <h3>Revisi</h3>
 <p>Episode detail menyediakan tindakan <b>Tandai Revisi</b> dan <b>Batalkan Revisi</b> sesuai status saat ini.</p>
 
 <h3>File Track</h3>
-<p>Workspace File Track menyediakan fungsi untuk mencocokkan file output dengan struktur tracking, termasuk:</p>
+<p>File Track menyediakan fungsi untuk mencocokkan file output dengan struktur tracking, termasuk:</p>
 <ul>
   <li><b>Cocokkan &amp; Ubah Nama Episode</b>;</li>
   <li><b>Cocokkan &amp; Ubah Nama Talent</b>;</li>
@@ -242,13 +242,13 @@ Rekaman status disimpan di proyek dan dipakai oleh TRACKING untuk menghitung pro
 <p>Kondisi Output menampilkan ringkasan file output seperti Episode Selesai Stem, Episode Disetor, dan Peringatan. Gunakan bagian ini untuk menemukan file output yang tidak sesuai ekspektasi alur kerja.</p>
 
 <h2>7. DATA dan Validasi</h2>
-<p>Tab <b>DATA</b> digunakan untuk memeriksa kesehatan data, mapping, belum dipetakan source, dan hasil validasi.</p>
+<p>Tab <b>DATA</b> digunakan untuk memeriksa kesehatan data, pemetaan, sumber yang belum dipetakan, dan hasil validasi.</p>
 
-<h3>Overtampilan</h3>
+<h3>Ringkasan</h3>
 <p>Menampilkan ringkasan data dan kondisi proyek.</p>
 
-<h3>Tokoh Mapping</h3>
-<p>Menampilkan tokoh dan mapping talent. Mapping dapat di-<b>Lock</b> atau <b>Unlock</b> sesuai kebutuhan alur kerja.</p>
+<h3>Pemetaan Tokoh</h3>
+<p>Menampilkan tokoh dan pemetaan talent. Pemetaan dapat <b>Dikunci</b> atau <b>Dibuka Kuncinya</b> sesuai kebutuhan alur kerja.</p>
 
 <h3>Tokoh Alias</h3>
 <p>Tokoh Alias digunakan ketika variasi nama dari sumber sebenarnya merujuk ke tokoh kanonis yang sama.</p>
@@ -268,7 +268,7 @@ Rekaman status disimpan di proyek dan dipakai oleh TRACKING untuk menghitung pro
 <p>Menampilkan informasi file sumber yang tersimpan di database proyek.</p>
 
 <h3>Validasi</h3>
-<p>Validasi membagi masalah menjadi kategori Sistem, Peninjauan, dan Alur Kerja. Gunakan <b>Validate</b> untuk menjalankan pemeriksaan data proyek.</p>
+<p>Validasi membagi masalah menjadi kategori Sistem, Peninjauan, dan Alur Kerja. Gunakan <b>Validasi</b> untuk menjalankan pemeriksaan data proyek.</p>
 
 <h2>8. Peralatan &amp; Pemeliharaan</h2>
 <p>Tab <b>PERALATAN</b> menyediakan fungsi pemeliharaan dan pintasan ke lokasi kerja.</p>
@@ -285,11 +285,11 @@ Rekaman status disimpan di proyek dan dipakai oleh TRACKING untuk menghitung pro
 <h3>Drive pintasans</h3>
 <p>Drive Utama, Material Drive, dan Setoran Drive dapat dibuka dari PERALATAN jika URL sudah dikonfigurasi di Pengaturan Proyek.</p>
 
-<h3>Database maintenance</h3>
+<h3>Pemeliharaan Database</h3>
 <ul>
   <li><b>Buat Cadangan</b> — membuat snapshot proyek.</li>
   <li><b>Pulihkan Cadangan</b> — mengembalikan database proyek aktif dari snapshot yang valid.</li>
-  <li><b>Bangun Ulang Indeks</b> pada DATA — menjalankan pemeliharaan index SQLite tanpa menghapus data.</li>
+  <li><b>Bangun Ulang Indeks</b> pada DATA — menjalankan pemeliharaan indeks SQLite tanpa menghapus data.</li>
 </ul>
 
 <h2>9. Cadangan, Pemulihan Cadangan, dan Pemulihan Proyek</h2>
@@ -297,13 +297,13 @@ Rekaman status disimpan di proyek dan dipakai oleh TRACKING untuk menghitung pro
 <p>Cadangan disimpan sebagai file <code>.smproj</code> di data aplikasi per-user. Cadangan tidak menyalin Excel sumber atau file audio/output eksternal.</p>
 
 <h3>Pulihkan Cadangan</h3>
-<p><b>Pulihkan Cadangan</b> mengganti database proyek aktif menggunakan snapshot yang dipilih. Sebelum pulihkan, aplikasi membuat safety cadangan dari kondisi saat ini.</p>
+<p><b>Pulihkan Cadangan</b> mengganti database proyek aktif menggunakan snapshot yang dipilih. Sebelum pemulihan, aplikasi membuat cadangan pengaman dari kondisi saat ini.</p>
 
 <h3>Pulihkan Proyek</h3>
 <p><b>Pulihkan Proyek</b> digunakan untuk membuat file <code>.smproj</code> baru dari snapshot cadangan, misalnya ketika proyek asli hilang atau ketika ingin memulihkan ke file terpisah.</p>
 
 <div class="warning">
-Pulihkan dan Pulihkan adalah dua operasi berbeda. Pulihkan bekerja pada proyek aktif, sedangkan Pulihkan menghasilkan file proyek hasil pemulihan.
+Pulihkan Cadangan dan Pulihkan Proyek adalah dua operasi berbeda. Pulihkan Cadangan bekerja pada proyek aktif, sedangkan Pulihkan Proyek menghasilkan file proyek hasil pemulihan.
 </div>
 
 <h2>10. Instalasi, Portable Build, dan File Association</h2>
@@ -316,7 +316,7 @@ Pulihkan dan Pulihkan adalah dua operasi berbeda. Pulihkan bekerja pada proyek a
 Installer bekerja per-user dan tidak memerlukan instalasi seluruh sistem. File Excel sumber dan proyek <code>.smproj</code> tidak dipindahkan oleh installer.
 </div>
 
-<h2>11. Alur Kerja kerja yang direkomendasikan</h2>
+<h2>11. Alur kerja yang direkomendasikan</h2>
 <ol>
   <li>Buat atau buka proyek <code>.smproj</code>.</li>
   <li>Periksa Pengaturan Proyek, Folder Sumber, delimiter episode, dan folder output.</li>

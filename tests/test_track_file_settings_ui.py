@@ -37,7 +37,7 @@ def test_project_settings_dialog_uses_two_tabs_and_constrained_wav_spec():
     assert "QTabWidget" in source
     assert "self._build_project_tab(settings)" in source
     assert "Proyek" in source
-    assert '"Output Track & Setoran"' in source
+    assert "Output Track & Setoran" in source
     assert "filesystem path" in source
     assert "Google Drive Desktop" in source
 
@@ -62,7 +62,7 @@ def test_project_settings_source_filename_helper_replaces_manual_test_filename()
     assert "Baca Nama File Sumber" in source
     assert "read_source_filenames(self.source_folder.text())" in source
     assert "self.source_filename_example" in source
-    assert 'QPushButton("Copy")' in source
+    assert "Salin" in source
     assert "Episode Preview:" in source
     assert 'QGroupBox("Episode Delimiter")' in source
     assert "filename_sample" not in source

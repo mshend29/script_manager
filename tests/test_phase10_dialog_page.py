@@ -67,4 +67,4 @@ def test_dialog_data_and_cast_use_seventy_thirty_split_layout() -> None:
     assert "content_splitter.setStretchFactor(1, 3)" in source
     assert "content_splitter.setSizes([700, 300])" in source
     assert "self.cast_table.setMaximumHeight(112)" not in source
-    assert "recorded{revision_text}" in source
+    assert "direkam{revision_text}" in source

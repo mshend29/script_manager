@@ -194,10 +194,10 @@ class DataService:
                 0,
                 CharacterAdminRow(
                     id=None,
-                    name="⚠ Character Unknown",
+                    name="⚠ Tokoh Tidak Dikenal",
                     locked_talent_id=None,
-                    locked_talent_name="⚠ Talent Unknown",
-                    mapping_source="Unresolved",
+                    locked_talent_name="⚠ Talent Tidak Dikenal",
+                    mapping_source="Belum Dipetakan",
                     active_dialogues=missing_character_count,
                     unresolved_dialogues=missing_character_count,
                     missing_character=True,
@@ -250,13 +250,13 @@ class DataService:
                     e.episode_number,
                     dc.character_id,
                     CASE
-                        WHEN dc.id IS NULL THEN '⚠ Missing Character'
+                        WHEN dc.id IS NULL THEN '⚠ Tokoh Tidak Dikenal'
                         ELSE c.name
                     END AS character_name,
                     dc.talent_id,
                     CASE
                         WHEN dc.id IS NULL OR dc.talent_id IS NULL
-                        THEN '⚠ Missing Talent'
+                        THEN '⚠ Talent Tidak Dikenal'
                         ELSE t.name
                     END AS talent_name,
                     d.dialog_text,

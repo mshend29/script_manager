@@ -26,7 +26,7 @@ def test_project_home_replaces_startup_recent_dialog_visually() -> None:
     assert 'self.project_home = self._build_project_home()' in source
     assert 'sidebar.setFixedWidth(230)' in source
     assert "Buat Baru" in source
-    assert 'QPushButton("Open Project")' in source
+    assert "Buka Proyek" in source
     assert 'QLabel("Recent Projects")' in source
     assert '["PROJECT", "LAST OPENED"]' in source
     assert 'setPlaceholderText("Cari proyek terbaru…")' in source

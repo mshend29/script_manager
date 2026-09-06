@@ -301,7 +301,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert not tracking_page.tracking_detail_bar.isHidden()
     assert tracking_page.detail_episode.text() == "Episode 1"
     assert tracking_page.detail_character.text() == "Hendra"
-    assert tracking_page.detail_revision_button.text() == "Mark Revision"
+    assert tracking_page.detail_revision_button.text() == "Tandai Revisi"
 
     tracking_page.detail_revision_button.click()
     qapp.processEvents()

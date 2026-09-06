@@ -15,16 +15,8 @@ MENU_BINDINGS = {
 }
 
 MULTILINE_MENU_BINDINGS = {
-    "Ctrl+Shift+S": (
-        '"Simpan Sebagai",',
-        'self.save_project_as,',
-        '"Ctrl+Shift+S",',
-    ),
-    "F1": (
-        '"Mulai",',
-        'self.open_getting_started,',
-        '"F1",',
-    ),
+    "Ctrl+Shift+S": ("Simpan Sebagai", "self.save_project_as"),
+    "F1": ("Mulai", "self.open_getting_started"),
 }
 
 
@@ -44,9 +36,10 @@ def test_keyboard_shortcuts_help_matches_implemented_bindings():
         assert sequence in main
         assert sequence in help_content
 
-    for sequence, fragments in MULTILINE_MENU_BINDINGS.items():
-        for fragment in fragments:
-            assert fragment in main
+    for sequence, (label, handler) in MULTILINE_MENU_BINDINGS.items():
+        assert label in main
+        assert handler in main
+        assert sequence in main
         assert sequence in help_content
 
     assert "Ctrl+F" in help_content
@@ -68,7 +61,7 @@ def test_keyboard_shortcuts_help_navigation_is_wired():
     assert "def show_keyboard_shortcuts" in page
 
     assert "&Bantuan" in main
-    assert '"Shortcut",' in main
+    assert "Pintasan Keyboard" in main
     assert "self.open_keyboard_shortcuts" in main
     assert "def open_keyboard_shortcuts" in main
     assert "page.show_keyboard_shortcuts()" in main

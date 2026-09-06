@@ -15,12 +15,12 @@ def test_report_problem_help_content_explains_privacy_and_manual_submit():
         "Laporkan Masalah",
         "Buka GitHub Issue",
         "Salin Template Laporan",
-        "nama project",
-        "nama client",
+        "nama proyek",
+        "nama klien",
         "Folder Sumber",
         "Drive URL",
-        "dialogue text",
-        "Periksa kembali isi laporan sebelum Submit",
+        "teks dialog",
+        "Periksa kembali isi laporan sebelum mengirim",
     ):
         assert expected in content
 
