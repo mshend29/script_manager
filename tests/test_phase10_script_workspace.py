@@ -23,18 +23,32 @@ def test_script_filters_move_into_workspace_toolbar() -> None:
     assert 'setPlaceholderText("Cari naskah…")' in source
 
 
-def test_script_sidebar_tracks_cast_for_all_or_selected_episode() -> None:
+def test_script_sidebar_groups_cast_by_talent_for_current_scope() -> None:
     source = _read("pages/script_page.py")
 
     assert "class ScriptCastTableModel(QAbstractTableModel)" in source
-    assert 'HEADERS = ("TOKOH", "TALENT")' in source
+    assert 'HEADERS = ("TALENT", "TOKOH")' in source
     assert 'self.cast_table = ScriptTableView()' in source
     assert "self.cast_table.setModel(self.cast_model)" in source
     assert "def _refresh_cast_sidebar" in source
     assert "episode_number = self.episode_combo.currentData()" in source
     assert 'search=""' in source
+    assert "talent_cast: dict[str, set[str]] = {}" in source
+    assert "talent_cast.setdefault(talent_text, set()).add(character_text)" in source
+    assert '" / ".join(' in source
     assert '"Semua episode"' in source
     assert 'f"Episode {episode_number}"' in source
+    assert 'f"{self._format_count(len(unique_talents))} talent • "' in source
+
+
+def test_script_dialogue_rows_are_single_line_like_dialog_workspace() -> None:
+    source = _read("pages/script_page.py")
+
+    assert "self.table.setWordWrap(False)" in source
+    assert "self.table.setTextElideMode(Qt.TextElideMode.ElideRight)" in source
+    assert "self.table.verticalHeader().setDefaultSectionSize(38)" in source
+    assert "tooltip = row.dialogue" in source
+    assert 'tooltip += f"\\n\\nSumber: {row.source_file_name}"' in source
 
 
 def test_script_episode_navigation_includes_all_episodes_scope() -> None:
