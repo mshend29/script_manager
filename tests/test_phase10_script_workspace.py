@@ -26,10 +26,11 @@ def test_script_filters_move_into_workspace_toolbar() -> None:
 def test_script_sidebar_tracks_cast_for_all_or_selected_episode() -> None:
     source = _read("pages/script_page.py")
 
-    assert 'self.cast_table = QTableWidget(0, 2)' in source
-    assert 'setHorizontalHeaderLabels(["TOKOH", "TALENT"])' in source
+    assert "class ScriptCastTableModel(QAbstractTableModel)" in source
+    assert 'HEADERS = ("TOKOH", "TALENT")' in source
+    assert 'self.cast_table = ScriptTableView()' in source
+    assert "self.cast_table.setModel(self.cast_model)" in source
     assert "def _refresh_cast_sidebar" in source
-    assert "episode_number=self.episode_combo.currentData()" not in source
     assert "episode_number = self.episode_combo.currentData()" in source
     assert 'search=""' in source
     assert '"Semua episode"' in source
