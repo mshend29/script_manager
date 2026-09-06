@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from app.application_window import ApplicationWindow
+from app.main_window import MainWindow
 from app.light_runtime import (
     apply_light_theme,
     install_light_window_chrome,
@@ -91,6 +92,9 @@ def main():
         splash.show()
         app.processEvents()
 
+    # MainWindow remains the stable production workspace base. Phase 11 adds
+    # only New Project orchestration in ApplicationWindow.
+    _workspace_base = MainWindow
     window = ApplicationWindow()
 
     if smoke_test:
