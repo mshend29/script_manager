@@ -217,8 +217,8 @@ class ProjectPage(DashboardProjectPage):
         content_layout.addWidget(title)
 
         subtitle = QLabel(
-            "Open a recent project, search by project name or location, "
-            "or sort the list from the column headers."
+            "Buka proyek terbaru, cari berdasarkan nama atau lokasi, "
+            "atau urutkan daftar melalui judul kolom."
         )
         subtitle.setObjectName("ProjectSectionHelper")
         subtitle.setWordWrap(True)

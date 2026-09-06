@@ -28,7 +28,8 @@ def test_project_home_replaces_startup_recent_dialog_visually() -> None:
     assert "Buat Baru" in source
     assert "Buka Proyek" in source
     assert "Proyek Terbaru" in source
-    assert '["PROJECT", "LAST OPENED"]' in source
+    assert "PROYEK" in source
+    assert "TERAKHIR DIBUKA" in source
     assert 'setPlaceholderText("Cari proyek terbaru…")' in source
     assert "setSortingEnabled(True)" in source
     assert "Qt.SortOrder.DescendingOrder" in source

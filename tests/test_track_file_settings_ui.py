@@ -42,7 +42,8 @@ def test_project_settings_dialog_uses_two_tabs_and_constrained_wav_spec():
     assert "Google Drive Desktop" in source
 
     assert "Stem / Mixdown / Export" in source
-    assert "Setoran Folder (Google Drive Desktop)" in source
+    assert "Folder Setoran" in source
+    assert "Google Drive Desktop" in source
     assert 'format_value = QLabel("WAV")' in source
     assert "QSpinBox" not in source
     assert '("44.100 Hz", 44100)' in source
@@ -64,7 +65,7 @@ def test_project_settings_source_filename_helper_replaces_manual_test_filename()
     assert "self.source_filename_example" in source
     assert "Salin" in source
     assert "Pratinjau Episode:" in source
-    assert 'QGroupBox("Episode Delimiter")' in source
+    assert "Pemisah Episode" in source
     assert "filename_sample" not in source
     assert '"Test Filename"' not in source
 

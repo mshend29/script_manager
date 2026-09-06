@@ -94,8 +94,8 @@ def test_missing_character_is_visible_and_kept_manual(tmp_path):
     characters = service.get_characters()
     assert characters[0].id is None
     assert characters[0].missing_character is True
-    assert characters[0].name == "⚠ Character Unknown"
-    assert characters[0].locked_talent_name == "⚠ Talent Unknown"
+    assert characters[0].name == "⚠ Tokoh Tidak Dikenal"
+    assert characters[0].locked_talent_name == "⚠ Talent Tidak Dikenal"
     assert characters[0].unresolved_dialogues == 1
 
     codes = {issue.code for issue in service.validate()}

@@ -137,7 +137,8 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
     # Talent summary stays compact while file tools remain dedicated workspaces.
     assert "header_row.addWidget(self.summary_label, 1)" in tracking
     assert "FILE TRACK" in compact
-    assert '["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]' in compact
+    for header in ("SARAN TRACK", "STEM / EXPORT", "DISETOR"):
+        assert header in compact
     assert 'QLabel("OUTPUT HEALTH")' in compact
 
 
@@ -218,7 +219,8 @@ def test_output_health_workspace_explains_episode_counts_and_warning_details():
     assert "RINGKASAN OUTPUT" in compact
     assert "STATUS EPISODE" in compact
     assert "PERINGATAN" in compact
-    assert '["EPS", "STEM", "DELIVERY", "WARNING"]' in compact
+    for header in ("EPS", "STEM", "SETORAN", "PERINGATAN"):
+        assert header in compact
     assert '["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]' in compact
     assert '"Expected Tracks"' in compact
     assert '"Valid Stem"' in compact
@@ -238,7 +240,8 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
     assert "TrackRenamePreviewDialog" in compact
     assert "self._track_rename_service.execute(plan)" in compact
 
-    assert '"CURRENT", "EXPECTED", "STATUS"' in dialog
+    for header in ("SAAT INI", "DIHARAPKAN", "STATUS"):
+        assert header in dialog
     assert "Tidak ada file yang akan" in dialog
     assert "ditimpa" in dialog
     assert "self.rename_button.setEnabled(count > 0)" in dialog
