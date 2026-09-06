@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.09 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.10 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -545,34 +545,45 @@ Checkpoint test setelah 11.09:
 
 ## 11.10 — Milestone 4: Folder & Tautan
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.07, 11.09
 
 Tujuan: menegaskan filesystem path dan browser link sebagai dua hal berbeda.
 
 Folder summary read-only:
 
-- [ ] Naskah
-- [ ] Stem
-- [ ] Setoran
+- [x] Naskah
+- [x] Stem
+- [x] Setoran
 
 URL editable:
 
-- [ ] Drive Utama
-- [ ] Material
-- [ ] Setoran
+- [x] Drive Utama
+- [x] Material
+- [x] Setoran
 
 Validation:
 
-- [ ] URL boleh kosong.
-- [ ] Bila diisi, format harus masuk akal.
-- [ ] Jangan melakukan network request sebagai validation gate.
-- [ ] URL browser tidak boleh diterima sebagai folder filesystem.
+- [x] URL boleh kosong.
+- [x] Bila diisi, format harus masuk akal.
+- [x] Jangan melakukan network request sebagai validation gate.
+- [x] URL browser tidak boleh diterima sebagai folder filesystem.
 
 Exit criteria:
 
 - folder operasional jelas;
 - tautan tersimpan tanpa memblokir workflow offline.
+
+Checkpoint test setelah 11.10:
+
+- full suite: `387 passed, 32 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk Milestone 4 + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- tiga folder operasional tampil read-only dan mengikuti nilai milestone sebelumnya;
+- ketiga browser URL boleh kosong;
+- URL non-kosong wajib berupa `http/https` yang valid;
+- validation tidak melakukan network request.
 
 ---
 
@@ -1237,6 +1248,12 @@ Status: LOCKED
 
 Milestone Audio tidak membuat folder saat user mengetik path. Folder Stem/Setoran yang belum ada hanya dibuat lewat aksi `Buat Folder`. Normalization mempertahankan nilai yang mengandung skema URL agar dedicated filesystem validator dapat menolak browser URL dengan pesan yang benar sebelum nilai tersebut diperlakukan sebagai `Path`.
 
+## D-015 — Browser links optional dan offline-safe
+
+Status: LOCKED
+
+Milestone Folder & Tautan menampilkan Folder Naskah/Stem/Setoran sebagai ringkasan read-only dari konfigurasi filesystem sebelumnya. Drive Utama, Material, dan Setoran adalah browser URL opsional. Bila diisi harus berupa URL `http/https` yang valid; validation hanya memeriksa sintaks lokal dan tidak melakukan network request sehingga workflow offline tetap dapat dilanjutkan.
+
 ---
 
 # Progress Log
@@ -1316,6 +1333,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: browser URL pada Folder dipertahankan selama normalization agar dapat ditolak validator secara eksplisit; folder tidak pernah dibuat hanya karena typing.
 - commit/PR: `31257ed92597b33ff2639e81273308bcc2214780`, `efb1f3de732d18a9a9c0b236959419446a020928`, `050600eec8a94eee517f83969d996e1d3ebda4e0`, `f0704b9cd42ace9bee4b9188dd8a837125454871`, `27b2b0c368261369d07a6f5da31b5bec7f19ce51`, `04165ead02f2caeb12f168e13c04177e81e0bcca`, `609de7a9a3536ff2449d238eb8fe6518137d3243`, `8439b227cc38de7ae170f36f5a1944c9695f9cc0` / PR #75.
 - next: 11.10 Milestone 4 — Folder & Tautan.
+
+2026-09-06 — 11.10
+- perubahan: validator Folder & Tautan offline-safe; panel ringkasan read-only untuk Naskah/Stem/Setoran; tiga URL browser opsional; syntax gate `http/https`; readiness milestone 4 terhubung ke navigation dan final validation.
+- test: full suite `387 passed, 32 skipped`; compile success; Qt runtime + wizard scale smoke success.
+- keputusan: tidak ada network request pada validation; folder dan browser link tetap dua jenis konfigurasi yang berbeda.
+- commit/PR: `e3bf1ca6c0cd16a0175f2b75f224deaaeb0c6893`, `ff5e2c8cf8a9e3d6381ecb28b0673395107cd081`, `973d220636ae6985f1aad6a5b05d85b7e2ec6a9a`, `72e1a720527ff38fa52aebfff9a93d8f8c4cce5f`, `164f4c3c049dba186a639fb569d84e8831efd80c`, `6f6d8d21708bda9433de8363abf097cc738e85e7` / PR #75.
+- next: 11.11 Help Folder & Google Drive.
 
 ---
 
