@@ -18,6 +18,10 @@ if PYSIDE_AVAILABLE:
     from PySide6.QtWidgets import QApplication
 
     from dialogs.new_project_dialog import NewProjectDialog
+    from services.source_preflight_service import (
+        SourcePreflightFileResult,
+        SourcePreflightReport,
+    )
     from widgets.wizard_milestone_rail import WizardMilestoneState
 
 
@@ -73,19 +77,39 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     dialog._go_next()
     assert dialog.current_step == 1
 
-    dialog.set_step_state(1, WizardMilestoneState.WARNING, "Warning test")
-    assert dialog.next_button.isEnabled() is True
-
     source = tmp_path / "source-shell"
     source.mkdir()
-    (source / "AA23_EP001_SCRIPT.xlsx").write_bytes(b"filename-only")
+    source_file = source / "AA23_EP001_SCRIPT.xlsx"
+    source_file.write_bytes(b"filename-only")
     dialog.source_folder.setText(str(source))
     dialog.episode_before.setText("EP")
     dialog.episode_after.setText("_")
     source_result = dialog.source_section.validate_source_filenames()
     qapp.processEvents()
     assert source_result.is_valid
+    assert dialog._step_states[1] == WizardMilestoneState.ERROR
+
+    # Shell navigation test does not need to re-run the parser; inject the
+    # already-tested successful preflight state so the generic navigation
+    # contract can continue through later placeholder steps.
+    mapping = source_result.mappings[0]
+    dialog._source_preflight_finished(
+        SourcePreflightReport(
+            files=[
+                SourcePreflightFileResult(
+                    file_path=mapping.file_path,
+                    file_name=mapping.file_name,
+                    episode_number=mapping.episode_number,
+                    inspected=True,
+                    parsed=True,
+                    dialogue_count=1,
+                    layout_detection="header",
+                )
+            ]
+        )
+    )
     assert dialog._step_states[1] == WizardMilestoneState.VALID
+    assert dialog.next_button.isEnabled() is True
 
     while dialog.current_step < 4:
         dialog._go_next()

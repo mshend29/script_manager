@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QThread, Qt
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -23,6 +23,7 @@ from services.project_setup_validation import (
     create_project_destination_folder,
     validate_project_identity_destination,
 )
+from services.source_preflight_service import SourcePreflightReport
 from services.source_setup_validation import SourceFilenameValidation
 from widgets.project_configuration import (
     AudioOutputSection,
@@ -31,6 +32,10 @@ from widgets.project_configuration import (
     ProjectConfigurationSections,
     ProjectIdentitySection,
     SourceConfigurationSection,
+)
+from widgets.source_preflight_panel import (
+    SourcePreflightPanel,
+    SourcePreflightWorker,
 )
 from widgets.wizard_milestone_rail import (
     WizardMilestoneRail,
@@ -64,6 +69,10 @@ class NewProjectDialog(QDialog):
         self._step_messages = ["" for _ in self.STEP_TITLES]
         self._destination_collision = False
         self._project_code_manually_edited = False
+        self._source_preflight_report: SourcePreflightReport | None = None
+        self._source_preflight_thread: QThread | None = None
+        self._source_preflight_worker: SourcePreflightWorker | None = None
+        self._preflight_running = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 16, 18, 16)
@@ -109,6 +118,7 @@ class NewProjectDialog(QDialog):
             self._settings,
             auto_validate=True,
         )
+        self.source_preflight_panel = SourcePreflightPanel()
         self.audio_section = AudioOutputSection(self._settings)
         self.links_section = DriveLinksSection(self._settings)
         self.sections = ProjectConfigurationSections(
@@ -192,9 +202,10 @@ class NewProjectDialog(QDialog):
         self.page_stack.addWidget(
             self._make_page(
                 "2. Sumber Naskah",
-                "Pilih sumber naskah dan aturan pembacaan nomor episode. "
-                "Seluruh filename divalidasi otomatis; isi workbook belum dibaca.",
+                "Validasi seluruh filename, lalu jalankan preflight read-only untuk "
+                "memastikan workbook dan struktur naskah dapat diproses.",
                 self.source_section,
+                self.source_preflight_panel,
             )
         )
         self.page_stack.addWidget(
@@ -269,6 +280,12 @@ class NewProjectDialog(QDialog):
         self.source_section.validation_changed.connect(
             self._source_validation_changed
         )
+        self.source_preflight_panel.start_requested.connect(
+            self._start_source_preflight
+        )
+        self.source_preflight_panel.cancel_requested.connect(
+            self._cancel_source_preflight
+        )
 
         self._refresh_identity_validation()
         self._show_step(0)
@@ -284,6 +301,10 @@ class NewProjectDialog(QDialog):
     @property
     def current_step(self) -> int:
         return self._current_step
+
+    @property
+    def source_preflight_report(self) -> SourcePreflightReport | None:
+        return self._source_preflight_report
 
     def _make_page(
         self,
@@ -334,7 +355,10 @@ class NewProjectDialog(QDialog):
         self._update_navigation_buttons()
 
     def _can_advance_current_step(self) -> bool:
-        return self._step_states[self._current_step] != WizardMilestoneState.ERROR
+        return (
+            not self._preflight_running
+            and self._step_states[self._current_step] != WizardMilestoneState.ERROR
+        )
 
     def _show_step(self, index: int) -> None:
         index = max(0, min(index, len(self.STEP_TITLES) - 1))
@@ -348,14 +372,29 @@ class NewProjectDialog(QDialog):
             self.source_section.validate_source_filenames()
 
     def _go_back(self) -> None:
+        if self._preflight_running:
+            return
         if self._current_step > 0:
             self._show_step(self._current_step - 1)
 
     def _go_next(self) -> None:
+        if self._preflight_running:
+            return
+
         if self._current_step == 0:
             self._refresh_identity_validation(verify_writable=True)
         elif self._current_step == 1:
-            self.source_section.validate_source_filenames()
+            if self.source_section.validation is None:
+                self.source_section.validate_source_filenames()
+            if (
+                self._source_preflight_report is None
+                or not self._source_preflight_report.is_valid
+            ):
+                self.set_step_state(
+                    1,
+                    WizardMilestoneState.ERROR,
+                    "Jalankan Source Preflight dan selesaikan semua blocker sebelum lanjut.",
+                )
 
         if not self._can_advance_current_step():
             return
@@ -370,7 +409,9 @@ class NewProjectDialog(QDialog):
             for state in self._step_states
         )
 
-        self.back_button.setEnabled(self._current_step > 0)
+        self.back_button.setEnabled(
+            self._current_step > 0 and not self._preflight_running
+        )
         self.next_button.setVisible(not is_final)
         self.next_button.setEnabled(can_advance)
         self.create_button.setVisible(is_final)
@@ -379,6 +420,7 @@ class NewProjectDialog(QDialog):
             and not has_blocking_step
             and not self._destination_collision
         )
+        self.cancel_button.setEnabled(not self._preflight_running)
 
     def _mark_project_code_manual(self, _value: str = "") -> None:
         self._project_code_manually_edited = True
@@ -448,6 +490,9 @@ class NewProjectDialog(QDialog):
         self,
         result: SourceFilenameValidation | None,
     ) -> None:
+        self._source_preflight_report = None
+        self.source_preflight_panel.set_filename_validation(result)
+
         if result is None:
             if self._current_step == 1:
                 message = (
@@ -472,19 +517,133 @@ class NewProjectDialog(QDialog):
             if episodes
             else "episode belum terbaca"
         )
-        if result.warnings:
+        self.set_step_state(
+            1,
+            WizardMilestoneState.ERROR,
+            f"{result.file_count} filename valid ({episode_text}). "
+            "Jalankan Source Preflight untuk memeriksa isi workbook.",
+        )
+
+    def _start_source_preflight(self) -> None:
+        if self._preflight_running:
+            return
+
+        validation = self.source_section.validation
+        if validation is None:
+            validation = self.source_section.validate_source_filenames()
+        if not validation.is_valid:
+            self.set_step_state(
+                1,
+                WizardMilestoneState.ERROR,
+                validation.errors[0].message,
+            )
+            return
+
+        self._source_preflight_report = None
+        self._preflight_running = True
+        self.source_section.setEnabled(False)
+        self.source_preflight_panel.set_running(True)
+        self.set_step_state(
+            1,
+            WizardMilestoneState.ERROR,
+            "Source Preflight sedang berjalan…",
+        )
+
+        thread = QThread(self)
+        worker = SourcePreflightWorker(validation)
+        worker.moveToThread(thread)
+
+        thread.started.connect(worker.run)
+        worker.progress.connect(self.source_preflight_panel.update_progress)
+        worker.finished.connect(self._source_preflight_finished)
+        worker.failed.connect(self._source_preflight_failed)
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(self._source_preflight_thread_finished)
+        thread.finished.connect(thread.deleteLater)
+
+        self._source_preflight_thread = thread
+        self._source_preflight_worker = worker
+        self._update_navigation_buttons()
+        thread.start()
+
+    def _cancel_source_preflight(self) -> None:
+        worker = self._source_preflight_worker
+        if not self._preflight_running or worker is None:
+            return
+        worker.request_cancel()
+        self.source_preflight_panel.set_cancelling()
+        self.validation_status.setText(
+            "Membatalkan Source Preflight setelah operasi workbook saat ini selesai…"
+        )
+
+    def _source_preflight_finished(self, report: SourcePreflightReport) -> None:
+        self._source_preflight_report = report
+        self.source_preflight_panel.set_report(report)
+
+        if report.cancelled:
+            self.set_step_state(
+                1,
+                WizardMilestoneState.ERROR,
+                "Source Preflight dibatalkan. Jalankan ulang untuk melanjutkan.",
+            )
+            return
+
+        if report.problems:
+            self.set_step_state(
+                1,
+                WizardMilestoneState.ERROR,
+                report.problems[0],
+            )
+            return
+
+        filename_validation = self.source_section.validation
+        filename_warnings = (
+            list(filename_validation.warnings)
+            if filename_validation is not None
+            else []
+        )
+        warning_messages = [
+            issue.message for issue in filename_warnings
+        ] + list(report.warnings)
+
+        message = (
+            f"{report.parsed_files} workbook dan "
+            f"{report.parsed_dialogues} dialog siap diimpor."
+        )
+        if warning_messages:
             self.set_step_state(
                 1,
                 WizardMilestoneState.WARNING,
-                f"⚠ {result.file_count} file valid ({episode_text}). "
-                f"{result.warnings[0].message}",
+                f"⚠ {message} {warning_messages[0]}",
             )
         else:
             self.set_step_state(
                 1,
                 WizardMilestoneState.VALID,
-                f"✓ {result.file_count} file sumber valid ({episode_text}).",
+                f"✓ {message}",
             )
+
+    def _source_preflight_failed(self, message: str) -> None:
+        report = SourcePreflightReport(
+            problems=[f"Source Preflight gagal: {message}"]
+        )
+        self._source_preflight_report = report
+        self.source_preflight_panel.set_report(report)
+        self.set_step_state(
+            1,
+            WizardMilestoneState.ERROR,
+            report.problems[0],
+        )
+
+    def _source_preflight_thread_finished(self) -> None:
+        self._preflight_running = False
+        self.source_section.setEnabled(True)
+        self._source_preflight_thread = None
+        self._source_preflight_worker = None
+        self._update_navigation_buttons()
 
     def _create_destination_folder(self) -> None:
         try:
@@ -514,6 +673,12 @@ class NewProjectDialog(QDialog):
             ),
         )
 
+    def reject(self) -> None:
+        if self._preflight_running:
+            self._cancel_source_preflight()
+            return
+        super().reject()
+
     def _accept(self) -> None:
         location = self.location_edit.text().strip()
         settings = self.sections.to_settings()
@@ -532,12 +697,26 @@ class NewProjectDialog(QDialog):
             self._show_step(0)
             return
 
-        source_validation = self.source_section.validate_source_filenames()
+        source_validation = self.source_section.validation
+        if source_validation is None:
+            source_validation = self.source_section.validate_source_filenames()
         if not source_validation.is_valid:
             QMessageBox.warning(
                 self,
                 "Proyek Baru",
                 source_validation.errors[0].message,
+            )
+            self._show_step(1)
+            return
+
+        if (
+            self._source_preflight_report is None
+            or not self._source_preflight_report.is_valid
+        ):
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                "Source Preflight harus selesai tanpa blocker sebelum project dibuat.",
             )
             self._show_step(1)
             return

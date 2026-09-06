@@ -43,7 +43,7 @@ def _prepare_identity(dialog, tmp_path, qapp) -> None:
     assert dialog._step_states[0] == WizardMilestoneState.VALID
 
 
-def test_source_milestone_blocks_until_all_filenames_validate(qapp, tmp_path):
+def test_source_filename_gate_maps_all_files_but_preflight_remains_blocking(qapp, tmp_path):
     dialog = NewProjectDialog()
     _prepare_identity(dialog, tmp_path, qapp)
 
@@ -67,9 +67,10 @@ def test_source_milestone_blocks_until_all_filenames_validate(qapp, tmp_path):
     assert result.is_valid
     assert result.file_count == 3
     assert result.episode_numbers == (1, 2, 3)
-    assert dialog._step_states[1] == WizardMilestoneState.VALID
-    assert dialog.next_button.isEnabled() is True
-    assert "3 file sumber" in dialog.validation_status.text()
+    assert dialog._step_states[1] == WizardMilestoneState.ERROR
+    assert dialog.next_button.isEnabled() is False
+    assert dialog.source_preflight_panel.start_button.isEnabled() is True
+    assert "Jalankan Source Preflight" in dialog.validation_status.text()
     assert "awal / tengah / akhir" in dialog.source_section.filename_preview.text()
 
     dialog.episode_after.setText("-WRONG-")
@@ -80,13 +81,14 @@ def test_source_milestone_blocks_until_all_filenames_validate(qapp, tmp_path):
     invalid = dialog.source_section.validate_source_filenames()
     assert invalid.is_valid is False
     assert len(invalid.errors) == 3
+    assert dialog.source_preflight_panel.start_button.isEnabled() is False
 
     dialog.reject()
     dialog.close()
     qapp.processEvents()
 
 
-def test_source_milestone_gap_is_warning_not_blocker(qapp, tmp_path):
+def test_source_filename_gap_is_preserved_for_post_preflight_warning(qapp, tmp_path):
     dialog = NewProjectDialog()
     _prepare_identity(dialog, tmp_path, qapp)
     dialog._go_next()
@@ -103,9 +105,12 @@ def test_source_milestone_gap_is_warning_not_blocker(qapp, tmp_path):
 
     assert result.is_valid
     assert result.missing_episodes == (2,)
-    assert dialog._step_states[1] == WizardMilestoneState.WARNING
-    assert dialog.next_button.isEnabled() is True
-    assert "Gap episode" in dialog.validation_status.text()
+    assert result.warnings
+    assert "Gap episode" in result.warnings[0].message
+    # Preflight is now the remaining blocker; the gap becomes WARNING after it passes.
+    assert dialog._step_states[1] == WizardMilestoneState.ERROR
+    assert dialog.next_button.isEnabled() is False
+    assert dialog.source_preflight_panel.start_button.isEnabled() is True
 
     dialog.reject()
     dialog.close()
