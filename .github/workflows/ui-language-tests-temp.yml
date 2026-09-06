@@ -1,0 +1,144 @@
+name: UI Language Tests Temp
+
+on:
+  push:
+    branches:
+      - phase10-ui-language-audit
+
+permissions:
+  contents: write
+
+jobs:
+  update-tests:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase10-ui-language-audit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Update localized UI expectations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          files = [
+              'tests/test_alias_ui_structure.py',
+              'tests/test_data_unresolved_ui.py',
+              'tests/test_data_validation_ui_workflow.py',
+              'tests/test_dialog_copy_navigation_ui.py',
+              'tests/test_help_about.py',
+              'tests/test_help_check_updates.py',
+              'tests/test_help_getting_started.py',
+              'tests/test_help_keyboard_shortcuts.py',
+              'tests/test_help_report_problem.py',
+              'tests/test_help_user_guide.py',
+              'tests/test_phase10_dialog_page.py',
+              'tests/test_phase10_project_page.py',
+              'tests/test_phase10_shell.py',
+              'tests/test_phase10_tracking_page.py',
+              'tests/test_project_dashboard_work_queue.py',
+              'tests/test_project_home_startup.py',
+              'tests/test_project_lifecycle.py',
+              'tests/test_recording_source_revision.py',
+              'tests/test_smproj_project_file.py',
+              'tests/test_sync_source_ux.py',
+              'tests/test_tools_maintenance.py',
+              'tests/test_track_file_settings_ui.py',
+              'tests/test_tracking_compact_grid_ui.py',
+          ]
+
+          replacements = [
+              ('ALIASES', 'ALIAS'),
+              ('⚠ Talent Unknown', '⚠ Talent Tidak Dikenal'),
+              ('⚠ Character Unknown', '⚠ Tokoh Tidak Dikenal'),
+              ('Narration / Non-Dialogue', 'Narasi / Non-Dialog'),
+              ('Copy All Dialog', 'Salin Semua Dialog'),
+              ('‹ Prev', '‹ Sebelumnya'),
+              ('Next ›', 'Berikutnya ›'),
+              ('About Script Manager', 'Tentang Script Manager'),
+              ('Check for Updates', 'Periksa Pembaruan'),
+              ('Checking for updates', 'Memeriksa pembaruan'),
+              ('Update available', 'Pembaruan tersedia'),
+              ('You are up to date', 'Aplikasi sudah terbaru'),
+              ('No release published yet', 'Belum ada rilis yang dipublikasikan'),
+              ('Update check failed', 'Pemeriksaan pembaruan gagal'),
+              ('Open Release Page', 'Buka Halaman Rilis'),
+              ('Getting Started', 'Mulai'),
+              ('Source Script Folder', 'Folder Naskah Sumber'),
+              ('Sync Source', 'Sinkronkan Sumber'),
+              ('Save As', 'Simpan Sebagai'),
+              ('Duplicate', 'Duplikat'),
+              ('Recover Project', 'Pulihkan Proyek'),
+              ('Report a Problem', 'Laporkan Masalah'),
+              ('Open GitHub Issue', 'Buka GitHub Issue'),
+              ('Copy Report Template', 'Salin Template Laporan'),
+              ('Source Folder', 'Folder Sumber'),
+              ('User Guide', 'Panduan Pengguna'),
+              ('Project Settings', 'Pengaturan Proyek'),
+              ('Character Alias', 'Alias Tokoh'),
+              ('Output Health', 'Kondisi Output'),
+              ('Restore Backup', 'Pulihkan Cadangan'),
+              ('Search dialog…', 'Cari dialog…'),
+              ('⚠ Source Revised', '⚠ Sumber Direvisi'),
+              ('CAST EPISODE', 'TOKOH & TALENT EPISODE'),
+              ('Create New', 'Buat Baru'),
+              ('Search recent projects…', 'Cari proyek terbaru…'),
+              ('Source folder:', 'Folder sumber:'),
+              ('&File', '&Berkas'),
+              ('&Project', '&Proyek'),
+              ('&Tools', '&Peralatan'),
+              ('&Help', '&Bantuan'),
+              ('TRACKS TO STEM', 'TRACK UNTUK STEM'),
+              ('NEEDS ATTENTION', 'PERLU PERHATIAN'),
+              ('Apply Refresh', 'Terapkan Pembaruan'),
+              ('Script Management Project (*.smproj)', 'Proyek Script Manager (*.smproj)'),
+              ('Tools & Maintenance', 'Peralatan & Pemeliharaan'),
+              ('Get Source Filenames', 'Baca Nama File Sumber'),
+              ('Go to Dialog', 'Buka Dialog'),
+              ('Mark Revision', 'Tandai Revisi'),
+              ('Clear Revision', 'Batalkan Revisi'),
+              ('Track Files', 'File Track'),
+              ('TRACK NAME SUGGESTION', 'SARAN NAMA TRACK'),
+              ('OUTPUT SUMMARY', 'RINGKASAN OUTPUT'),
+              ('Match & Rename Episode', 'Cocokkan & Ubah Nama Episode'),
+              ('Current:', 'Saat ini:'),
+              ('Expected:', 'Diharapkan:'),
+              ('Choose expected…', 'Pilih nama yang diharapkan…'),
+              ('Track Output & Delivery', 'Output Track & Setoran'),
+          ]
+
+          # Exact source-fragment expectations whose visible table labels changed.
+          exact = [
+              ('["EPS", "ISSUE", "CHARACTER", "TALENT", "DIALOG", "SOURCE"]',
+               '["EPS", "MASALAH", "TOKOH", "TALENT", "DIALOG", "SUMBER"]'),
+              ('["SEVERITY", "CATEGORY", "EPS", "ENTITY", "CODE", "MESSAGE", "ACTION"]',
+               '["TINGKAT", "KATEGORI", "EPS", "ENTITAS", "CODE", "PESAN", "AKSI"]'),
+              ('self.tabs.addTab(self._build_project_tab(settings), "Project")',
+               'self.tabs.addTab(self._build_project_tab(settings), "Proyek")'),
+          ]
+
+          for filename in files:
+              path = Path(filename)
+              if not path.exists():
+                  continue
+              text = path.read_text(encoding='utf-8')
+              for old, new in exact:
+                  text = text.replace(old, new)
+              for old, new in replacements:
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
+          PY
+      - name: Compile tests
+        run: python -m compileall -q tests
+      - name: Remove temporary workflow
+        run: rm -f .github/workflows/ui-language-tests-temp.yml
+      - name: Commit test expectations
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update tests for localized UI terminology"
+          git push origin HEAD:phase10-ui-language-audit
