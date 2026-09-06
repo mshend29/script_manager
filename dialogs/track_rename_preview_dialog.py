@@ -28,11 +28,11 @@ from services.track_rename_service import (
 
 
 _STATUS_LABELS = {
-    RENAME_MATCHED: "Ready to Rename",
-    RENAME_ALREADY_EXPECTED: "Already Expected",
-    RENAME_AMBIGUOUS: "Ambiguous",
-    RENAME_COLLISION: "Collision",
-    RENAME_UNMATCHED: "Unmatched",
+    RENAME_MATCHED: 'Siap Diubah Nama',
+    RENAME_ALREADY_EXPECTED: 'Sudah Sesuai',
+    RENAME_AMBIGUOUS: 'Ambigu',
+    RENAME_COLLISION: 'Bentrok',
+    RENAME_UNMATCHED: 'Tidak Cocok',
 }
 
 
@@ -49,7 +49,7 @@ class TrackRenamePreviewDialog(QDialog):
         scope = (
             f"Episode {plan.episode_number}"
             if plan.episode_number is not None
-            else plan.talent_name or "Selected Talent"
+            else plan.talent_name or 'Talent Terpilih'
         )
         self.setWindowTitle(f"Rename Preview — {scope}")
         self.resize(1040, 640)
@@ -78,7 +78,7 @@ class TrackRenamePreviewDialog(QDialog):
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
-            ["EPS", "CHARACTER", "CURRENT", "EXPECTED", "STATUS"]
+            ["EPS", 'TOKOH', 'SAAT INI', 'DIHARAPKAN', "STATUS"]
         )
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(
@@ -114,7 +114,7 @@ class TrackRenamePreviewDialog(QDialog):
         self.rename_button.setProperty("primary", True)
 
         cancel = buttons.button(QDialogButtonBox.StandardButton.Cancel)
-        cancel.setText("Cancel")
+        cancel.setText('Batal')
 
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -148,7 +148,7 @@ class TrackRenamePreviewDialog(QDialog):
 
             if item.status in {RENAME_UNMATCHED, RENAME_AMBIGUOUS} and item.choices:
                 combo = QComboBox()
-                combo.addItem("Choose expected…", None)
+                combo.addItem('Pilih nama yang diharapkan…', None)
                 for choice in item.choices:
                     combo.addItem(
                         (
@@ -229,9 +229,9 @@ class TrackRenamePreviewDialog(QDialog):
         }:
             text = "⚠ " + text
         elif item.status == RENAME_MATCHED:
-            text = "✓ Ready to Rename"
+            text = '✓ Siap Diubah Nama'
         elif item.status == RENAME_ALREADY_EXPECTED:
-            text = "✓ Already Expected"
+            text = '✓ Sudah Sesuai'
 
         status.setText(text)
         status.setToolTip(item.detail)

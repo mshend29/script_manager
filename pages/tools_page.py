@@ -39,10 +39,10 @@ class ToolsPage(PageShell):
 
         context.add_section_title("PROJECT")
         for action, label in (
-            ("tools.open_project_folder", "Open Project Folder"),
-            ("tools.open_source_folder", "Open Source Folder"),
-            ("tools.open_output_folder", "Open Stem / Export"),
-            ("tools.open_delivery_folder", "Open Setoran"),
+            ("tools.open_project_folder", 'Buka Folder Proyek'),
+            ("tools.open_source_folder", 'Buka Folder Sumber'),
+            ("tools.open_output_folder", 'Buka Stem / Export'),
+            ("tools.open_delivery_folder", 'Buka Setoran'),
         ):
             button = QPushButton(label)
             button.setProperty("secondary", True)
@@ -52,13 +52,13 @@ class ToolsPage(PageShell):
             )
             context.add_widget(button)
 
-        context.add_section_title("MAINTENANCE")
+        context.add_section_title('PEMELIHARAAN')
         for action, label in (
-            ("tools.diagnostics", "Run Diagnostics"),
-            ("tools.backup", "Create Backup"),
-            ("tools.restore_backup", "Restore Backup"),
-            ("tools.open_backups", "Open Backups"),
-            ("tools.open_logs", "Open Logs"),
+            ("tools.diagnostics", 'Jalankan Diagnostik'),
+            ("tools.backup", 'Buat Cadangan'),
+            ("tools.restore_backup", 'Pulihkan Cadangan'),
+            ("tools.open_backups", 'Buka Cadangan'),
+            ("tools.open_logs", 'Buka Log'),
         ):
             button = QPushButton(label)
             button.setProperty(
@@ -82,7 +82,7 @@ class ToolsPage(PageShell):
         title_box = QVBoxLayout()
         title_box.setSpacing(1)
 
-        title = QLabel("Tools & Maintenance")
+        title = QLabel('Peralatan & Pemeliharaan')
         title.setObjectName("PageTitle")
         subtitle = QLabel(
             "Diagnostics, filesystem shortcuts, database safety, dan audit history."
@@ -94,7 +94,7 @@ class ToolsPage(PageShell):
         title_box.addWidget(subtitle)
         header.addLayout(title_box, 1)
 
-        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button = QPushButton('Muat Ulang')
         self.refresh_button.setProperty("secondary", True)
         self.refresh_button.clicked.connect(
             lambda: self.action_requested.emit("tools.diagnostics")
@@ -102,7 +102,7 @@ class ToolsPage(PageShell):
         header.addWidget(self.refresh_button)
         root.addLayout(header)
 
-        summary_title = QLabel("PROJECT DIAGNOSTICS")
+        summary_title = QLabel('DIAGNOSTIK PROYEK')
         summary_title.setObjectName("SectionTitle")
         root.addWidget(summary_title)
 
@@ -110,11 +110,11 @@ class ToolsPage(PageShell):
         cards.setHorizontalSpacing(8)
         cards.setVerticalSpacing(8)
 
-        self.health_card = self._metric_card("Project Health", "—")
-        self.validation_card = self._metric_card("Validation", "0")
-        self.output_card = self._metric_card("Output Warnings", "0")
-        self.backup_card = self._metric_card("Backups", "0")
-        self.audit_card = self._metric_card("Audit Entries", "0")
+        self.health_card = self._metric_card('Kondisi Proyek', "—")
+        self.validation_card = self._metric_card('Validasi', "0")
+        self.output_card = self._metric_card('Peringatan Output', "0")
+        self.backup_card = self._metric_card('Cadangan', "0")
+        self.audit_card = self._metric_card('Entri Audit', "0")
 
         for index, card in enumerate(
             (
@@ -130,7 +130,7 @@ class ToolsPage(PageShell):
 
         self.diagnostics_table = QTableWidget(0, 4)
         self.diagnostics_table.setHorizontalHeaderLabels(
-            ["CHECK", "STATUS", "VALUE", "DETAIL"]
+            ['PEMERIKSAAN', "STATUS", 'NILAI', 'RINCIAN']
         )
         self.diagnostics_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
@@ -155,7 +155,7 @@ class ToolsPage(PageShell):
         header_view.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         root.addWidget(self.diagnostics_table)
 
-        shortcut_title = QLabel("FOLDERS & DRIVE LINKS")
+        shortcut_title = QLabel('FOLDER & TAUTAN DRIVE')
         shortcut_title.setObjectName("SectionTitle")
         root.addWidget(shortcut_title)
 
@@ -167,15 +167,15 @@ class ToolsPage(PageShell):
         shortcuts.setVerticalSpacing(7)
 
         actions = (
-            ("tools.open_project_folder", "Project Folder"),
-            ("tools.open_source_folder", "Source Folder"),
+            ("tools.open_project_folder", 'Folder Proyek'),
+            ("tools.open_source_folder", 'Folder Sumber'),
             ("tools.open_output_folder", "Stem / Export"),
-            ("tools.open_delivery_folder", "Setoran Folder"),
-            ("tools.open_backups", "Backups Folder"),
-            ("tools.open_logs", "Logs Folder"),
-            ("tools.open_main_drive", "Main Drive"),
-            ("tools.open_material_drive", "Material Drive"),
-            ("tools.open_delivery_drive", "Delivery Drive"),
+            ("tools.open_delivery_folder", 'Folder Setoran'),
+            ("tools.open_backups", 'Folder Cadangan'),
+            ("tools.open_logs", 'Folder Log'),
+            ("tools.open_main_drive", 'Drive Utama'),
+            ("tools.open_material_drive", 'Drive Material'),
+            ("tools.open_delivery_drive", 'Drive Setoran'),
         )
         for index, (action, label) in enumerate(actions):
             button = QPushButton(label)
@@ -191,13 +191,13 @@ class ToolsPage(PageShell):
 
         root.addWidget(shortcut_frame)
 
-        audit_title = QLabel("AUDIT HISTORY")
+        audit_title = QLabel('RIWAYAT AUDIT')
         audit_title.setObjectName("SectionTitle")
         root.addWidget(audit_title)
 
         self.audit_table = QTableWidget(0, 4)
         self.audit_table.setHorizontalHeaderLabels(
-            ["DATE", "TYPE", "ACTION", "SUMMARY"]
+            ['TANGGAL', 'JENIS', 'AKSI', 'RINGKASAN']
         )
         self.audit_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
@@ -278,7 +278,7 @@ class ToolsPage(PageShell):
             self.health_card.value_label.setText("ERROR")
             self.diagnostics_table.setRowCount(1)
             self.diagnostics_table.setItem(
-                0, 0, QTableWidgetItem("Diagnostics")
+                0, 0, QTableWidgetItem('Diagnostik')
             )
             self.diagnostics_table.setItem(
                 0, 1, QTableWidgetItem("ERROR")
@@ -299,7 +299,7 @@ class ToolsPage(PageShell):
         diagnostics: ProjectDiagnostics,
     ) -> None:
         health_text = (
-            "HEALTHY"
+            'SEHAT'
             if diagnostics.error_count == 0
             else f"{diagnostics.error_count} ERROR"
         )
@@ -325,7 +325,7 @@ class ToolsPage(PageShell):
         for row_index, check in enumerate(diagnostics.checks):
             status_text = {
                 STATUS_OK: "✓ OK",
-                STATUS_WARNING: "⚠ Warning",
+                STATUS_WARNING: '⚠ Peringatan',
                 STATUS_ERROR: "✕ Error",
                 STATUS_INFO: "Info",
             }.get(check.status, check.status)

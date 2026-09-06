@@ -61,21 +61,21 @@ class DashboardCard(QFrame):
         # these role-specific overrides are local to this workspace.
         self.setStyleSheet(
             f"""
-            QFrame#ProjectMetricCard {{
+            QFrame#ProyekMetricCard {{
                 border: none;
                 background: transparent;
                 border-radius: {RADII['md']}px;
             }}
-            QFrame#ProjectMetricCard[dashboardRole="pipeline"] {{
+            QFrame#ProyekMetricCard[dashboardRole="pipeline"] {{
                 padding: 2px;
             }}
-            QFrame#ProjectMetricCard[dashboardRole="pipeline"][pipelineState="ACTIVE"] {{
+            QFrame#ProyekMetricCard[dashboardRole="pipeline"][pipelineState="ACTIVE"] {{
                 background: {COLORS['accent_soft']};
             }}
-            QFrame#ProjectMetricCard[dashboardRole="pipeline"][pipelineState="DONE"] {{
+            QFrame#ProyekMetricCard[dashboardRole="pipeline"][pipelineState="DONE"] {{
                 background: {COLORS['recorded_soft']};
             }}
-            QFrame#ProjectMetricCard[dashboardRole="revision"][pipelineState="REVISION"] {{
+            QFrame#ProyekMetricCard[dashboardRole="revision"][pipelineState="REVISION"] {{
                 background: {COLORS['revision_soft']};
             }}
             """
@@ -144,18 +144,18 @@ class ProjectPage(QWidget):
 
         data_header = QHBoxLayout()
         data_header.setContentsMargins(2, 0, 2, 0)
-        data_title = QLabel("PROJECT DATA")
+        data_title = QLabel('DATA PROYEK')
         data_title.setObjectName("ProjectSectionTitle")
         data_header.addWidget(data_title)
         data_header.addStretch(1)
-        data_hint = QLabel("A quick read of the current script database")
+        data_hint = QLabel('Ringkasan cepat database naskah saat ini')
         data_hint.setObjectName("ProjectSectionHelper")
         data_header.addWidget(data_hint)
         production_layout.addLayout(data_header)
         production_layout.addWidget(self._build_metric_strip())
         production_layout.addSpacing(4)
 
-        pipeline_title = QLabel("PRODUCTION PIPELINE")
+        pipeline_title = QLabel('ALUR PRODUKSI')
         pipeline_title.setObjectName("ProjectSectionTitle")
         production_layout.addWidget(pipeline_title)
 
@@ -189,8 +189,8 @@ class ProjectPage(QWidget):
 
         # Compatibility counters retained for callers/tests while their visual
         # meaning now lives in the production flow and Needs Attention list.
-        self.review_card = DashboardCard("0", "Needs Review")
-        self.warning_card = DashboardCard("0", "Output Warnings")
+        self.review_card = DashboardCard("0", 'Perlu Ditinjau')
+        self.warning_card = DashboardCard("0", 'Peringatan Output')
         self.review_card.hide()
         self.warning_card.hide()
 
@@ -201,7 +201,7 @@ class ProjectPage(QWidget):
         panel.setObjectName("ProjectIdentityCard")
         panel.setStyleSheet(
             f"""
-            QFrame#ProjectIdentityCard {{
+            QFrame#ProyekIdentityCard {{
                 background: {COLORS['accent_soft']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
@@ -213,7 +213,7 @@ class ProjectPage(QWidget):
         layout.setContentsMargins(22, 18, 22, 18)
         layout.setSpacing(13)
 
-        eyebrow = QLabel("CURRENT PROJECT")
+        eyebrow = QLabel('PROYEK AKTIF')
         eyebrow.setObjectName("ProjectMetaKey")
         layout.addWidget(eyebrow)
 
@@ -225,7 +225,7 @@ class ProjectPage(QWidget):
         identity.setContentsMargins(0, 0, 0, 0)
         identity.setSpacing(3)
 
-        self.project_name = QLabel("No project open")
+        self.project_name = QLabel('Belum ada proyek terbuka')
         self.project_name.setObjectName("ProjectIdentityName")
         self.project_name.setMinimumWidth(0)
         self.project_name.setWordWrap(True)
@@ -239,7 +239,7 @@ class ProjectPage(QWidget):
 
         top.addLayout(identity, 1)
 
-        self.health_badge = QLabel("NO PROJECT")
+        self.health_badge = QLabel('BELUM ADA PROYEK')
         self.health_badge.setObjectName("ProjectHealthBadge")
         self.health_badge.setProperty("healthState", "NEUTRAL")
         top.addWidget(
@@ -256,18 +256,18 @@ class ProjectPage(QWidget):
         metadata.setColumnStretch(1, 1)
         metadata.setColumnStretch(3, 1)
 
-        self.project_location = QLabel("Project file: -")
-        self.source_path = QLabel("Source folder: -")
-        self.start_date = QLabel("Start date: -")
-        self.last_refresh = QLabel("Last sync: -")
-        self.drive_status = QLabel("Main drive: -")
+        self.project_location = QLabel('File proyek: -')
+        self.source_path = QLabel('Folder sumber: -')
+        self.start_date = QLabel('Tanggal mulai: -')
+        self.last_refresh = QLabel('Sinkron terakhir: -')
+        self.drive_status = QLabel('Drive utama: -')
 
         rows = (
-            ("PROJECT FILE", self.project_location),
-            ("SOURCE FOLDER", self.source_path),
-            ("START DATE", self.start_date),
-            ("LAST SYNC", self.last_refresh),
-            ("MAIN DRIVE", self.drive_status),
+            ('FILE PROYEK', self.project_location),
+            ('FOLDER SUMBER', self.source_path),
+            ('TANGGAL MULAI', self.start_date),
+            ('SINKRON TERAKHIR', self.last_refresh),
+            ('DRIVE UTAMA', self.drive_status),
         )
 
         for index, (key, value) in enumerate(rows):
@@ -292,7 +292,7 @@ class ProjectPage(QWidget):
         self.info.setObjectName("ProjectHealthBanner")
         self.info.setStyleSheet(
             f"""
-            QFrame#ProjectHealthBanner {{
+            QFrame#ProyekHealthBanner {{
                 background: {COLORS['surface']};
                 border: none;
                 border-radius: {RADII['md']}px;
@@ -303,7 +303,7 @@ class ProjectPage(QWidget):
         info_layout.setContentsMargins(12, 9, 12, 9)
         info_layout.setSpacing(8)
 
-        self.info_title = QLabel("No project open")
+        self.info_title = QLabel('Belum ada proyek terbuka')
         self.info_title.setObjectName("ProjectHealthTitle")
         info_layout.addWidget(self.info_title)
 
@@ -326,12 +326,12 @@ class ProjectPage(QWidget):
         strip.setObjectName("ProjectMetricStrip")
         strip.setStyleSheet(
             f"""
-            QFrame#ProjectMetricStrip {{
+            QFrame#ProyekMetricStrip {{
                 background: {COLORS['surface']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
             }}
-            QFrame#ProjectMetricSeparator {{
+            QFrame#ProyekMetricSeparator {{
                 background: {COLORS['border']};
                 border: none;
             }}
@@ -342,10 +342,10 @@ class ProjectPage(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(0)
 
-        self.episodes_card = DashboardCard("0", "Episodes", role="metric")
-        self.dialogues_card = DashboardCard("0", "Dialogues", role="metric")
-        self.characters_card = DashboardCard("0", "Characters", role="metric")
-        self.talents_card = DashboardCard("0", "Talents", role="metric")
+        self.episodes_card = DashboardCard("0", 'Episode', role="metric")
+        self.dialogues_card = DashboardCard("0", 'Dialog', role="metric")
+        self.characters_card = DashboardCard("0", 'Tokoh', role="metric")
+        self.talents_card = DashboardCard("0", 'Talent', role="metric")
 
         cards = (
             self.episodes_card,
@@ -369,17 +369,17 @@ class ProjectPage(QWidget):
         rail.setObjectName("ProjectPipelineRail")
         rail.setStyleSheet(
             f"""
-            QFrame#ProjectPipelineRail {{
+            QFrame#ProyekPipelineRail {{
                 background: {COLORS['surface']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
             }}
-            QLabel#ProjectPipelineArrow {{
+            QLabel#ProyekPipelineArrow {{
                 color: {COLORS['text_muted']};
                 font-size: 16pt;
                 font-weight: 700;
             }}
-            QFrame#ProjectRevisionLoop {{
+            QFrame#ProyekRevisiLoop {{
                 background: {COLORS['surface_subtle']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['md']}px;
@@ -397,26 +397,26 @@ class ProjectPage(QWidget):
 
         self.recording_card = DashboardCard(
             "0",
-            "RECORDING",
-            detail="episode incomplete",
+            'REKAMAN',
+            detail='episode belum lengkap',
             role="pipeline",
         )
         self.stem_card = DashboardCard(
             "0",
             "STEM",
-            detail="recorded / waiting output",
+            detail='terekam / menunggu output',
             role="pipeline",
         )
         self.delivery_card = DashboardCard(
             "0",
-            "DELIVERY QUEUE",
-            detail="stemmed / waiting setoran",
+            'ANTREAN SETORAN',
+            detail='selesai stem / menunggu setoran',
             role="pipeline",
         )
         self.delivered_card = DashboardCard(
             "0 / 0",
-            "DELIVERED",
-            detail="track scope",
+            'DISETOR',
+            detail='lingkup track',
             role="pipeline",
         )
 
@@ -446,7 +446,7 @@ class ProjectPage(QWidget):
         self.delivery_progress.setTextVisible(False)
         progress_row.addWidget(self.delivery_progress, 1)
 
-        self.pipeline_progress_text = QLabel("No expected tracks yet")
+        self.pipeline_progress_text = QLabel('Belum ada track yang diharapkan')
         self.pipeline_progress_text.setObjectName("ProjectMetricDetail")
         progress_row.addWidget(self.pipeline_progress_text)
         root.addLayout(progress_row)
@@ -457,12 +457,12 @@ class ProjectPage(QWidget):
         revision_layout.setContentsMargins(10, 6, 10, 6)
         revision_layout.setSpacing(8)
 
-        revision_label = QLabel("↺  REVISION LOOP")
+        revision_label = QLabel('↺  LOOP REVISI')
         revision_label.setObjectName("ProjectMetricLabel")
         revision_layout.addWidget(revision_label)
 
         revision_help = QLabel(
-            "Rework returns to Stem, then continues through Delivery again."
+            'Pengerjaan ulang kembali ke Stem, lalu dilanjutkan lagi ke Setoran.'
         )
         revision_help.setObjectName("ProjectMetricDetail")
         revision_help.setWordWrap(True)
@@ -470,8 +470,8 @@ class ProjectPage(QWidget):
 
         self.revision_card = DashboardCard(
             "0",
-            "Revision",
-            detail="needs rework",
+            'Revisi',
+            detail='perlu dikerjakan ulang',
             role="revision",
         )
         self.revision_card.setMaximumWidth(150)
@@ -495,22 +495,22 @@ class ProjectPage(QWidget):
         hint.setObjectName("ProjectEmptyHint")
         layout.addWidget(hint, 1)
 
-        self.new_button = QPushButton("New Project")
+        self.new_button = QPushButton('Proyek Baru')
         self.new_button.setProperty("primary", True)
         layout.addWidget(self.new_button)
 
-        self.open_button = QPushButton("Open Project")
+        self.open_button = QPushButton('Buka Proyek')
         self.open_button.setProperty("secondary", True)
         layout.addWidget(self.open_button)
 
-        self.open_recent_button = QPushButton("Open Recent")
+        self.open_recent_button = QPushButton('Buka Terbaru')
         self.open_recent_button.setProperty("secondary", True)
         self.open_recent_button.clicked.connect(
             lambda: self.action_requested.emit("project.open_recent")
         )
         layout.addWidget(self.open_recent_button)
 
-        self.recover_button = QPushButton("Recover Project")
+        self.recover_button = QPushButton('Pulihkan Proyek')
         self.recover_button.setProperty("secondary", True)
         self.recover_button.clicked.connect(
             lambda: self.action_requested.emit("project.recover")
@@ -524,7 +524,7 @@ class ProjectPage(QWidget):
         panel.setObjectName("ProjectPanel")
         panel.setStyleSheet(
             f"""
-            QFrame#ProjectPanel {{
+            QFrame#ProyekPanel {{
                 background: {COLORS['surface']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
@@ -537,7 +537,7 @@ class ProjectPage(QWidget):
         layout.setSpacing(9)
 
         heading = QHBoxLayout()
-        title = QLabel("NEEDS ATTENTION")
+        title = QLabel('PERLU PERHATIAN')
         title.setObjectName("ProjectSectionTitle")
         heading.addWidget(title)
         heading.addStretch(1)
@@ -548,7 +548,7 @@ class ProjectPage(QWidget):
         layout.addLayout(heading)
 
         helper = QLabel(
-            "Only items that need an operator decision or next action appear here."
+            'Hanya item yang membutuhkan keputusan operator atau tindakan berikutnya yang tampil di sini.'
         )
         helper.setObjectName("ProjectSectionHelper")
         helper.setWordWrap(True)
@@ -569,11 +569,11 @@ class ProjectPage(QWidget):
         panel.setObjectName("ProjectActivityPanel")
         panel.setStyleSheet(
             f"""
-            QFrame#ProjectActivityPanel {{
+            QFrame#ProyekActivityPanel {{
                 background: transparent;
                 border: none;
             }}
-            QLabel#ProjectActivityDot {{
+            QLabel#ProyekActivityDot {{
                 color: {COLORS['accent']};
                 font-size: 15pt;
                 font-weight: 700;
@@ -585,11 +585,11 @@ class ProjectPage(QWidget):
         layout.setContentsMargins(4, 2, 4, 4)
         layout.setSpacing(7)
 
-        title = QLabel("RECENT ACTIVITY")
+        title = QLabel('AKTIVITAS TERBARU')
         title.setObjectName("ProjectSectionTitle")
         layout.addWidget(title)
 
-        helper = QLabel("Latest meaningful changes recorded in this project.")
+        helper = QLabel('Perubahan penting terbaru yang tercatat pada proyek ini.')
         helper.setObjectName("ProjectSectionHelper")
         helper.setWordWrap(True)
         layout.addWidget(helper)
@@ -620,7 +620,7 @@ class ProjectPage(QWidget):
         self.project_identity.setText(
             "  •  ".join(identity_parts)
             if identity_parts
-            else "Project metadata"
+            else 'Metadata proyek'
         )
         self.drive_status.setText(
             "Main drive: Configured"
@@ -677,11 +677,11 @@ class ProjectPage(QWidget):
                 f"{delivered_tracks}/{total_tracks} tracks delivered  •  {percent}%"
             )
         else:
-            self.pipeline_progress_text.setText("No expected tracks yet")
+            self.pipeline_progress_text.setText('Belum ada track yang diharapkan')
 
         self._clear_layout(self.action_layout)
         self.attention_count.setText(str(len(snapshot.actions)))
-        attention_state = "ATTENTION" if snapshot.actions else "HEALTHY"
+        attention_state = "ATTENTION" if snapshot.actions else 'SEHAT'
         self.attention_count.setProperty("healthState", attention_state)
         self.attention_count.style().unpolish(self.attention_count)
         self.attention_count.style().polish(self.attention_count)
@@ -756,13 +756,13 @@ class ProjectPage(QWidget):
     ) -> None:
         if snapshot.system_errors:
             state = "ERROR"
-            text = "SYSTEM ERROR"
+            text = 'ERROR SISTEM'
         elif snapshot.actions:
             state = "ATTENTION"
-            text = "NEEDS ATTENTION"
+            text = 'PERLU PERHATIAN'
         else:
-            state = "HEALTHY"
-            text = "HEALTHY"
+            state = 'SEHAT'
+            text = 'SEHAT'
 
         self.health_badge.setProperty("healthState", state)
         self.health_badge.setText(text)
@@ -781,24 +781,24 @@ class ProjectPage(QWidget):
                 ProjectPage._clear_layout(child_layout)
 
     def reset_view(self) -> None:
-        self.project_name.setText("No project open")
+        self.project_name.setText('Belum ada proyek terbuka')
         self.project_identity.setText("Project belum dibuka")
-        self.project_location.setText("Project file: -")
-        self.source_path.setText("Source folder: -")
-        self.start_date.setText("Start date: -")
-        self.last_refresh.setText("Last sync: -")
-        self.drive_status.setText("Main drive: -")
+        self.project_location.setText('File proyek: -')
+        self.source_path.setText('Folder sumber: -')
+        self.start_date.setText('Tanggal mulai: -')
+        self.last_refresh.setText('Sinkron terakhir: -')
+        self.drive_status.setText('Drive utama: -')
         self.empty_action_bar.show()
 
         self.set_counts({})
         self.set_dashboard(ProjectDashboardSnapshot())
 
         self.health_badge.setProperty("healthState", "NEUTRAL")
-        self.health_badge.setText("NO PROJECT")
+        self.health_badge.setText('BELUM ADA PROYEK')
         self.health_badge.style().unpolish(self.health_badge)
         self.health_badge.style().polish(self.health_badge)
 
-        self.info_title.setText("No project open")
+        self.info_title.setText('Belum ada proyek terbuka')
         self.info_text.setText(
             "Buat project baru atau buka project yang sudah ada."
         )

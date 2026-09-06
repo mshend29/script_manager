@@ -139,7 +139,7 @@ class SourceSyncController(QObject):
 
         self._thread = thread
         self._worker = worker
-        self._title = str(title or "Source Sync")
+        self._title = str(title or 'Sinkronisasi Sumber')
         self._operation = operation
 
         phase_text = (
@@ -163,17 +163,17 @@ class SourceSyncController(QObject):
 
     @Slot(object)
     def _prepare_completed(self, report: SourceSyncReport) -> None:
-        self.prepared.emit(self._title or "Source Sync", report)
+        self.prepared.emit(self._title or 'Sinkronisasi Sumber', report)
 
     @Slot(object)
     def _apply_completed(self, report: SourceSyncReport) -> None:
-        self.applied.emit(self._title or "Source Sync", report)
+        self.applied.emit(self._title or 'Sinkronisasi Sumber', report)
 
     @Slot(object)
     def _worker_failed(self, exc: object) -> None:
         self.clear_pending_apply()
         self.failed.emit(
-            self._title or "Source Sync",
+            self._title or 'Sinkronisasi Sumber',
             self._operation or "source sync",
             exc,
         )
@@ -194,7 +194,7 @@ class SourceSyncController(QObject):
         if pending_project is not None and pending_report is not None:
             self._start(
                 project=pending_project,
-                title=pending_title or "Source Sync",
+                title=pending_title or 'Sinkronisasi Sumber',
                 operation="apply",
                 report=pending_report,
             )

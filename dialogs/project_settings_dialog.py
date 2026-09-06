@@ -34,7 +34,7 @@ class FolderField(QWidget):
         self,
         value: str = "",
         *,
-        browse_caption: str = "Select Folder",
+        browse_caption: str = 'Pilih Folder',
         read_only: bool = False,
         parent: QWidget | None = None,
     ):
@@ -50,7 +50,7 @@ class FolderField(QWidget):
         self.edit.setReadOnly(read_only)
         layout.addWidget(self.edit, 1)
 
-        self.browse_button = QPushButton("Browse…")
+        self.browse_button = QPushButton('Telusuri…')
         self.browse_button.setProperty("secondary", True)
         self.browse_button.setEnabled(not read_only)
         self.browse_button.clicked.connect(self.browse)
@@ -93,7 +93,7 @@ class ProjectSettingsDialog(QDialog):
     ):
         super().__init__(parent)
 
-        self.setWindowTitle("Project Settings")
+        self.setWindowTitle('Pengaturan Proyek')
         self.resize(840, 720)
         self.setMinimumSize(720, 620)
 
@@ -105,7 +105,7 @@ class ProjectSettingsDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(10)
 
-        title = QLabel("Project Settings")
+        title = QLabel('Pengaturan Proyek')
         title.setObjectName("PageTitle")
         root.addWidget(title)
 
@@ -120,10 +120,10 @@ class ProjectSettingsDialog(QDialog):
         root.addWidget(subtitle)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_project_tab(settings), "Project")
+        self.tabs.addTab(self._build_project_tab(settings), 'Proyek')
         self.tabs.addTab(
             self._build_track_output_tab(settings),
-            "Track Output & Delivery",
+            'Output Track & Setoran',
         )
         root.addWidget(self.tabs, 1)
 
@@ -145,7 +145,7 @@ class ProjectSettingsDialog(QDialog):
     def _build_project_tab(self, settings: ProjectSettings) -> QScrollArea:
         scroll, content, layout = self._scroll_tab()
 
-        project_group = QGroupBox("Project")
+        project_group = QGroupBox('Proyek')
         project_form = QFormLayout(project_group)
         project_form.setLabelAlignment(Qt.AlignLeft)
 
@@ -166,11 +166,11 @@ class ProjectSettingsDialog(QDialog):
             read_only=True,
         )
 
-        project_form.addRow("Project Name", self.project_name)
-        project_form.addRow("Project Code", self.project_code)
-        project_form.addRow("Client", self.client_name)
-        project_form.addRow("Start Date", self.start_date)
-        project_form.addRow("Project File", self.project_file)
+        project_form.addRow('Nama Proyek', self.project_name)
+        project_form.addRow('Kode Proyek', self.project_code)
+        project_form.addRow('Klien', self.client_name)
+        project_form.addRow('Tanggal Mulai', self.start_date)
+        project_form.addRow('File Proyek', self.project_file)
 
         location_note = QLabel(
             "Project File hanya informasi lokasi file .smproj yang sedang dibuka. "
@@ -183,7 +183,7 @@ class ProjectSettingsDialog(QDialog):
 
         layout.addWidget(self._build_source_group(settings))
 
-        drive_group = QGroupBox("Client Drive Links")
+        drive_group = QGroupBox('Tautan Drive Klien')
         drive_form = QFormLayout(drive_group)
         drive_form.setLabelAlignment(Qt.AlignLeft)
 
@@ -195,9 +195,9 @@ class ProjectSettingsDialog(QDialog):
         self.material_drive_url.setPlaceholderText("optional")
         self.delivery_drive_url.setPlaceholderText("optional")
 
-        drive_form.addRow("Main Drive", self.main_drive_url)
-        drive_form.addRow("Material Folder", self.material_drive_url)
-        drive_form.addRow("Delivery / Setoran", self.delivery_drive_url)
+        drive_form.addRow('Drive Utama', self.main_drive_url)
+        drive_form.addRow('Folder Material', self.material_drive_url)
+        drive_form.addRow('Setoran', self.delivery_drive_url)
         layout.addWidget(drive_group)
         layout.addStretch(1)
 
@@ -205,7 +205,7 @@ class ProjectSettingsDialog(QDialog):
         return scroll
 
     def _build_source_group(self, settings: ProjectSettings) -> QGroupBox:
-        source_group = QGroupBox("Source Script")
+        source_group = QGroupBox('Naskah Sumber')
         root = QVBoxLayout(source_group)
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
@@ -214,9 +214,9 @@ class ProjectSettingsDialog(QDialog):
         source_form.setLabelAlignment(Qt.AlignLeft)
         self.source_folder = FolderField(
             settings.source_folder,
-            browse_caption="Select Source Script Folder (Filesystem)",
+            browse_caption='Pilih Folder Naskah Sumber (Filesystem)',
         )
-        source_form.addRow("Source Folder", self.source_folder)
+        source_form.addRow('Folder Sumber', self.source_folder)
         root.addLayout(source_form)
 
         helper_grid = QGridLayout()
@@ -225,12 +225,12 @@ class ProjectSettingsDialog(QDialog):
         helper_grid.setColumnStretch(0, 1)
         helper_grid.setColumnStretch(1, 1)
 
-        filename_box = QGroupBox("Source Filename")
+        filename_box = QGroupBox('Nama File Sumber')
         filename_layout = QVBoxLayout(filename_box)
         filename_layout.setContentsMargins(10, 10, 10, 10)
         filename_layout.setSpacing(7)
 
-        self.read_source_filenames_button = QPushButton("Get Source Filenames")
+        self.read_source_filenames_button = QPushButton('Baca Nama File Sumber')
         self.read_source_filenames_button.setProperty("secondary", True)
         self.read_source_filenames_button.clicked.connect(
             self._read_source_filenames
@@ -252,11 +252,11 @@ class ProjectSettingsDialog(QDialog):
         self.source_filename_example = QLineEdit()
         self.source_filename_example.setReadOnly(True)
         self.source_filename_example.setPlaceholderText(
-            "Representative source filename"
+            'Nama file sumber contoh'
         )
         example_row.addWidget(self.source_filename_example, 1)
 
-        self.copy_source_filename_button = QPushButton("Copy")
+        self.copy_source_filename_button = QPushButton('Salin')
         self.copy_source_filename_button.setProperty("secondary", True)
         self.copy_source_filename_button.setEnabled(False)
         self.copy_source_filename_button.clicked.connect(
@@ -277,7 +277,7 @@ class ProjectSettingsDialog(QDialog):
         self.filename_preview.setObjectName("PageSubtitle")
         filename_layout.addWidget(self.filename_preview)
 
-        delimiter_box = QGroupBox("Episode Delimiter")
+        delimiter_box = QGroupBox('Pemisah Episode')
         delimiter_form = QFormLayout(delimiter_box)
         delimiter_form.setLabelAlignment(Qt.AlignLeft)
 
@@ -286,8 +286,8 @@ class ProjectSettingsDialog(QDialog):
         self.episode_before.setPlaceholderText("contoh: 第")
         self.episode_after.setPlaceholderText("contoh: 集")
 
-        delimiter_form.addRow("Before Episode Number", self.episode_before)
-        delimiter_form.addRow("After Episode Number", self.episode_after)
+        delimiter_form.addRow('Sebelum Nomor Episode', self.episode_before)
+        delimiter_form.addRow('Setelah Nomor Episode', self.episode_after)
 
         delimiter_help = QLabel(
             "Delimiter diterapkan ke filename yang dibaca dari Source Folder. "
@@ -317,17 +317,17 @@ class ProjectSettingsDialog(QDialog):
     ) -> QScrollArea:
         scroll, content, layout = self._scroll_tab()
 
-        track_group = QGroupBox("Track Output & Delivery")
+        track_group = QGroupBox('Output Track & Setoran')
         track_form = QFormLayout(track_group)
         track_form.setLabelAlignment(Qt.AlignLeft)
 
         self.stem_output_folder = FolderField(
             settings.stem_output_folder,
-            browse_caption="Select Stem / Mixdown / Export Folder (Filesystem)",
+            browse_caption='Pilih Folder Stem / Mixdown / Export (Filesystem)',
         )
         self.delivery_folder = FolderField(
             settings.delivery_folder,
-            browse_caption="Select Setoran Folder (Google Drive Desktop)",
+            browse_caption='Pilih Folder Setoran (Google Drive Desktop)',
         )
 
         format_value = QLabel("WAV")
@@ -361,11 +361,11 @@ class ProjectSettingsDialog(QDialog):
         )
 
         track_form.addRow("Stem / Mixdown / Export", self.stem_output_folder)
-        track_form.addRow("Setoran Folder", self.delivery_folder)
-        track_form.addRow("Audio Format", format_value)
-        track_form.addRow("Sample Rate", self.audio_sample_rate)
-        track_form.addRow("Bit Depth", self.audio_bit_depth)
-        track_form.addRow("Channels", self.audio_channels)
+        track_form.addRow('Folder Setoran', self.delivery_folder)
+        track_form.addRow('Format Audio', format_value)
+        track_form.addRow('Laju Sampel', self.audio_sample_rate)
+        track_form.addRow('Kedalaman Bit', self.audio_bit_depth)
+        track_form.addRow('Kanal', self.audio_channels)
 
         track_help = QLabel(
             "Kedua folder adalah filesystem path; Setoran dapat langsung menunjuk "

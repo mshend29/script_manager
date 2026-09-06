@@ -176,21 +176,21 @@ class ProjectDashboardService:
 
         add(
             "system_errors",
-            "System Errors",
+            'Error Sistem',
             snapshot.system_errors,
             "Buka DATA → Validation dan selesaikan error struktur.",
             "ERROR",
         )
         add(
             "needs_review",
-            "Needs Review",
+            'Perlu Ditinjau',
             snapshot.needs_review,
             "Keputusan manusia masih diperlukan di DATA → Unresolved.",
-            "WARNING",
+            'PERINGATAN',
         )
         add(
             "revision",
-            "Revision",
+            'Revisi',
             snapshot.revisions,
             "Scope recording yang sedang ditandai Revision.",
             "ERROR",
@@ -215,17 +215,17 @@ class ProjectDashboardService:
         )
         add(
             "file_warnings",
-            "Output Warnings",
+            'Peringatan Output',
             snapshot.file_warnings,
             "Periksa format/nama/mismatch file di TRACKING.",
-            "WARNING",
+            'PERINGATAN',
         )
         add(
             "workflow_warnings",
-            "Workflow Warnings",
+            'Peringatan Alur',
             snapshot.workflow_warnings,
             "Buka DATA → Validation untuk workflow warning.",
-            "WARNING",
+            'PERINGATAN',
         )
 
         snapshot.actions = actions

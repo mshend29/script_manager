@@ -102,7 +102,7 @@ class SourceChangeService:
                         change_type="SOURCE_MISSING",
                         episode_number=missing.episode_number,
                         source_row=None,
-                        entity="Source",
+                        entity='Sumber',
                         before=missing.file_path,
                         after="File tidak ditemukan",
                         tracking_affected=tracking,

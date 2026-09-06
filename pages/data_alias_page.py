@@ -48,12 +48,12 @@ class AliasDataPage(DataPage):
 
         self.characters_table = self._new_table(
             [
-                "CHARACTER",
-                "LOCKED TALENT",
-                "ALIASES",
-                "SOURCE",
-                "DIALOGUES",
-                "UNRESOLVED",
+                'TOKOH',
+                'TALENT TERKUNCI',
+                'ALIAS',
+                'SUMBER',
+                'DIALOG',
+                'BELUM DIPETAKAN',
             ]
         )
         for column in (0, 1, 2):
@@ -61,7 +61,7 @@ class AliasDataPage(DataPage):
                 column, QHeaderView.ResizeMode.Stretch
             )
         layout.addWidget(self.characters_table)
-        self.tabs.addTab(tab, "Character Mapping")
+        self.tabs.addTab(tab, 'Pemetaan Tokoh')
 
     def _install_alias_sidebar(self) -> None:
         context = self.layout().itemAt(0).widget()
@@ -69,21 +69,21 @@ class AliasDataPage(DataPage):
         if layout is None:
             return
 
-        self.alias_title = QLabel("CHARACTER ALIAS")
+        self.alias_title = QLabel('ALIAS TOKOH')
         self.alias_title.setObjectName("SectionTitle")
-        self.alias_selected_label = QLabel("Pilih character dari tabel.")
+        self.alias_selected_label = QLabel('Pilih tokoh dari tabel.')
         self.alias_selected_label.setWordWrap(True)
 
         self.alias_target_combo = QComboBox()
-        self.alias_target_combo.addItem("Alias of…", None)
-        self.set_alias_button = QPushButton("Set as Alias")
+        self.alias_target_combo.addItem('Alias dari…', None)
+        self.set_alias_button = QPushButton('Jadikan Alias')
         self.set_alias_button.setProperty("primary", True)
 
         self.alias_existing_combo = QComboBox()
         self.alias_existing_combo.addItem("Belum ada alias", None)
-        self.add_alias_button = QPushButton("Add Alias Name…")
+        self.add_alias_button = QPushButton('Tambah Nama Alias…')
         self.add_alias_button.setProperty("secondary", True)
-        self.remove_alias_button = QPushButton("Remove Alias / Restore")
+        self.remove_alias_button = QPushButton('Hapus Alias / Pulihkan')
         self.remove_alias_button.setProperty("secondary", True)
 
         self.alias_note = QLabel(
@@ -169,7 +169,7 @@ class AliasDataPage(DataPage):
             if row.locked_talent_name:
                 locked_text = row.locked_talent_name
             elif unresolved_dialogues:
-                locked_text = "⚠ Talent Unknown"
+                locked_text = '⚠ Talent Tidak Dikenal'
             else:
                 locked_text = "—"
 
@@ -261,17 +261,17 @@ class AliasDataPage(DataPage):
         self.alias_existing_combo.blockSignals(True)
         try:
             self.alias_target_combo.clear()
-            self.alias_target_combo.addItem("Alias of…", None)
+            self.alias_target_combo.addItem('Alias dari…', None)
             self.alias_existing_combo.clear()
             self.alias_existing_combo.addItem("Belum ada alias", None)
 
             if self._alias_service is None or character_id is None:
-                self.alias_selected_label.setText("Pilih character dari tabel.")
+                self.alias_selected_label.setText('Pilih tokoh dari tabel.')
                 return
 
             row = self.characters_table.currentRow()
             character_item = self.characters_table.item(row, 0)
-            character_name = character_item.text() if character_item else "Character"
+            character_name = character_item.text() if character_item else 'Tokoh'
             self.alias_selected_label.setText(f"Selected: {character_name}")
 
             for candidate_id, candidate_name in self._alias_service.get_canonical_characters():
@@ -320,7 +320,7 @@ class AliasDataPage(DataPage):
         target_name = self.alias_target_combo.currentText()
         answer = QMessageBox.question(
             self,
-            "Set Character Alias",
+            'Atur Alias Tokoh',
             (
                 f"Jadikan '{source_name}' sebagai alias dari '{target_name}'?\n\n"
                 "File source client tidak akan diubah. Dialog akan memakai canonical character, "
@@ -333,7 +333,7 @@ class AliasDataPage(DataPage):
         try:
             self._alias_service.set_character_alias(int(source_id), int(target_id))
         except Exception as exc:
-            QMessageBox.critical(self, "Character Alias", str(exc))
+            QMessageBox.critical(self, 'Alias Tokoh', str(exc))
             return
 
         self.reload()
@@ -351,15 +351,15 @@ class AliasDataPage(DataPage):
         canonical_name = self.characters_table.item(row, 0).text()
         alias_name, accepted = QInputDialog.getText(
             self,
-            "Add Character Alias",
-            f"Alias source untuk {canonical_name}:",
+            'Tambah Alias Tokoh',
+            f"Alias sumber untuk {canonical_name}:",
         )
         if not accepted or not alias_name.strip():
             return
         try:
             self._alias_service.add_alias_name(canonical_id, alias_name)
         except Exception as exc:
-            QMessageBox.critical(self, "Character Alias", str(exc))
+            QMessageBox.critical(self, 'Alias Tokoh', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])
@@ -376,7 +376,7 @@ class AliasDataPage(DataPage):
         alias_name = self.alias_existing_combo.currentText()
         answer = QMessageBox.question(
             self,
-            "Remove Character Alias",
+            'Hapus Alias Tokoh',
             (
                 f"Hapus alias '{alias_name}'?\n\n"
                 "Jika alias berasal dari character yang sudah pernah di-import, cast yang masih "
@@ -388,7 +388,7 @@ class AliasDataPage(DataPage):
         try:
             self._alias_service.remove_alias(int(alias_id))
         except Exception as exc:
-            QMessageBox.critical(self, "Character Alias", str(exc))
+            QMessageBox.critical(self, 'Alias Tokoh', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])

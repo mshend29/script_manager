@@ -49,7 +49,7 @@ class SourceSyncWorker(QObject):
                 )
             else:
                 raise RuntimeError(
-                    f"Source sync operation tidak dikenal: {self._operation}"
+                    f"Sumber sync operation tidak dikenal: {self._operation}"
                 )
         except Exception as exc:  # noqa: BLE001 - forwarded to GUI boundary
             self.failed.emit(exc)

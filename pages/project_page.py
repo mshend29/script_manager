@@ -187,18 +187,18 @@ class ProjectPage(DashboardProjectPage):
         brand.setObjectName("ProjectSectionTitle")
         sidebar_layout.addWidget(brand)
 
-        helper = QLabel("Create or open a Script Manager project.")
+        helper = QLabel('Buat atau buka proyek Script Manager.')
         helper.setObjectName("ProjectSectionHelper")
         helper.setWordWrap(True)
         sidebar_layout.addWidget(helper)
         sidebar_layout.addSpacing(10)
 
-        self.home_new_button = QPushButton("Create New")
+        self.home_new_button = QPushButton('Buat Baru')
         self.home_new_button.setObjectName("ProjectHomeCreateButton")
         self.home_new_button.setProperty("primary", True)
         sidebar_layout.addWidget(self.home_new_button)
 
-        self.home_open_button = QPushButton("Open Project")
+        self.home_open_button = QPushButton('Buka Proyek')
         self.home_open_button.setObjectName("ProjectHomeOpenButton")
         self.home_open_button.setProperty("secondary", True)
         sidebar_layout.addWidget(self.home_open_button)
@@ -212,7 +212,7 @@ class ProjectPage(DashboardProjectPage):
         content_layout.setContentsMargins(28, 24, 28, 28)
         content_layout.setSpacing(12)
 
-        title = QLabel("Recent Projects")
+        title = QLabel('Proyek Terbaru')
         title.setObjectName("ProjectIdentityName")
         content_layout.addWidget(title)
 
@@ -226,7 +226,7 @@ class ProjectPage(DashboardProjectPage):
 
         self.recent_search = QLineEdit()
         self.recent_search.setObjectName("ProjectRecentSearch")
-        self.recent_search.setPlaceholderText("Search recent projects…")
+        self.recent_search.setPlaceholderText('Cari proyek terbaru…')
         self.recent_search.setClearButtonEnabled(True)
         self.recent_search.textChanged.connect(self._filter_recent_projects)
         content_layout.addWidget(self.recent_search)
@@ -270,7 +270,7 @@ class ProjectPage(DashboardProjectPage):
         self.recent_table.itemClicked.connect(self._open_recent_item)
         content_layout.addWidget(self.recent_table, 1)
 
-        self.recent_empty = QLabel("No recent projects yet.")
+        self.recent_empty = QLabel('Belum ada proyek terbaru.')
         self.recent_empty.setObjectName("ProjectEmptyHint")
         self.recent_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.recent_empty.setWordWrap(True)
@@ -308,7 +308,7 @@ class ProjectPage(DashboardProjectPage):
         for row_index, item in enumerate(items):
             path = Path(item.file_path).expanduser()
             exists = path.is_file()
-            raw_project_name = item.project_name or path.stem or "Untitled Project"
+            raw_project_name = item.project_name or path.stem or 'Proyek Tanpa Nama'
             project_name = (
                 f"{raw_project_name}  (Missing)"
                 if not exists
@@ -444,8 +444,8 @@ class ProjectPage(DashboardProjectPage):
         if not path.is_file():
             QMessageBox.warning(
                 self,
-                "Recent Project",
-                f"Project file tidak ditemukan:\n{path}",
+                'Proyek Terbaru',
+                f"Proyek file tidak ditemukan:\n{path}",
             )
             return
 

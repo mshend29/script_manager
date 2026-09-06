@@ -43,7 +43,7 @@ class RecentProjectsDialog(QDialog):
         root.setContentsMargins(28, 24, 28, 22)
         root.setSpacing(14)
 
-        title = QLabel("Recent Projects")
+        title = QLabel('Proyek Terbaru')
         title.setObjectName("RecentProjectsTitle")
         root.addWidget(title)
 
@@ -97,12 +97,12 @@ class RecentProjectsDialog(QDialog):
         buttons.setSpacing(8)
         buttons.addStretch(1)
 
-        close_button = QPushButton("Close")
+        close_button = QPushButton('Tutup')
         close_button.setProperty("secondary", True)
         close_button.clicked.connect(self._close_application)
         buttons.addWidget(close_button)
 
-        create_button = QPushButton("Create New")
+        create_button = QPushButton('Buat Baru')
         create_button.setProperty("primary", True)
         create_button.clicked.connect(self._create_new)
         buttons.addWidget(create_button)

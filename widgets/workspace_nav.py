@@ -16,11 +16,11 @@ class WorkspaceNavigation(QFrame):
     page_requested = Signal(str)
 
     WORKSPACES = (
-        ("PROJECT", "Project"),
-        ("SCRIPT", "Script"),
+        ("PROJECT", 'Proyek'),
+        ("SCRIPT", 'Naskah'),
         ("DIALOG", "Dialog"),
         ("TRACKING", "Tracking"),
-        ("DELIVERY", "Delivery"),
+        ("DELIVERY", 'Setoran'),
     )
 
     def __init__(self, parent=None) -> None:

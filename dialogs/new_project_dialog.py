@@ -24,7 +24,7 @@ class NewProjectDialog(QDialog):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
-        self.setWindowTitle("New Project")
+        self.setWindowTitle('Proyek Baru')
         self.resize(680, 560)
         self.setMinimumWidth(620)
 
@@ -35,7 +35,7 @@ class NewProjectDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
 
-        title = QLabel("New Project")
+        title = QLabel('Proyek Baru')
         title.setObjectName("PageTitle")
         root.addWidget(title)
 
@@ -48,7 +48,7 @@ class NewProjectDialog(QDialog):
         subtitle.setWordWrap(True)
         root.addWidget(subtitle)
 
-        group = QGroupBox("Project")
+        group = QGroupBox('Proyek')
         form = QFormLayout(group)
 
         self.project_name = QLineEdit()
@@ -71,20 +71,20 @@ class NewProjectDialog(QDialog):
         )
         location_layout.addWidget(self.location_edit, 1)
 
-        browse = QPushButton("Browse…")
+        browse = QPushButton('Telusuri…')
         browse.setProperty("secondary", True)
         browse.clicked.connect(self._browse_location)
         location_layout.addWidget(browse)
 
-        form.addRow("Project Name", self.project_name)
-        form.addRow("Project Code", self.project_code)
-        form.addRow("Client", self.client_name)
-        form.addRow("Start Date", self.start_date)
-        form.addRow("Save Project In", location_widget)
+        form.addRow('Nama Proyek', self.project_name)
+        form.addRow('Kode Proyek', self.project_code)
+        form.addRow('Klien', self.client_name)
+        form.addRow('Tanggal Mulai', self.start_date)
+        form.addRow('Simpan Proyek Di', location_widget)
 
         root.addWidget(group)
 
-        source_group = QGroupBox("Initial Source")
+        source_group = QGroupBox('Sumber Awal')
         source_form = QFormLayout(source_group)
 
         source_widget = QWidget()
@@ -98,7 +98,7 @@ class NewProjectDialog(QDialog):
         )
         source_layout.addWidget(self.source_folder, 1)
 
-        source_browse = QPushButton("Browse…")
+        source_browse = QPushButton('Telusuri…')
         source_browse.setProperty("secondary", True)
         source_browse.clicked.connect(self._browse_source)
         source_layout.addWidget(source_browse)
@@ -108,19 +108,19 @@ class NewProjectDialog(QDialog):
         self.episode_before.setPlaceholderText("contoh: EP")
         self.episode_after.setPlaceholderText("contoh: _")
 
-        source_form.addRow("Source Folder", source_widget)
-        source_form.addRow("Before Episode Number", self.episode_before)
-        source_form.addRow("After Episode Number", self.episode_after)
+        source_form.addRow('Folder Sumber', source_widget)
+        source_form.addRow('Sebelum Nomor Episode', self.episode_before)
+        source_form.addRow('Setelah Nomor Episode', self.episode_after)
 
         root.addWidget(source_group)
 
-        drive_group = QGroupBox("Client Drive")
+        drive_group = QGroupBox('Drive Klien')
         drive_form = QFormLayout(drive_group)
 
         self.main_drive_url = QLineEdit()
         self.main_drive_url.setPlaceholderText("optional")
 
-        drive_form.addRow("Main Drive URL", self.main_drive_url)
+        drive_form.addRow('URL Drive Utama', self.main_drive_url)
 
         root.addWidget(drive_group)
         root.addStretch(1)
@@ -129,7 +129,7 @@ class NewProjectDialog(QDialog):
             QDialogButtonBox.Save | QDialogButtonBox.Cancel
         )
         save_button = buttons.button(QDialogButtonBox.Save)
-        save_button.setText("Create Project")
+        save_button.setText('Buat Proyek')
 
         buttons.accepted.connect(self._accept)
         buttons.rejected.connect(self.reject)
@@ -153,7 +153,7 @@ class NewProjectDialog(QDialog):
     def _browse_location(self) -> None:
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Select Project Location",
+            'Pilih Lokasi Proyek',
             self.location_edit.text().strip(),
         )
         if folder:
@@ -162,7 +162,7 @@ class NewProjectDialog(QDialog):
     def _browse_source(self) -> None:
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Select Source Script Folder",
+            'Pilih Folder Naskah Sumber',
             self.source_folder.text().strip(),
         )
         if folder:
@@ -175,7 +175,7 @@ class NewProjectDialog(QDialog):
         if not name:
             QMessageBox.warning(
                 self,
-                "New Project",
+                'Proyek Baru',
                 "Project Name wajib diisi.",
             )
             return
@@ -183,7 +183,7 @@ class NewProjectDialog(QDialog):
         if not location:
             QMessageBox.warning(
                 self,
-                "New Project",
+                'Proyek Baru',
                 "Lokasi penyimpanan project wajib dipilih.",
             )
             return

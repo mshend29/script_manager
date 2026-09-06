@@ -11,7 +11,7 @@ REVIEW = "REVIEW"
 WORKFLOW = "WORKFLOW"
 
 ERROR = "ERROR"
-WARNING = "WARNING"
+WARNING = 'PERINGATAN'
 
 ACTION_REVIEW = "REVIEW"
 ACTION_SOURCES = "SOURCES"
@@ -193,7 +193,7 @@ class ValidationService:
                         entity=f"Episode {episode_number}",
                         message=(
                             f"Episode {episode_number} memiliki "
-                            f"{int(row['total'])} source aktif."
+                            f"{int(row['total'])} sumber aktif."
                         ),
                         action=ACTION_SOURCES,
                     )

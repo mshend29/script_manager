@@ -221,7 +221,7 @@ class TrackRenameService:
             target = Path(item.target_path)
             if not source.is_file():
                 raise FileNotFoundError(
-                    f"Source file tidak ditemukan: {source}"
+                    f"Sumber file tidak ditemukan: {source}"
                 )
             if source.parent != target.parent:
                 raise ValueError(

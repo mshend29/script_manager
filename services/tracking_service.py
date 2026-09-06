@@ -13,7 +13,7 @@ IN_PROGRESS = "IN_PROGRESS"
 RECORDED = "RECORDED"
 READY_TO_STEM = "READY_TO_STEM"
 STEMMED = "STEMMED"
-DELIVERED = "DELIVERED"
+DELIVERED = 'DISETOR'
 REVISION = "REVISION"
 NOT_READY = "NOT_READY"
 AUTO_FILE_STATUS_NOTE = "auto:file-inventory"
@@ -29,13 +29,13 @@ DOWNSTREAM_STATUSES = {
 }
 
 STATUS_LABELS = {
-    NOT_STARTED: "Not Started",
-    IN_PROGRESS: "In Progress",
-    RECORDED: "Recorded",
-    READY_TO_STEM: "Recorded",  # historical compatibility only
-    STEMMED: "Stemmed",
-    DELIVERED: "Delivered",
-    REVISION: "Revision",
+    NOT_STARTED: 'Belum Mulai',
+    IN_PROGRESS: 'Berjalan',
+    RECORDED: 'Terekam',
+    READY_TO_STEM: 'Terekam',  # historical compatibility only
+    STEMMED: 'Selesai Stem',
+    DELIVERED: 'Disetor',
+    REVISION: 'Revisi',
 }
 
 
@@ -181,8 +181,8 @@ class TrackingService:
             SELECT
                 e.id AS episode_id,
                 e.episode_number,
-                c.id AS character_id,
-                c.name AS character_name,
+                c.id AS tokoh_id,
+                c.name AS tokoh_name,
                 t.id AS talent_id,
                 t.name AS talent_name,
                 COUNT(DISTINCT d.id) AS total_dialogues,
@@ -201,8 +201,8 @@ class TrackingService:
             JOIN episodes AS e
               ON e.id = d.episode_id
              AND e.is_active = 1
-            JOIN characters AS c
-              ON c.id = dc.character_id
+            JOIN tokohs AS c
+              ON c.id = dc.tokoh_id
              AND c.is_active = 1
             JOIN talents AS t
               ON t.id = dc.talent_id
@@ -212,7 +212,7 @@ class TrackingService:
             LEFT JOIN stem_status AS ss
               ON ss.episode_id = e.id
              AND ss.talent_id = t.id
-             AND ss.character_id = c.id
+             AND ss.tokoh_id = c.id
             WHERE {' AND '.join(where)}
             GROUP BY
                 e.id,
@@ -490,7 +490,7 @@ class TrackingService:
         character_name = (
             str(labels["character_name"])
             if labels is not None
-            else f"Character {character_id}"
+            else f"Tokoh {character_id}"
         )
         talent_name = (
             str(labels["talent_name"])
@@ -503,12 +503,12 @@ class TrackingService:
             revision_label = "REV" if active_revision == 1 else f"REV{active_revision}"
             summary = (
                 f"Episode {episode_number}: {character_name} / "
-                f"{talent_name} marked Revision {revision_label}."
+                f"{talent_name} marked Revisi {revision_label}."
             )
         else:
             action = "CLEAR_REVISION"
             summary = (
-                f"Episode {episode_number}: Revision cleared for "
+                f"Episode {episode_number}: Revisi cleared for "
                 f"{character_name} / {talent_name}."
             )
 

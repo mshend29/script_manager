@@ -33,46 +33,46 @@ class HelpPage(PageShell):
     def __init__(self, parent: QWidget | None = None):
         context = ContextPanel("HELP")
 
-        context.add_section_title("GUIDE")
+        context.add_section_title('PANDUAN')
 
-        self.getting_started_button = QPushButton("Getting Started")
+        self.getting_started_button = QPushButton('Mulai')
         self.getting_started_button.setProperty("primary", True)
         self.getting_started_button.clicked.connect(
             self.show_getting_started
         )
         context.add_widget(self.getting_started_button)
 
-        self.user_guide_button = QPushButton("User Guide")
+        self.user_guide_button = QPushButton('Panduan Pengguna')
         self.user_guide_button.setProperty("secondary", True)
         self.user_guide_button.clicked.connect(
             self.show_user_guide
         )
         context.add_widget(self.user_guide_button)
 
-        self.keyboard_shortcuts_button = QPushButton("Keyboard Shortcuts")
+        self.keyboard_shortcuts_button = QPushButton('Pintasan Keyboard')
         self.keyboard_shortcuts_button.setProperty("secondary", True)
         self.keyboard_shortcuts_button.clicked.connect(
             self.show_keyboard_shortcuts
         )
         context.add_widget(self.keyboard_shortcuts_button)
 
-        context.add_section_title("APPLICATION")
-        self.check_updates_button = QPushButton("Check for Updates")
+        context.add_section_title('APLIKASI')
+        self.check_updates_button = QPushButton('Periksa Pembaruan')
         self.check_updates_button.setProperty("secondary", True)
         self.check_updates_button.clicked.connect(
             lambda: self.action_requested.emit("help.check_updates")
         )
         context.add_widget(self.check_updates_button)
 
-        self.about_button = QPushButton("About Script Manager")
+        self.about_button = QPushButton('Tentang Script Manager')
         self.about_button.setProperty("secondary", True)
         self.about_button.clicked.connect(
             lambda: self.action_requested.emit("help.about")
         )
         context.add_widget(self.about_button)
 
-        context.add_section_title("SUPPORT")
-        self.report_problem_button = QPushButton("Report a Problem")
+        context.add_section_title('DUKUNGAN')
+        self.report_problem_button = QPushButton('Laporkan Masalah')
         self.report_problem_button.setProperty("secondary", True)
         self.report_problem_button.clicked.connect(
             lambda: self.action_requested.emit("help.report_problem")
@@ -85,7 +85,7 @@ class HelpPage(PageShell):
         root.setContentsMargins(28, 22, 28, 24)
         root.setSpacing(10)
 
-        self.title = QLabel("Getting Started")
+        self.title = QLabel('Mulai')
         self.title.setObjectName("PageTitle")
         root.addWidget(self.title)
 
@@ -102,7 +102,7 @@ class HelpPage(PageShell):
         self.browser.setOpenLinks(False)
         root.addWidget(self.browser, 1)
 
-        self.open_release_button = QPushButton("Open Release Page")
+        self.open_release_button = QPushButton('Buka Halaman Rilis')
         self.open_release_button.setProperty("primary", True)
         self.open_release_button.hide()
         self.open_release_button.clicked.connect(
@@ -110,7 +110,7 @@ class HelpPage(PageShell):
         )
         root.addWidget(self.open_release_button)
 
-        self.open_issue_button = QPushButton("Open GitHub Issue")
+        self.open_issue_button = QPushButton('Buka GitHub Issue')
         self.open_issue_button.setProperty("primary", True)
         self.open_issue_button.hide()
         self.open_issue_button.clicked.connect(
@@ -118,7 +118,7 @@ class HelpPage(PageShell):
         )
         root.addWidget(self.open_issue_button)
 
-        self.copy_report_button = QPushButton("Copy Report Template")
+        self.copy_report_button = QPushButton('Salin Template Laporan')
         self.copy_report_button.setProperty("secondary", True)
         self.copy_report_button.hide()
         self.copy_report_button.clicked.connect(
@@ -153,7 +153,7 @@ class HelpPage(PageShell):
         self._hide_release_button()
         self._hide_problem_buttons()
         self._set_active_button(self.getting_started_button)
-        self.title.setText("Getting Started")
+        self.title.setText('Mulai')
         self.subtitle.setText(
             "Panduan offline untuk memulai workflow Script Manager."
         )
@@ -174,7 +174,7 @@ class HelpPage(PageShell):
         self._hide_release_button()
         self._hide_problem_buttons()
         self._set_active_button(self.user_guide_button)
-        self.title.setText("User Guide")
+        self.title.setText('Panduan Pengguna')
         self.subtitle.setText(
             "Panduan operasional lengkap per area Script Manager."
         )
@@ -195,7 +195,7 @@ class HelpPage(PageShell):
         self._hide_release_button()
         self._hide_problem_buttons()
         self._set_active_button(self.keyboard_shortcuts_button)
-        self.title.setText("Keyboard Shortcuts")
+        self.title.setText('Pintasan Keyboard')
         self.subtitle.setText(
             "Daftar shortcut keyboard yang aktif di Script Manager."
         )
@@ -217,7 +217,7 @@ class HelpPage(PageShell):
         self._set_active_button(self.check_updates_button)
         self._hide_release_button()
         self.check_updates_button.setEnabled(False)
-        self.title.setText("Check for Updates")
+        self.title.setText('Periksa Pembaruan')
         self.subtitle.setText(
             f"Current version: {current_version}"
         )
@@ -239,11 +239,11 @@ class HelpPage(PageShell):
         published = escape(str(getattr(result, "published_at", "") or ""))
         release_url = str(getattr(result, "release_url", "") or "").strip()
 
-        self.title.setText("Check for Updates")
+        self.title.setText('Periksa Pembaruan')
         self.subtitle.setText(f"Current version: {current}")
 
         if status.endswith("UPDATE_AVAILABLE"):
-            heading = "Update available"
+            heading = 'Pembaruan tersedia'
             body = (
                 f"<p>Versi terbaru: <b>{latest}</b></p>"
                 f"<p>{name}</p>"
@@ -252,14 +252,14 @@ class HelpPage(PageShell):
             )
             self._show_release_button(release_url)
         elif status.endswith("UP_TO_DATE"):
-            heading = "You are up to date"
+            heading = 'Aplikasi sudah terbaru'
             body = (
                 f"<p>Versi terbaru yang dipublikasikan adalah "
                 f"<b>{latest}</b>.</p>"
             )
             self._show_release_button(release_url)
         else:
-            heading = "No release published yet"
+            heading = 'Belum ada rilis yang dipublikasikan'
             body = (
                 "<p>Repository belum memiliki GitHub Release. "
                 "Ini bukan error; update checker akan mulai membandingkan "
@@ -277,7 +277,7 @@ class HelpPage(PageShell):
         self._set_active_button(self.check_updates_button)
         self.check_updates_button.setEnabled(True)
         self._hide_release_button()
-        self.title.setText("Check for Updates")
+        self.title.setText('Periksa Pembaruan')
         self.subtitle.setText(
             f"Current version: {escape(str(current_version))}"
         )
@@ -291,7 +291,7 @@ class HelpPage(PageShell):
         self._hide_release_button()
         self._hide_problem_buttons()
         self._set_active_button(self.about_button)
-        self.title.setText("About Script Manager")
+        self.title.setText('Tentang Script Manager')
         self.subtitle.setText(
             "Informasi aplikasi, project format, database schema, dan runtime."
         )
@@ -336,7 +336,7 @@ class HelpPage(PageShell):
     def show_report_problem(self, report) -> None:
         self._hide_release_button()
         self._set_active_button(self.report_problem_button)
-        self.title.setText("Report a Problem")
+        self.title.setText('Laporkan Masalah')
         self.subtitle.setText(
             "Buat laporan bug dengan environment info yang privacy-safe."
         )
@@ -376,7 +376,7 @@ class HelpPage(PageShell):
         self.copy_report_button.setVisible(
             bool(self._problem_report_text)
         )
-        self.copy_report_button.setText("Copy Report Template")
+        self.copy_report_button.setText('Salin Template Laporan')
 
     def _hide_problem_buttons(self) -> None:
         self._issue_url = ""
@@ -397,7 +397,7 @@ class HelpPage(PageShell):
         QApplication.clipboard().setText(
             self._problem_report_text
         )
-        self.copy_report_button.setText("Copied")
+        self.copy_report_button.setText('Tersalin')
 
     def _show_release_button(self, url: str) -> None:
         self._release_url = str(url or "").strip()

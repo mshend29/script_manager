@@ -32,36 +32,36 @@ class PageHeaderSpec:
 
 PAGE_HEADER_SPECS = {
     "PROJECT": PageHeaderSpec(
-        title="Project",
-        subtitle="Project overview, source sync, and production status",
+        title='Proyek',
+        subtitle='Ringkasan proyek, sinkronisasi sumber, dan status produksi',
         actions=(
-            HeaderAction("source.sync", "Sync Source", primary=True),
-            HeaderAction("project.open", "Open Project"),
-            HeaderAction("project.settings", "Project Settings"),
+            HeaderAction("source.sync", 'Sinkronkan Sumber', primary=True),
+            HeaderAction("project.open", 'Buka Proyek'),
+            HeaderAction("project.settings", 'Pengaturan Proyek'),
         ),
         overflow=(
-            HeaderAction("project.new", "New Project"),
-            HeaderAction("project.open_recent", "Open Recent"),
+            HeaderAction("project.new", 'Proyek Baru'),
+            HeaderAction("project.open_recent", 'Buka Terbaru'),
             HeaderAction("project.save", "Save"),
-            HeaderAction("project.save_as", "Save As"),
+            HeaderAction("project.save_as", 'Simpan Sebagai'),
             HeaderAction("project.duplicate", "Duplicate"),
-            HeaderAction("project.recover", "Recover"),
-            HeaderAction("client.drive", "Open Client Drive"),
-            HeaderAction("project.close", "Close Project"),
+            HeaderAction("project.recover", 'Pulihkan'),
+            HeaderAction("client.drive", 'Buka Drive Klien'),
+            HeaderAction("project.close", 'Tutup Proyek'),
         ),
     ),
     "SCRIPT": PageHeaderSpec(
-        title="Script",
-        subtitle="Imported dialogue source and episode overview",
+        title='Naskah',
+        subtitle='Sumber dialog yang diimpor dan ringkasan episode',
         actions=(
-            HeaderAction("script.search", "Search"),
+            HeaderAction("script.search", 'Cari'),
         ),
     ),
     "DIALOG": PageHeaderSpec(
         title="Dialog",
-        subtitle="Recording workspace for dialogue review and completion",
+        subtitle='Workspace rekaman untuk meninjau dan menyelesaikan dialog',
         actions=(
-            HeaderAction("dialog.open_source", "Open Source File", primary=True),
+            HeaderAction("dialog.open_source", 'Buka File Sumber', primary=True),
             HeaderAction("dialog.check_all", "Check All"),
         ),
         overflow=(
@@ -70,58 +70,58 @@ PAGE_HEADER_SPECS = {
     ),
     "TRACKING": PageHeaderSpec(
         title="Tracking",
-        subtitle="Compact episode status matrix for production progress",
+        subtitle='Matriks status episode ringkas untuk memantau progres produksi',
         actions=(
-            HeaderAction("tracking.open_drive", "Open Client Drive"),
+            HeaderAction("tracking.open_drive", 'Buka Drive Klien'),
         ),
     ),
     "DATA": PageHeaderSpec(
         title="Data",
-        subtitle="Characters, talents, cast mapping, and project validation",
+        subtitle='Tokoh, talent, pemetaan, dan validasi proyek',
         actions=(
             HeaderAction("data.validate", "Validate", primary=True),
-            HeaderAction("data.backup", "Backup"),
+            HeaderAction("data.backup", 'Cadangkan'),
         ),
         overflow=(
-            HeaderAction("data.characters", "Characters"),
-            HeaderAction("data.talents", "Talents"),
-            HeaderAction("data.cast", "Cast Mapping"),
-            HeaderAction("data.rebuild", "Rebuild Index"),
+            HeaderAction("data.characters", 'Tokoh'),
+            HeaderAction("data.talents", 'Talent'),
+            HeaderAction("data.cast", 'Pemetaan Tokoh & Talent'),
+            HeaderAction("data.rebuild", 'Bangun Ulang Indeks'),
         ),
     ),
     "TOOLS": PageHeaderSpec(
-        title="Tools",
-        subtitle="Diagnostics, backups, project folders, and maintenance",
+        title='Peralatan',
+        subtitle='Diagnostik, cadangan, folder proyek, dan pemeliharaan',
         actions=(
-            HeaderAction("tools.diagnostics", "Run Diagnostics", primary=True),
-            HeaderAction("tools.backup", "Create Backup"),
+            HeaderAction("tools.diagnostics", 'Jalankan Diagnostik', primary=True),
+            HeaderAction("tools.backup", 'Buat Cadangan'),
         ),
         overflow=(
-            HeaderAction("tools.audit", "Audit History"),
-            HeaderAction("tools.restore_backup", "Restore Backup"),
-            HeaderAction("tools.open_project_folder", "Open Project Folder"),
-            HeaderAction("tools.open_source_folder", "Open Source Folder"),
-            HeaderAction("tools.open_output_folder", "Open Stem / Export"),
-            HeaderAction("tools.open_delivery_folder", "Open Setoran"),
-            HeaderAction("tools.open_backups", "Open Backups"),
-            HeaderAction("tools.open_logs", "Open Logs"),
+            HeaderAction("tools.audit", 'Riwayat Audit'),
+            HeaderAction("tools.restore_backup", 'Pulihkan Cadangan'),
+            HeaderAction("tools.open_project_folder", 'Buka Folder Proyek'),
+            HeaderAction("tools.open_source_folder", 'Buka Folder Sumber'),
+            HeaderAction("tools.open_output_folder", 'Buka Stem / Export'),
+            HeaderAction("tools.open_delivery_folder", 'Buka Setoran'),
+            HeaderAction("tools.open_backups", 'Buka Cadangan'),
+            HeaderAction("tools.open_logs", 'Buka Log'),
             HeaderAction("tools.open_main_drive", "Open Main Drive"),
             HeaderAction("tools.open_material_drive", "Open Material Drive"),
             HeaderAction("tools.open_delivery_drive", "Open Delivery Drive"),
         ),
     ),
     "HELP": PageHeaderSpec(
-        title="Help",
-        subtitle="Guides, shortcuts, updates, and support",
+        title='Bantuan',
+        subtitle='Panduan, pintasan, pembaruan, dan dukungan',
         actions=(
-            HeaderAction("help.user_guide", "User Guide", primary=True),
-            HeaderAction("help.check_updates", "Check for Updates"),
+            HeaderAction("help.user_guide", 'Panduan Pengguna', primary=True),
+            HeaderAction("help.check_updates", 'Periksa Pembaruan'),
         ),
         overflow=(
-            HeaderAction("help.getting_started", "Getting Started"),
-            HeaderAction("help.keyboard_shortcuts", "Keyboard Shortcuts"),
-            HeaderAction("help.report_problem", "Report a Problem"),
-            HeaderAction("help.about", "About Script Manager"),
+            HeaderAction("help.getting_started", 'Mulai'),
+            HeaderAction("help.keyboard_shortcuts", 'Pintasan Keyboard'),
+            HeaderAction("help.report_problem", 'Laporkan Masalah'),
+            HeaderAction("help.about", 'Tentang Script Manager'),
         ),
     ),
 }
@@ -143,7 +143,7 @@ class PageHeader(QFrame):
         title_area.setContentsMargins(0, 0, 0, 0)
         title_area.setSpacing(1)
 
-        self.title_label = QLabel("Project")
+        self.title_label = QLabel('Proyek')
         self.title_label.setObjectName("HeaderTitle")
         title_area.addWidget(self.title_label)
 

@@ -188,7 +188,7 @@ class TrackingPage(PageShell):
 
         context = ContextPanel("TRACKING")
 
-        self.drive_button = QPushButton("Open Client Drive")
+        self.drive_button = QPushButton('Buka Drive Klien')
         self.drive_button.setProperty("primary", True)
         context.add_widget(self.drive_button)
 
@@ -220,15 +220,15 @@ class TrackingPage(PageShell):
         episode_nav_layout = QHBoxLayout(episode_nav)
         episode_nav_layout.setContentsMargins(0, 0, 0, 0)
         episode_nav_layout.setSpacing(6)
-        self.prev_episode_button = QPushButton("‹ Prev")
+        self.prev_episode_button = QPushButton('‹ Sebelumnya')
         self.prev_episode_button.setProperty("secondary", True)
-        self.next_episode_button = QPushButton("Next ›")
+        self.next_episode_button = QPushButton('Berikutnya ›')
         self.next_episode_button.setProperty("secondary", True)
         episode_nav_layout.addWidget(self.prev_episode_button)
         episode_nav_layout.addWidget(self.next_episode_button)
         context.add_widget(episode_nav)
 
-        context.add_section_title("CHARACTER TO STEM")
+        context.add_section_title('TOKOH UNTUK STEM')
         self.character_table = QTableWidget(0, 2)
         self.character_table.setObjectName("TrackingCharacterQueue")
         self.character_table.setHorizontalHeaderLabels(["TOKOH", "STATUS"])
@@ -254,7 +254,7 @@ class TrackingPage(PageShell):
 
         self.title_label = QLabel("Tracking")
         self.title_label.setObjectName("PageTitle")
-        self.summary_label = QLabel("No project open")
+        self.summary_label = QLabel('Belum ada proyek terbuka')
         self.summary_label.setObjectName("TrackingSummary")
         self.summary_label.setContentsMargins(8, 0, 5, 0)
 
@@ -382,8 +382,8 @@ class TrackingPage(PageShell):
         self._update_episode_navigation()
         self.character_table.setRowCount(0)
         self._reset_tracking_grid()
-        self._show_empty_state("No project open")
-        self.summary_label.setText("No project open")
+        self._show_empty_state('Belum ada proyek terbuka')
+        self.summary_label.setText('Belum ada proyek terbuka')
 
     def reload(
         self,
@@ -503,8 +503,8 @@ class TrackingPage(PageShell):
         self._workspace_rows = []
 
         if self._service is None:
-            self._show_empty_state("No project open")
-            self.summary_label.setText("No project open")
+            self._show_empty_state('Belum ada proyek terbuka')
+            self.summary_label.setText('Belum ada proyek terbuka')
             return
 
         talent_id = self.talent_combo.currentData()
@@ -647,7 +647,7 @@ class TrackingPage(PageShell):
         except Exception as exc:
             QMessageBox.warning(
                 self,
-                "Tracking Status",
+                'Status Tracking',
                 str(exc),
             )
             self._refresh_selected_detail()
