@@ -28,6 +28,13 @@ def qapp():
     app.processEvents()
 
 
+def _fill_identity(dialog: NewProjectDialog, tmp_path) -> None:
+    dialog.project_name.setText("AA23 Project")
+    dialog.project_code.setText("AA23")
+    dialog.client_name.setText("Client")
+    dialog.location_edit.setText(str(tmp_path))
+
+
 def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     dialog = NewProjectDialog()
 
@@ -36,14 +43,15 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     assert dialog.current_step == 0
     assert dialog.back_button.isEnabled() is False
     assert dialog.next_button.isHidden() is False
+    assert dialog.next_button.isEnabled() is False
     assert dialog.create_button.isHidden() is True
     assert dialog.help_button.accessibleName() == "Bantuan setup proyek"
 
-    dialog.project_name.setText("AA23 Project")
-    dialog.project_code.setText("AA23")
-    dialog.client_name.setText("Client")
-    dialog.location_edit.setText(str(tmp_path))
+    _fill_identity(dialog, tmp_path)
     qapp.processEvents()
+
+    assert dialog._step_states[0] == WizardMilestoneState.VALID
+    assert dialog.next_button.isEnabled() is True
 
     dialog._go_next()
     assert dialog.current_step == 1
@@ -54,16 +62,18 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     assert dialog.current_step == 0
     assert dialog.project_name.text() == "AA23 Project"
 
+    dialog._go_next()
+    assert dialog.current_step == 1
     dialog.set_step_state(
-        0,
+        1,
         WizardMilestoneState.ERROR,
         "Blocking test",
     )
     assert dialog.next_button.isEnabled() is False
     dialog._go_next()
-    assert dialog.current_step == 0
+    assert dialog.current_step == 1
 
-    dialog.set_step_state(0, WizardMilestoneState.WARNING, "Warning test")
+    dialog.set_step_state(1, WizardMilestoneState.WARNING, "Warning test")
     assert dialog.next_button.isEnabled() is True
 
     while dialog.current_step < 4:
@@ -74,6 +84,64 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     assert dialog.create_button.isHidden() is False
     assert dialog.back_button.isEnabled() is True
     assert not list(tmp_path.glob("*.smproj"))
+
+    dialog.reject()
+    dialog.close()
+    qapp.processEvents()
+
+
+def test_milestone1_auto_code_tracks_until_user_edits_code(qapp, tmp_path):
+    dialog = NewProjectDialog()
+
+    dialog.project_name.setText("Cinta")
+    assert dialog.project_code.text() == "Cinta"
+
+    dialog.project_name.setText("Cinta di Ujung Senja")
+    assert dialog.project_code.text() == "Cinta di Ujung Senja"
+
+    dialog.project_code.setText("AA23")
+    dialog.project_code.textEdited.emit("AA23")
+    dialog.project_name.setText("Judul Berubah")
+    assert dialog.project_code.text() == "AA23"
+
+    dialog.client_name.setText("Client A")
+    dialog.location_edit.setText(str(tmp_path))
+    qapp.processEvents()
+
+    assert dialog._step_states[0] == WizardMilestoneState.VALID
+    assert dialog.next_button.isEnabled() is True
+    assert "AA23 - Judul Berubah.smproj" in dialog.destination_preview.text()
+    assert not list(tmp_path.glob("*.smproj"))
+
+    dialog.reject()
+    dialog.close()
+    qapp.processEvents()
+
+
+def test_milestone1_missing_destination_has_explicit_create_folder(qapp, tmp_path):
+    dialog = NewProjectDialog()
+    target = tmp_path / "nested" / "projects"
+
+    dialog.project_name.setText("Project Baru")
+    dialog.project_code.setText("PB01")
+    dialog.project_code.textEdited.emit("PB01")
+    dialog.client_name.setText("Client")
+    dialog.location_edit.setText(str(target))
+    qapp.processEvents()
+
+    assert target.exists() is False
+    assert dialog._step_states[0] == WizardMilestoneState.ERROR
+    assert dialog.create_location_button.isHidden() is False
+    assert dialog.next_button.isEnabled() is False
+
+    dialog.create_location_button.click()
+    qapp.processEvents()
+
+    assert target.is_dir()
+    assert dialog._step_states[0] == WizardMilestoneState.VALID
+    assert dialog.create_location_button.isHidden() is True
+    assert dialog.next_button.isEnabled() is True
+    assert not list(target.glob("*.smproj"))
 
     dialog.reject()
     dialog.close()

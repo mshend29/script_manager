@@ -19,6 +19,10 @@ from PySide6.QtWidgets import (
 
 from core.project_filename import new_project_destination
 from core.project_settings import ProjectSettings
+from services.project_setup_validation import (
+    create_project_destination_folder,
+    validate_project_identity_destination,
+)
 from widgets.project_configuration import (
     AudioOutputSection,
     DriveLinksSection,
@@ -58,6 +62,7 @@ class NewProjectDialog(QDialog):
         ]
         self._step_messages = ["" for _ in self.STEP_TITLES]
         self._destination_collision = False
+        self._project_code_manually_edited = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 16, 18, 16)
@@ -146,6 +151,17 @@ class NewProjectDialog(QDialog):
             browse_caption="Pilih Lokasi Proyek"
         )
         self.location_edit = self.location_field.edit
+
+        self.create_location_button = QPushButton("Buat Folder")
+        self.create_location_button.setProperty("secondary", True)
+        self.create_location_button.setToolTip(
+            "Buat folder lokasi proyek yang belum tersedia"
+        )
+        self.create_location_button.clicked.connect(
+            self._create_destination_folder
+        )
+        self.create_location_button.hide()
+
         self.destination_preview = QLabel("File proyek: -")
         self.destination_preview.setObjectName("PageSubtitle")
         self.destination_preview.setWordWrap(True)
@@ -158,6 +174,7 @@ class NewProjectDialog(QDialog):
         destination_label.setStyleSheet("font-weight: 600;")
         destination_layout.addWidget(destination_label)
         destination_layout.addWidget(self.location_field)
+        destination_layout.addWidget(self.create_location_button)
         destination_layout.addWidget(self.destination_preview)
 
         self.page_stack.addWidget(
@@ -240,9 +257,12 @@ class NewProjectDialog(QDialog):
         self.project_name.textChanged.connect(self._sync_project_code)
         self.project_name.textChanged.connect(self._update_destination_preview)
         self.project_code.textChanged.connect(self._update_destination_preview)
+        self.project_code.textEdited.connect(self._mark_project_code_manual)
+        self.client_name.textChanged.connect(self._refresh_identity_validation)
+        self.start_date.dateChanged.connect(self._refresh_identity_validation)
         self.location_edit.textChanged.connect(self._update_destination_preview)
 
-        self._update_destination_preview()
+        self._refresh_identity_validation()
         self._show_step(0)
 
     @property
@@ -321,6 +341,8 @@ class NewProjectDialog(QDialog):
             self._show_step(self._current_step - 1)
 
     def _go_next(self) -> None:
+        if self._current_step == 0:
+            self._refresh_identity_validation(verify_writable=True)
         if not self._can_advance_current_step():
             return
         if self._current_step < len(self.STEP_TITLES) - 1:
@@ -329,48 +351,100 @@ class NewProjectDialog(QDialog):
     def _update_navigation_buttons(self) -> None:
         is_final = self._current_step == len(self.STEP_TITLES) - 1
         can_advance = self._can_advance_current_step()
+        has_blocking_step = any(
+            state == WizardMilestoneState.ERROR
+            for state in self._step_states
+        )
 
         self.back_button.setEnabled(self._current_step > 0)
         self.next_button.setVisible(not is_final)
         self.next_button.setEnabled(can_advance)
         self.create_button.setVisible(is_final)
         self.create_button.setEnabled(
-            can_advance and not self._destination_collision
+            can_advance
+            and not has_blocking_step
+            and not self._destination_collision
         )
 
+    def _mark_project_code_manual(self, _value: str = "") -> None:
+        self._project_code_manually_edited = True
+        self._refresh_identity_validation()
+
     def _sync_project_code(self, value: str) -> None:
-        if not self.project_code.text().strip():
-            self.project_code.setText(value.strip())
-
-    def _update_destination_preview(self) -> None:
-        parent = self.location_edit.text().strip()
-        name = self.project_name.text().strip()
-        code = self.project_code.text().strip() or name
-
-        if not parent or not name:
-            self._destination_collision = False
-            self.destination_preview.setText("File proyek: -")
-            if self._step_states[0] == WizardMilestoneState.ERROR:
-                self.set_step_state(0, WizardMilestoneState.PENDING)
-            self._update_navigation_buttons()
+        if self._project_code_manually_edited:
             return
+        desired = value.strip()
+        if self.project_code.text() != desired:
+            self.project_code.setText(desired)
 
-        destination = new_project_destination(parent, code, name)
-        self._destination_collision = destination.exists()
-        if self._destination_collision:
+    def _update_destination_preview(self, _value: object = None) -> None:
+        self._refresh_identity_validation()
+
+    def _refresh_identity_validation(
+        self,
+        _value: object = None,
+        *,
+        verify_writable: bool = False,
+    ) -> None:
+        settings = self.sections.to_settings()
+        validation = validate_project_identity_destination(
+            settings,
+            self.location_edit.text(),
+            verify_writable=verify_writable,
+        )
+
+        destination = validation.destination_file
+        self._destination_collision = any(
+            issue.field == "project_file"
+            for issue in validation.issues
+        )
+
+        parent = validation.parent_folder
+        show_create_folder = bool(
+            parent is not None
+            and not parent.exists()
+        )
+        self.create_location_button.setVisible(show_create_folder)
+
+        if destination is None:
+            self.destination_preview.setText("File proyek: -")
+        elif self._destination_collision:
             self.destination_preview.setText(
                 f"✕ File proyek sudah ada: {destination}"
             )
-            self.set_step_state(
-                0,
-                WizardMilestoneState.ERROR,
-                "Pilih nama, kode, atau lokasi lain karena file project sudah ada.",
-            )
         else:
             self.destination_preview.setText(f"File proyek: {destination}")
-            if self._step_states[0] == WizardMilestoneState.ERROR:
-                self.set_step_state(0, WizardMilestoneState.PENDING)
-            self._update_navigation_buttons()
+
+        if validation.is_valid:
+            self.set_step_state(
+                0,
+                WizardMilestoneState.VALID,
+                "✓ Inisialisasi proyek siap.",
+            )
+            return
+
+        first_issue = validation.issues[0]
+        self.set_step_state(
+            0,
+            WizardMilestoneState.ERROR,
+            first_issue.message,
+        )
+
+    def _create_destination_folder(self) -> None:
+        try:
+            create_project_destination_folder(
+                self.location_edit.text()
+            )
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Buat Folder",
+                str(exc),
+            )
+            self._refresh_identity_validation()
+            return
+
+        self._refresh_identity_validation(verify_writable=True)
 
     def _show_setup_help(self) -> None:
         QMessageBox.information(
@@ -386,16 +460,22 @@ class NewProjectDialog(QDialog):
 
     def _accept(self) -> None:
         location = self.location_edit.text().strip()
-        if not location:
+        settings = self.sections.to_settings()
+        identity_validation = validate_project_identity_destination(
+            settings,
+            location,
+            verify_writable=True,
+        )
+        if not identity_validation.is_valid:
             QMessageBox.warning(
                 self,
                 "Proyek Baru",
-                "Lokasi penyimpanan proyek wajib dipilih.",
+                identity_validation.issues[0].message,
             )
+            self._refresh_identity_validation()
             self._show_step(0)
             return
 
-        settings = self.sections.to_settings()
         issues = self.sections.validate_basic(strict_new_project=False)
         if issues:
             QMessageBox.warning(
