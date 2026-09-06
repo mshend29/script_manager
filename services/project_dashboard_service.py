@@ -49,12 +49,6 @@ class ProjectDashboardService:
     def build(self) -> ProjectDashboardSnapshot:
         snapshot = ProjectDashboardSnapshot()
 
-        issues = ValidationService(self.database).validate()
-        summary = ValidationService(self.database).summarize(issues)
-        snapshot.needs_review = int(summary.needs_review)
-        snapshot.system_errors = int(summary.system_errors)
-        snapshot.workflow_warnings = int(summary.workflow_warnings)
-
         with self.database.connect() as connection:
             recording = connection.execute(
                 """
@@ -76,17 +70,9 @@ class ProjectDashboardService:
                 recording["total"] if recording else 0
             )
 
-            revision = connection.execute(
-                """
-                SELECT COUNT(*) AS total
-                FROM stem_status
-                WHERE status = 'REVISION'
-                """
-            ).fetchone()
-            snapshot.revisions = int(
-                revision["total"] if revision else 0
-            )
-
+        # File inventory is allowed to advance a pending Revision back to
+        # Stemmed/Delivered. Build the rest of the dashboard only after that
+        # sync so every card/action reflects the same current workflow state.
         try:
             inventory = TrackFileService(
                 self.database,
@@ -108,6 +94,31 @@ class ProjectDashboardService:
         except Exception:
             inventory = None
 
+        issues = ValidationService(self.database).validate()
+        summary = ValidationService(self.database).summarize(issues)
+        snapshot.needs_review = int(summary.needs_review)
+        snapshot.system_errors = int(summary.system_errors)
+        snapshot.workflow_warnings = int(summary.workflow_warnings)
+
+        with self.database.connect() as connection:
+            revision_rows = connection.execute(
+                """
+                SELECT episode_id, talent_id, character_id
+                FROM stem_status
+                WHERE status = 'REVISION'
+                """
+            ).fetchall()
+
+        revision_scopes = {
+            (
+                int(row["episode_id"]),
+                int(row["character_id"]),
+                int(row["talent_id"]),
+            )
+            for row in revision_rows
+        }
+        snapshot.revisions = len(revision_scopes)
+
         if inventory is not None:
             snapshot.total_tracks = len(inventory.rows)
             snapshot.delivered_tracks = sum(
@@ -121,6 +132,12 @@ class ProjectDashboardService:
                     and row.recorded_dialogues == row.total_dialogues
                     and not row.output.valid
                     and not row.delivered.valid
+                    and (
+                        row.episode_id,
+                        row.character_id,
+                        row.talent_id,
+                    )
+                    not in revision_scopes
                 )
             )
             snapshot.stemmed_waiting_delivery = sum(
