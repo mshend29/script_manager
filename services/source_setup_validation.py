@@ -159,7 +159,11 @@ def validate_source_filenames(
             key=lambda path: str(path).casefold(),
         )
     )
-    analysis = analyze_source_filenames([path.name for path in candidates])
+
+    # Workbook extension is transport format, not part of the episode naming
+    # pattern. Reuse the existing filename analyzer against stems so .xlsx and
+    # .xlsm versions of the same naming convention remain one pattern.
+    analysis = analyze_source_filenames([path.stem for path in candidates])
 
     if not candidates:
         return SourceFilenameValidation(
