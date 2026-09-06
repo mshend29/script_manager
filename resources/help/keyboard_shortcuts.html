@@ -4,90 +4,35 @@
 <meta charset="utf-8">
 <title>Pintasan Keyboard — Script Manager</title>
 <style>
-html, body { background: #ffffff; }
-body {
-  background: #ffffff;
-  font-family: "Segoe UI", Arial, sans-serif;
-  color: #202124;
-  line-height: 1.58;
-  margin: 0;
-  padding: 8px 4px 34px 4px;
-}
-h1 { font-size: 27px; margin: 0 0 6px 0; }
-h2 {
-  font-size: 19px;
-  margin-top: 28px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #e1e5ea;
-}
-p, td, th { font-size: 14px; }
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 12px 0 18px 0;
-}
-th, td {
-  border: 1px solid #d8dde5;
-  padding: 9px 11px;
-  text-align: left;
-  vertical-align: top;
-}
-th { background: #f5f7fa; }
-kbd {
-  font-family: Consolas, monospace;
-  font-size: 13px;
-  background: #f3f4f6;
-  border: 1px solid #c9ced5;
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  padding: 2px 6px;
-  white-space: nowrap;
-}
-.note {
-  background: #f5f7fa;
-  border: 1px solid #d8dde5;
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin: 14px 0;
-}
+html,body{background:#fff}body{font-family:"Segoe UI",Arial,sans-serif;color:#202124;line-height:1.58;margin:0;padding:8px 4px 34px}h1{font-size:27px;margin:0 0 6px}h2{font-size:19px;margin-top:28px;padding-bottom:5px;border-bottom:1px solid #e1e5ea}p,td,th{font-size:14px}table{border-collapse:collapse;width:100%;margin:12px 0 18px}th,td{border:1px solid #d8dde5;padding:9px 11px;text-align:left;vertical-align:top}th{background:#f5f7fa}kbd{font-family:Consolas,monospace;font-size:13px;background:#f3f4f6;border:1px solid #c9ced5;border-bottom-width:2px;border-radius:4px;padding:2px 6px;white-space:nowrap}.note{background:#f5f7fa;border:1px solid #d8dde5;border-radius:8px;padding:12px 14px;margin:14px 0}
 </style>
 </head>
 <body>
 <h1>Pintasan Keyboard</h1>
-<p>Pintasan berikut aktif secara global pada jendela utama Script Manager. Daftar ini hanya menampilkan kombinasi yang benar-benar diimplementasikan pada aplikasi.</p>
+<p>Pintasan berikut aktif secara global pada jendela utama Script Manager.</p>
 
 <h2>Proyek</h2>
 <table>
 <tr><th>Pintasan</th><th>Aksi</th><th>Keterangan</th></tr>
 <tr><td><kbd>Ctrl+N</kbd></td><td>Proyek Baru</td><td>Membuka dialog untuk membuat proyek <code>.smproj</code> baru.</td></tr>
 <tr><td><kbd>Ctrl+O</kbd></td><td>Buka Proyek</td><td>Membuka file Script Management Project <code>.smproj</code>.</td></tr>
-<tr><td><kbd>Ctrl+S</kbd></td><td>Save</td><td>Menyimpan proyek aktif.</td></tr>
+<tr><td><kbd>Ctrl+S</kbd></td><td>Simpan</td><td>Menyimpan proyek aktif.</td></tr>
 <tr><td><kbd>Ctrl+Shift+S</kbd></td><td>Simpan Sebagai</td><td>Menyimpan proyek ke file baru dengan identitas proyek yang sama.</td></tr>
-<tr><td><kbd>Ctrl+W</kbd></td><td>Tutup Proyek</td><td>Menutup proyek aktif. Aplikasi tetap terbuka.</td></tr>
+<tr><td><kbd>Ctrl+W</kbd></td><td>Tutup Proyek</td><td>Menutup proyek aktif tanpa menutup aplikasi.</td></tr>
 </table>
 
 <h2>Pencarian &amp; Data</h2>
 <table>
 <tr><th>Pintasan</th><th>Aksi</th><th>Keterangan</th></tr>
-<tr><td><kbd>Ctrl+F</kbd></td><td>Cari Naskah</td><td>Berpindah ke tab NASKAH dan memfokuskan kotak Cari.</td></tr>
-<tr><td><kbd>F5</kbd></td><td>Sinkronkan Sumber</td><td>Menjalankan alur Sinkronkan Sumber terhadap sumber proyek aktif.</td></tr>
+<tr><td><kbd>Ctrl+F</kbd></td><td>Cari Naskah</td><td>Berpindah ke workspace Naskah dan memfokuskan kotak pencarian.</td></tr>
+<tr><td><kbd>F5</kbd></td><td>Sinkronkan Sumber</td><td>Menjalankan sinkronisasi terhadap Excel sumber proyek aktif.</td></tr>
 </table>
-
-<div class="note">
-<b>F5 bukan sekadar muat ulang tampilan.</b> Pintasan ini menjalankan Sinkronkan Sumber terhadap Excel sumber, sama seperti tombol Sinkronkan Sumber pada tab PROYEK. Tombol yang sama dipakai untuk sinkronisasi awal dan sinkronisasi lanjutan. Jika sumber berubah, aplikasi menjalankan scan/ppeninjauan/apply lalu workspace data otomatis membaca commit terbaru.
-</div>
+<div class="note"><b>F5 bukan sekadar memuat ulang tampilan.</b> F5 menjalankan proses Sinkronkan Sumber yang sama dengan tombol pada workspace Proyek.</div>
 
 <h2>Bantuan</h2>
 <table>
 <tr><th>Pintasan</th><th>Aksi</th><th>Keterangan</th></tr>
-<tr><td><kbd>F1</kbd></td><td>Mulai</td><td>Membuka tab BANTUAN dan menampilkan halaman Mulai.</td></tr>
+<tr><td><kbd>F1</kbd></td><td>Mulai</td><td>Membuka Bantuan dan menampilkan halaman Mulai.</td></tr>
 </table>
-
-<h2>Perilaku saat Sumber Sync Berjalan</h2>
-<p>Pintasan yang dapat mengganti atau menutup proyek tetap mengikuti safety guard aplikasi. Jika Sinkronkan Sumber sedang berjalan, tindakan seperti Proyek Baru, Buka Proyek, Simpan Sebagai, atau Tutup Proyek dapat ditolak sampai proses sinkronisasi selesai.</p>
-
-<div class="note">
-Pintasan dibuat untuk mempercepat tindakan utama. Fitur lain tetap tersedia melalui menu tindakan dan panel konteks hingga ada kebutuhan nyata untuk menambahkan kombinasi keyboard baru.
-</div>
 </body>
 </html>
