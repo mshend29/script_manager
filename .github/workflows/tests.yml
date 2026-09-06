@@ -73,7 +73,8 @@ jobs:
             tests/test_phase11_qt_source_preflight.py \
             tests/test_phase11_qt_audio_setup.py \
             tests/test_phase11_qt_folder_links_setup.py \
-            tests/test_phase11_qt_folder_drive_help.py
+            tests/test_phase11_qt_folder_drive_help.py \
+            tests/test_phase11_qt_review_setup.py
 
       - name: Run Phase 11 wizard scale smoke
         run: |
