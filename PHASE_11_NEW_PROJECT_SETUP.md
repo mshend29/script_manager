@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.08 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.09 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -498,26 +498,26 @@ Checkpoint test setelah 11.08:
 
 ## 11.09 — Milestone 3: Sumber Audio
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.05
 
 Field:
 
-- [ ] Folder Stem / Mixdown / Export
-- [ ] Folder Setoran
-- [ ] Format WAV
-- [ ] Laju Sampel
-- [ ] Kedalaman Bit
-- [ ] Kanal
+- [x] Folder Stem / Mixdown / Export
+- [x] Folder Setoran
+- [x] Format WAV
+- [x] Laju Sampel
+- [x] Kedalaman Bit
+- [x] Kanal
 
 Validation:
 
-- [ ] folder wajib;
-- [ ] path filesystem valid;
-- [ ] folder readable/writable sesuai kebutuhan;
-- [ ] folder belum ada → tampilkan opsi `Buat Folder`;
-- [ ] tidak meninggalkan temp test file;
-- [ ] audio option hanya nilai yang didukung aplikasi.
+- [x] folder wajib;
+- [x] path filesystem valid;
+- [x] folder readable/writable sesuai kebutuhan;
+- [x] folder belum ada → tampilkan opsi `Buat Folder`;
+- [x] tidak meninggalkan temp test file;
+- [x] audio option hanya nilai yang didukung aplikasi.
 
 Default existing harus dipertahankan:
 
@@ -529,6 +529,17 @@ Default existing harus dipertahankan:
 Exit criteria:
 
 - output configuration siap dipakai Tracking/Delivery.
+
+Checkpoint test setelah 11.09:
+
+- full suite: `382 passed, 29 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk Milestone 3 + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- mengetik folder yang belum ada tidak membuat folder otomatis;
+- folder baru hanya dibuat lewat aksi explicit `Buat Folder`;
+- writable probe membersihkan seluruh temp test file;
+- browser URL pada field Folder ditolak sebelum filesystem interpretation.
 
 ---
 
@@ -1220,6 +1231,12 @@ Status: LOCKED
 
 Preflight wizard menjalankan `WorkbookInspector` dan `ScriptParser` yang sama dengan source sync produksi, tetapi orchestration preflight tidak memakai `Project`, `Database`, diff, atau synchronizer. Workbook dibuka read-only, cancellation bersifat cooperative di antara file/stage, dan source milestone baru siap setelah filename validation serta preflight sama-sama lolos.
 
+## D-014 — Folder audio dibuat eksplisit dan URL dipertahankan untuk validation
+
+Status: LOCKED
+
+Milestone Audio tidak membuat folder saat user mengetik path. Folder Stem/Setoran yang belum ada hanya dibuat lewat aksi `Buat Folder`. Normalization mempertahankan nilai yang mengandung skema URL agar dedicated filesystem validator dapat menolak browser URL dengan pesan yang benar sebelum nilai tersebut diperlakukan sebagai `Path`.
+
 ---
 
 # Progress Log
@@ -1292,6 +1309,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: preflight tidak memakai Project/Database/diff/synchronizer; cancellation cooperative; initial-sync reuse/fingerprint safety tetap scope 11.14/11.15.
 - commit/PR: `84b788d85be4fd9a0fc7ac814803b42ad30e681f`, `5d18124ef2bcda517d06f17554096288890a550c` / PR #75.
 - next: 11.09 Milestone 3 — Sumber Audio.
+
+2026-09-06 — 11.09
+- perubahan: validator folder audio strict untuk New Project; panel status Stem/Setoran; explicit create folder; read/write check + cleanup probe; supported WAV/sample-rate/bit-depth/channel gate; milestone 3 terhubung ke navigation/final create.
+- test: full suite `382 passed, 29 skipped`; compile success; Qt runtime + wizard scale smoke success.
+- keputusan: browser URL pada Folder dipertahankan selama normalization agar dapat ditolak validator secara eksplisit; folder tidak pernah dibuat hanya karena typing.
+- commit/PR: `31257ed92597b33ff2639e81273308bcc2214780`, `efb1f3de732d18a9a9c0b236959419446a020928`, `050600eec8a94eee517f83969d996e1d3ebda4e0`, `f0704b9cd42ace9bee4b9188dd8a837125454871`, `27b2b0c368261369d07a6f5da31b5bec7f19ce51`, `04165ead02f2caeb12f168e13c04177e81e0bcca`, `609de7a9a3536ff2449d238eb8fe6518137d3243`, `8439b227cc38de7ae170f36f5a1944c9695f9cc0` / PR #75.
+- next: 11.10 Milestone 4 — Folder & Tautan.
 
 ---
 
