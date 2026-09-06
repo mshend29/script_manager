@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.theme import COLORS
 from core.database import Database
 from services.dialogue_service import DialogueService, ScriptRow
 from widgets.context_panel import ContextPanel
@@ -141,6 +143,9 @@ class ScriptCastTableModel(QAbstractTableModel):
             Qt.ItemDataRole.ToolTipRole,
         }:
             return value
+        if role == Qt.ItemDataRole.BackgroundRole:
+            color_key = "surface" if index.row() % 2 == 0 else "neutral_soft"
+            return QColor(COLORS[color_key])
         return None
 
     def headerData(
