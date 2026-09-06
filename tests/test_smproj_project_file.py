@@ -135,7 +135,7 @@ def test_project_ui_uses_smproj_file_picker_and_no_drsp_conversion():
     main_py = (root / "main.py").read_text(encoding="utf-8")
 
     assert "QFileDialog.getOpenFileName" in main_window
-    assert "Script Management Project (*.smproj)" in main_window
+    assert "Proyek Script Manager (*.smproj)" in main_window
     assert "convert_project_to_drsp" not in main_window
     assert "tools.convert_drsp" not in main_window
     assert "Convert to .drsp" not in tools_page

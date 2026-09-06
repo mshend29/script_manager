@@ -11,10 +11,10 @@ def _read(path: str) -> str:
 def test_unresolved_has_review_mode_and_manual_narration_actions():
     source = _read("pages/data_page.py")
 
-    assert '["EPS", "ISSUE", "CHARACTER", "TALENT", "DIALOG", "SOURCE"]' in source
+    assert '["EPS", "MASALAH", "TOKOH", "TALENT", "DIALOG", "SUMBER"]' in source
     assert 'addItem("Needs Review", "review")' in source
-    assert 'addItem("Narration / Non-Dialogue", "narration")' in source
-    assert 'addAction("Mark as Narration / Non-Dialogue")' in source
+    assert 'addItem("Narasi / Non-Dialog", "narration")' in source
+    assert 'addAction("Mark as Narasi / Non-Dialog")' in source
     assert 'addAction("Restore to Needs Review")' in source
     assert "self._controller.mark_non_dialogue" in source
     assert "self._controller.restore_to_review" in source
@@ -26,7 +26,7 @@ def test_unresolved_has_review_mode_and_manual_narration_actions():
 def test_validation_is_detailed_filterable_and_actionable():
     source = _read("pages/data_page.py")
 
-    assert '["SEVERITY", "CATEGORY", "EPS", "ENTITY", "CODE", "MESSAGE", "ACTION"]' in source
+    assert '["TINGKAT", "KATEGORI", "EPS", "ENTITAS", "CODE", "PESAN", "AKSI"]' in source
     assert 'addItem("All Severity", None)' in source
     assert 'addItem("All Categories", None)' in source
     assert 'addItem("All Episodes", None)' in source
@@ -54,7 +54,7 @@ def test_validation_tracking_action_is_wired_to_main_window():
 def test_overview_distinguishes_review_system_and_workflow_health():
     source = _read("pages/data_page.py")
 
-    assert '("non_dialogue", "Narration / Non-Dialogue")' in source
+    assert '("non_dialogue", "Narasi / Non-Dialog")' in source
     assert '("needs_review", "Needs Review")' in source
     assert '("system_errors", "System Errors")' in source
     assert '("workflow_warnings", "Workflow Warnings")' in source

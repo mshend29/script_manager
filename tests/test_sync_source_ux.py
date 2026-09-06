@@ -10,7 +10,7 @@ def test_data_menu_exposes_one_sync_source_action_only() -> None:
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert main.count(
-        'self._add_menu_action(data_menu, "Sync Source", self.sync_source, "F5")'
+        'self._add_menu_action(data_menu, "Sinkronkan Sumber", self.sync_source, "F5")'
     ) == 1
 
     for removed in (
@@ -30,12 +30,12 @@ def test_main_window_routes_f5_and_data_menu_to_same_sync_source_method() -> Non
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert (
-        'self._add_menu_action(data_menu, "Sync Source", self.sync_source, "F5")'
+        'self._add_menu_action(data_menu, "Sinkronkan Sumber", self.sync_source, "F5")'
         in main
     )
     assert '"source.sync": self.sync_source' in main
     assert "def sync_source(self)" in main
-    assert 'self._run_source_sync("Sync Source")' in main
+    assert 'self._run_source_sync("Sinkronkan Sumber")' in main
 
     for removed in (
         "def import_source",
@@ -61,17 +61,17 @@ def test_help_documents_use_unified_sync_source_mental_model() -> None:
         ROOT / "resources" / "help" / "keyboard_shortcuts.html"
     ).read_text(encoding="utf-8")
 
-    assert "Sync Source" in getting_started
+    assert "Sinkronkan Sumber" in getting_started
     assert "initial sync" in getting_started
     assert "incremental sync" in getting_started
 
-    assert "Sync Source" in user_guide
+    assert "Sinkronkan Sumber" in user_guide
     guide_lower = user_guide.casefold()
     assert "initial sync" in guide_lower
     assert "incremental sync" in guide_lower
     assert "tidak perlu menjalankan Refresh View manual" in user_guide
 
-    assert "<td>Sync Source</td>" in shortcuts
+    assert "<td>Sinkronkan Sumber</td>" in shortcuts
     assert "initial sync dan incremental sync" in shortcuts
 
     assert "Import Source" not in getting_started

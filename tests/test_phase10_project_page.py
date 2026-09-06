@@ -17,7 +17,7 @@ def test_project_workspace_has_home_and_preserved_dashboard() -> None:
     assert "class ProjectPage(DashboardProjectPage)" in home
     assert '"ProjectHome"' in home
     assert '"ProjectHomeSidebar"' in home
-    assert 'QPushButton("Create New")' in home
+    assert 'QPushButton("Buat Baru")' in home
     assert 'QPushButton("Open Project")' in home
     assert 'QLabel("Recent Projects")' in home
     assert '["PROJECT", "LAST OPENED"]' in home
@@ -31,7 +31,7 @@ def test_project_workspace_has_home_and_preserved_dashboard() -> None:
     assert '"ProjectIdentityCard"' in dashboard
     assert '"PROJECT DATA"' in dashboard
     assert '"PRODUCTION PIPELINE"' in dashboard
-    assert '"NEEDS ATTENTION"' in dashboard
+    assert '"PERLU PERHATIAN"' in dashboard
     assert '"RECENT ACTIVITY"' in dashboard
 
 
@@ -82,7 +82,7 @@ def test_project_dashboard_after_hero_uses_weighted_two_columns() -> None:
 def test_project_home_recent_list_supports_search_sort_and_open() -> None:
     source = _read("pages/project_page.py")
 
-    assert 'setPlaceholderText("Search recent projects…")' in source
+    assert 'setPlaceholderText("Cari proyek terbaru…")' in source
     assert "textChanged.connect(self._filter_recent_projects)" in source
     assert "setSortingEnabled(True)" in source
     assert "setSectionsClickable(True)" in source
@@ -106,7 +106,7 @@ def test_project_identity_uses_real_metadata_without_fake_media() -> None:
     assert "settings.project_code" in main
     assert "settings.client_name" in main
     assert "settings.main_drive_url" in main
-    assert 'f"Source folder: {settings.source_folder or \'-\'}"' in main
+    assert 'f"Folder sumber: {settings.source_folder or \'-\'}"' in main
     assert 'f"Last sync: {last_sync or \'-\'}"' in main
 
     forbidden = (

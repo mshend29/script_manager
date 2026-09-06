@@ -189,7 +189,7 @@ def test_project_lifecycle_actions_are_wired_to_ui():
         assert action in main
         assert action in header
 
-    assert 'QPushButton("Create New")' in home
+    assert 'QPushButton("Buat Baru")' in home
     assert 'QPushButton("Open Project")' in home
     assert '"Recent Projects"' in home
-    assert "Recover Project" in dashboard
+    assert "Pulihkan Proyek" in dashboard

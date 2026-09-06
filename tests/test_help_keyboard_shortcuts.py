@@ -11,17 +11,17 @@ MENU_BINDINGS = {
     "Ctrl+O": 'self._add_menu_action(file_menu, "Open Project", self.open_project, "Ctrl+O")',
     "Ctrl+S": 'self._add_menu_action(file_menu, "Save Project", self.save_project, "Ctrl+S")',
     "Ctrl+W": 'self._add_menu_action(file_menu, "Close Project", self.close_project, "Ctrl+W")',
-    "F5": 'self._add_menu_action(data_menu, "Sync Source", self.sync_source, "F5")',
+    "F5": 'self._add_menu_action(data_menu, "Sinkronkan Sumber", self.sync_source, "F5")',
 }
 
 MULTILINE_MENU_BINDINGS = {
     "Ctrl+Shift+S": (
-        '"Save As",',
+        '"Simpan Sebagai",',
         'self.save_project_as,',
         '"Ctrl+Shift+S",',
     ),
     "F1": (
-        '"Getting Started",',
+        '"Mulai",',
         'self.open_getting_started,',
         '"F1",',
     ),
@@ -65,7 +65,7 @@ def test_keyboard_shortcuts_help_navigation_is_wired():
     assert "KEYBOARD_SHORTCUTS_FILE" in page
     assert "def show_keyboard_shortcuts" in page
 
-    assert 'help_menu = menu_bar.addMenu("&Help")' in main
+    assert 'help_menu = menu_bar.addMenu("&Bantuan")' in main
     assert '"Shortcut",' in main
     assert "self.open_keyboard_shortcuts" in main
     assert "def open_keyboard_shortcuts" in main
@@ -78,5 +78,5 @@ def test_keyboard_shortcuts_page_explains_sync_source_semantics():
     ).read_text(encoding="utf-8")
 
     assert "F5 bukan sekadar refresh tampilan" in content
-    assert "Sync Source" in content
+    assert "Sinkronkan Sumber" in content
     assert "source Excel" in content
