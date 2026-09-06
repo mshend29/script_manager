@@ -66,4 +66,6 @@ jobs:
             tests/test_script_page_runtime.py \
             tests/test_qt_runtime_smoke.py \
             tests/test_phase10_responsive_runtime.py \
-            tests/test_phase10_operator_runtime.py
+            tests/test_phase10_operator_runtime.py \
+            tests/test_phase11_qt_project_config.py \
+            tests/test_phase11_qt_wizard_shell.py
