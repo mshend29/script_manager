@@ -65,7 +65,7 @@ class TrackRenamePreviewDialog(QDialog):
 
         subtitle = QLabel(
             "Semua WAV yang dapat dikaitkan dengan scope episode/talent ditampilkan. "
-            "File Unmatched atau Ambiguous dapat dipasangkan manual melalui kolom "
+            "File Tidak Cocok atau Ambigu dapat dipasangkan manual melalui kolom "
             "Expected. Tidak ada file yang akan ditimpa."
         )
         subtitle.setObjectName("PageSubtitle")
@@ -201,7 +201,7 @@ class TrackRenamePreviewDialog(QDialog):
         if duplicate:
             item.status = RENAME_AMBIGUOUS
             item.detail = (
-                "Expected filename ini juga dipakai file lain pada preview. "
+                "Nama file yang diharapkan ini juga dipakai file lain pada preview. "
                 "Pilih target lain."
             )
 

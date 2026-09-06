@@ -201,7 +201,7 @@ class ProjectPage(QWidget):
         panel.setObjectName("ProjectIdentityCard")
         panel.setStyleSheet(
             f"""
-            QFrame#ProyekIdentityCard {{
+            QFrame#ProjectIdentityCard {{
                 background: {COLORS['accent_soft']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
@@ -292,7 +292,7 @@ class ProjectPage(QWidget):
         self.info.setObjectName("ProjectHealthBanner")
         self.info.setStyleSheet(
             f"""
-            QFrame#ProyekHealthBanner {{
+            QFrame#ProjectHealthBanner {{
                 background: {COLORS['surface']};
                 border: none;
                 border-radius: {RADII['md']}px;
@@ -326,12 +326,12 @@ class ProjectPage(QWidget):
         strip.setObjectName("ProjectMetricStrip")
         strip.setStyleSheet(
             f"""
-            QFrame#ProyekMetricStrip {{
+            QFrame#ProjectMetricStrip {{
                 background: {COLORS['surface']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
             }}
-            QFrame#ProyekMetricSeparator {{
+            QFrame#ProjectMetricSeparator {{
                 background: {COLORS['border']};
                 border: none;
             }}
@@ -369,17 +369,17 @@ class ProjectPage(QWidget):
         rail.setObjectName("ProjectPipelineRail")
         rail.setStyleSheet(
             f"""
-            QFrame#ProyekPipelineRail {{
+            QFrame#ProjectPipelineRail {{
                 background: {COLORS['surface']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
             }}
-            QLabel#ProyekPipelineArrow {{
+            QLabel#ProjectPipelineArrow {{
                 color: {COLORS['text_muted']};
                 font-size: 16pt;
                 font-weight: 700;
             }}
-            QFrame#ProyekRevisiLoop {{
+            QFrame#ProjectRevisionLoop {{
                 background: {COLORS['surface_subtle']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['md']}px;
@@ -524,7 +524,7 @@ class ProjectPage(QWidget):
         panel.setObjectName("ProjectPanel")
         panel.setStyleSheet(
             f"""
-            QFrame#ProyekPanel {{
+            QFrame#ProjectPanel {{
                 background: {COLORS['surface']};
                 border: 1px solid {COLORS['border']};
                 border-radius: {RADII['lg']}px;
@@ -569,11 +569,11 @@ class ProjectPage(QWidget):
         panel.setObjectName("ProjectActivityPanel")
         panel.setStyleSheet(
             f"""
-            QFrame#ProyekActivityPanel {{
+            QFrame#ProjectActivityPanel {{
                 background: transparent;
                 border: none;
             }}
-            QLabel#ProyekActivityDot {{
+            QLabel#ProjectActivityDot {{
                 color: {COLORS['accent']};
                 font-size: 15pt;
                 font-weight: 700;
@@ -623,9 +623,9 @@ class ProjectPage(QWidget):
             else 'Metadata proyek'
         )
         self.drive_status.setText(
-            "Main drive: Configured"
+            "Drive utama: Dikonfigurasi"
             if drive_configured
-            else "Main drive: Not configured"
+            else "Drive utama: Belum dikonfigurasi"
         )
         self.empty_action_bar.hide()
 
@@ -674,7 +674,7 @@ class ProjectPage(QWidget):
         if total_tracks:
             percent = round((delivered_tracks / total_tracks) * 100)
             self.pipeline_progress_text.setText(
-                f"{delivered_tracks}/{total_tracks} tracks delivered  •  {percent}%"
+                f"{delivered_tracks}/{total_tracks} track disetor  •  {percent}%"
             )
         else:
             self.pipeline_progress_text.setText('Belum ada track yang diharapkan')
@@ -705,7 +705,7 @@ class ProjectPage(QWidget):
                 # than an ERP-style tile dashboard.
                 self.action_layout.addWidget(button, index, 0)
         else:
-            clean = QLabel("✓ Tidak ada action penting yang tertunda.")
+            clean = QLabel("✓ Tidak ada tindakan penting yang tertunda.")
             clean.setObjectName("ProjectCleanState")
             self.action_layout.addWidget(clean, 0, 0)
 

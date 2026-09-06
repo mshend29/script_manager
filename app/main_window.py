@@ -1399,13 +1399,13 @@ class MainWindow(QMainWindow):
             ),
         )
         page.project_location.setText(
-            f"Proyek file: {project.project_file}"
+            f"File proyek: {project.project_file}"
         )
         page.source_path.setText(
-            f"Sumber folder: {settings.source_folder or '-'}"
+            f"Folder sumber: {settings.source_folder or '-'}"
         )
         page.start_date.setText(
-            f"Start date: {settings.start_date or '-'}"
+            f"Tanggal mulai: {settings.start_date or '-'}"
         )
 
         try:
@@ -1416,7 +1416,7 @@ class MainWindow(QMainWindow):
             last_sync = ""
 
         page.last_refresh.setText(
-            f"Last sync: {last_sync or '-'}"
+            f"Sinkron terakhir: {last_sync or '-'}"
         )
 
         try:
@@ -1438,7 +1438,7 @@ class MainWindow(QMainWindow):
             page.set_dashboard(snapshot)
 
         page.info_title.setText(
-            f"{settings.project_name or 'Proyek'} ready"
+            f"{settings.project_name or 'Proyek'} siap"
         )
         if snapshot is None:
             page.info_text.setText(
@@ -1447,7 +1447,7 @@ class MainWindow(QMainWindow):
         elif snapshot.actions:
             page.info_text.setText(
                 f"{len(snapshot.actions)} jenis pekerjaan membutuhkan perhatian. "
-                "Gunakan Needs Attention untuk langsung membuka workflow terkait."
+                "Gunakan Perlu Perhatian untuk langsung membuka alur terkait."
             )
         else:
             page.info_text.setText(

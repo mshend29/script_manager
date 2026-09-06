@@ -722,7 +722,7 @@ class DialogPage(QWidget):
                 checkbox.setProperty("source_revised", row.source_revised)
                 if row.source_revised:
                     checkbox.setToolTip(
-                        "Source berubah sejak dialog ini terakhir direkam. "
+                        "Sumber berubah sejak dialog ini terakhir direkam. "
                         "Rekam ulang lalu update checkbox untuk menerima source terbaru."
                     )
                 checkbox.stateChanged.connect(
@@ -750,7 +750,7 @@ class DialogPage(QWidget):
                 )
                 dialogue_item.setToolTip(
                     (
-                        "Source berubah sejak dialog terakhir direkam. "
+                        "Sumber berubah sejak dialog terakhir direkam. "
                         "Recording history tetap dipertahankan.\n\n"
                         + row.dialogue
                     )
@@ -859,7 +859,7 @@ class DialogPage(QWidget):
             QMessageBox.warning(
                 self,
                 'Status Rekaman',
-                f"Gagal menyimpan status recording.\n\n{exc}",
+                f"Gagal menyimpan status rekaman.\n\n{exc}",
             )
             return
 
@@ -891,7 +891,7 @@ class DialogPage(QWidget):
             QMessageBox.warning(
                 self,
                 'Status Rekaman',
-                f"Gagal menyimpan status recording.\n\n{exc}",
+                f"Gagal menyimpan status rekaman.\n\n{exc}",
             )
             return
 

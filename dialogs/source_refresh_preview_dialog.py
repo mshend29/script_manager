@@ -102,10 +102,10 @@ class SourceRefreshPreviewDialog(QDialog):
 
         if warnings:
             warning_label = QLabel(
-                "Parser/Resolver warnings:\n"
+                "Peringatan parser/resolver:\n"
                 + "\n".join(f"• {item}" for item in warnings[:8])
                 + (
-                    f"\n… {len(warnings) - 8} warning lainnya"
+                    f"\n… {len(warnings) - 8} peringatan lainnya"
                     if len(warnings) > 8
                     else ""
                 )

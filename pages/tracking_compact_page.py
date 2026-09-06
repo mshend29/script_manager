@@ -566,7 +566,7 @@ class CompactTrackingPage(TrackingPage):
         suggestion_root.addWidget(suggestion_title)
 
         suggestion_help = QLabel(
-            "Canonical character name untuk track DAW. "
+            "Nama tokoh kanonis untuk track DAW. "
             "Klik nama untuk menyalin."
         )
         suggestion_help.setObjectName("MutedLabel")
@@ -889,7 +889,7 @@ class CompactTrackingPage(TrackingPage):
                 else:
                     rename_message = (
                         f"{Path(rename_item.source_path).name} belum cocok "
-                        "otomatis. Double-click untuk memilih expected "
+                        "otomatis. Klik dua kali untuk memilih expected "
                         "filename secara manual."
                     )
 
@@ -1278,7 +1278,7 @@ class CompactTrackingPage(TrackingPage):
                 suggestion.setBackground(QColor(COLORS["attention_soft"]))
                 suggestion.setToolTip(
                     suggestion.toolTip()
-                    + "\n\nWarnings:\n"
+                    + "\n\nPeringatan:\n"
                     + "\n".join(
                         f"• {warning.message}"
                         for warning in row.warnings
@@ -1305,8 +1305,8 @@ class CompactTrackingPage(TrackingPage):
             suggestion.setBackground(QColor(COLORS["attention_soft"]))
             suggestion.setToolTip(
                 rename_item.detail
-                + "\n\nDouble-click Stem / Export untuk memilih "
-                "expected filename secara manual."
+                + "\n\nKlik dua kali Stem / Export untuk memilih "
+                "nama file yang diharapkan secara manual."
             )
 
             output = QTableWidgetItem(
@@ -1480,7 +1480,7 @@ class CompactTrackingPage(TrackingPage):
         QMessageBox.information(
             self,
             'Ubah Nama File Track',
-            f"{len(renamed)} file berhasil dinormalisasi ke expected filename.",
+            f"{len(renamed)} file berhasil dinormalisasi ke nama file yang diharapkan.",
         )
 
     def _set_output_health_empty(self) -> None:
@@ -1532,7 +1532,7 @@ class CompactTrackingPage(TrackingPage):
             f"Canonical Tokoh: {row.character_name}\n"
             f"Sumber Aliases in Episode: {alias_text}\n"
             f"Talent: {row.talent_name}\n"
-            f"Expected File: {row.expected_filename}"
+            f"File Diharapkan: {row.expected_filename}"
         )
 
     @staticmethod

@@ -290,7 +290,7 @@ class ProjectSettingsDialog(QDialog):
         delimiter_form.addRow('Setelah Nomor Episode', self.episode_after)
 
         delimiter_help = QLabel(
-            "Delimiter diterapkan ke filename yang dibaca dari Source Folder. "
+            "Delimiter diterapkan ke filename yang dibaca dari Folder Sumber. "
             "Import Source tetap diperlukan untuk membaca isi naskah."
         )
         delimiter_help.setWordWrap(True)
@@ -501,7 +501,7 @@ class ProjectSettingsDialog(QDialog):
 
         before = self.episode_before.text()
         after = self.episode_after.text()
-        lines = ["Episode Preview:"]
+        lines = ["Pratinjau Episode:"]
         for filename in self._source_filename_examples:
             episode = self._extract_episode_preview(
                 filename,

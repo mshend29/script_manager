@@ -98,7 +98,7 @@ class DataPage(PageShell):
 
         self.mapping_note = QLabel(
             "Manual lock menjadi mapping authoritative untuk cast aktif. "
-            "Unlock hanya melepas kunci; re-resolve berikutnya terjadi saat Refresh Data."
+            "Unlock hanya melepas kunci; re-resolve berikutnya terjadi saat Muat Ulang Data."
         )
         self.mapping_note.setWordWrap(True)
         self.mapping_note.setObjectName("MutedLabel")
@@ -479,8 +479,8 @@ class DataPage(PageShell):
             )
         elif needs_review or summary.workflow_warnings:
             self.health_label.setText(
-                f"⚠ {needs_review} item needs review • "
-                f"{summary.workflow_warnings} workflow warning."
+                f"⚠ {needs_review} item perlu ditinjau • "
+                f"{summary.workflow_warnings} peringatan alur."
             )
         else:
             self.health_label.setText('✓ Data proyek sehat.')
@@ -1052,13 +1052,13 @@ class DataPage(PageShell):
         if summary.system_errors:
             self.validation_summary.setText(
                 f"✕ {summary.system_errors} system error • "
-                f"{summary.needs_review} needs review • "
-                f"{summary.workflow_warnings} workflow warning"
+                f"{summary.needs_review} perlu ditinjau • "
+                f"{summary.workflow_warnings} peringatan alur"
             )
         elif summary.needs_review or summary.workflow_warnings:
             self.validation_summary.setText(
-                f"✓ System healthy • {summary.needs_review} needs review • "
-                f"{summary.workflow_warnings} workflow warning"
+                f"✓ System healthy • {summary.needs_review} perlu ditinjau • "
+                f"{summary.workflow_warnings} peringatan alur"
             )
         else:
             self.validation_summary.setText(

@@ -183,7 +183,7 @@ class ProjectPage(DashboardProjectPage):
         sidebar_layout.setContentsMargins(20, 24, 20, 24)
         sidebar_layout.setSpacing(10)
 
-        brand = QLabel("PROJECT")
+        brand = QLabel("PROYEK")
         brand.setObjectName("ProjectSectionTitle")
         sidebar_layout.addWidget(brand)
 
@@ -234,7 +234,7 @@ class ProjectPage(DashboardProjectPage):
         self.recent_table = RecentProjectTable(0, 2)
         self.recent_table.setObjectName("ProjectRecentTable")
         self.recent_table.setHorizontalHeaderLabels(
-            ["PROJECT", "LAST OPENED"]
+            ["PROYEK", "TERAKHIR DIBUKA"]
         )
         self.recent_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
