@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.07 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.08 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -452,23 +452,23 @@ Checkpoint test setelah 11.07:
 
 ## 11.08 — Source Preflight read-only
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.07
 
 Tujuan: memastikan source benar-benar dapat diproses sebelum `.smproj` dibuat.
 
 Pekerjaan:
 
-- [ ] Reuse parser/inspector produksi; jangan membuat parser khusus wizard.
-- [ ] Buka workbook secara read-only/preflight.
-- [ ] Pastikan workbook tidak corrupt.
-- [ ] Pastikan struktur script dapat dikenali.
-- [ ] Pastikan episode filename valid.
-- [ ] Pastikan data dapat diparse.
-- [ ] Jangan menulis database.
-- [ ] Progress harus terlihat.
-- [ ] Preflight dapat dibatalkan.
-- [ ] Error per file dapat dilihat.
+- [x] Reuse parser/inspector produksi; jangan membuat parser khusus wizard.
+- [x] Buka workbook secara read-only/preflight.
+- [x] Pastikan workbook tidak corrupt.
+- [x] Pastikan struktur script dapat dikenali.
+- [x] Pastikan episode filename valid.
+- [x] Pastikan data dapat diparse.
+- [x] Jangan menulis database.
+- [x] Progress harus terlihat.
+- [x] Preflight dapat dibatalkan.
+- [x] Error per file dapat dilihat.
 
 Summary target:
 
@@ -483,6 +483,16 @@ Summary target:
 Exit criteria:
 
 - milestone Sumber Naskah tidak valid bila preflight blocking gagal.
+
+Checkpoint test setelah 11.08:
+
+- full suite: `377 passed, 27 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk preflight UI + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- valid workbook dapat di-inspect dan diparse read-only tanpa database write;
+- corrupt workbook menjadi blocker per file;
+- milestone 2 tetap blocking sampai preflight sukses.
 
 ---
 
@@ -1204,6 +1214,12 @@ Status: LOCKED
 
 Milestone 2 membandingkan pola berdasarkan stem filename. `.xlsx` dan `.xlsm` sama-sama format workbook yang didukung dan tidak memecah satu konvensi nama menjadi dua pola. Filename validation hanya membaca filesystem metadata/nama file; isi workbook dan fingerprint tetap menjadi scope 11.08/11.15.
 
+## D-013 — Preflight memakai parser produksi tanpa database
+
+Status: LOCKED
+
+Preflight wizard menjalankan `WorkbookInspector` dan `ScriptParser` yang sama dengan source sync produksi, tetapi orchestration preflight tidak memakai `Project`, `Database`, diff, atau synchronizer. Workbook dibuka read-only, cancellation bersifat cooperative di antara file/stage, dan source milestone baru siap setelah filename validation serta preflight sama-sama lolos.
+
 ---
 
 # Progress Log
@@ -1269,6 +1285,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: extension workbook tidak termasuk pola naming; validator 11.07 tidak membuka workbook, tidak menghitung fingerprint, dan tidak menyentuh database.
 - commit/PR: `7140b211ad2c132962376ecbe6ef2eadfdcb3552`, `7883f6309ba438e6b4c9b05a880c9816657240a7`, `e437829ae9faaa7eb87ca023b6e31b7b0de245e2` / PR #75.
 - next: 11.08 Source Preflight read-only.
+
+2026-09-06 — 11.08
+- perubahan: service preflight read-only memakai inspector/parser produksi; UI progress + cancel + summary + detail error per file; source milestone menggabungkan filename gate dan preflight gate; corrupt workbook/parse failure menjadi blocker.
+- test: full suite `377 passed, 27 skipped`; compile success; Qt runtime dan Phase 11 wizard scale smoke success.
+- keputusan: preflight tidak memakai Project/Database/diff/synchronizer; cancellation cooperative; initial-sync reuse/fingerprint safety tetap scope 11.14/11.15.
+- commit/PR: `84b788d85be4fd9a0fc7ac814803b42ad30e681f`, `5d18124ef2bcda517d06f17554096288890a550c` / PR #75.
+- next: 11.09 Milestone 3 — Sumber Audio.
 
 ---
 
