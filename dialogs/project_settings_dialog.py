@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFrame,
+    QHBoxLayout,
     QLabel,
+    QPushButton,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
@@ -12,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.project_settings import ProjectSettings
+from widgets.folder_drive_help import show_folder_drive_help
 from widgets.project_configuration import (
     AudioOutputSection,
     DriveLinksSection,
@@ -39,9 +43,27 @@ class ProjectSettingsDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(10)
 
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(10)
+
         title = QLabel("Pengaturan Proyek")
         title.setObjectName("PageTitle")
-        root.addWidget(title)
+        header.addWidget(title, 1)
+
+        self.help_button = QPushButton("?")
+        self.help_button.setObjectName("ProjectSettingsHelpButton")
+        self.help_button.setToolTip("Bantuan folder dan Google Drive")
+        self.help_button.setAccessibleName("Bantuan folder dan Google Drive")
+        self.help_button.setFixedSize(32, 32)
+        self.help_button.setProperty("secondary", True)
+        self.help_button.clicked.connect(self._show_folder_drive_help)
+        header.addWidget(
+            self.help_button,
+            0,
+            Qt.AlignmentFlag.AlignTop,
+        )
+        root.addLayout(header)
 
         subtitle = QLabel(
             "Kolom folder menggunakan filesystem path. Folder Google Drive Desktop "
@@ -141,6 +163,9 @@ class ProjectSettingsDialog(QDialog):
 
     def _read_source_filenames(self) -> None:
         self.source_section.read_source_filenames()
+
+    def _show_folder_drive_help(self) -> None:
+        show_folder_drive_help(self)
 
     def _accept_settings(self) -> None:
         project_folder = (
