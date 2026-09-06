@@ -37,7 +37,7 @@ class ToolsPage(PageShell):
 
         context = ContextPanel("TOOLS")
 
-        context.add_section_title("PROJECT")
+        context.add_section_title("PROYEK")
         for action, label in (
             ("tools.open_project_folder", 'Buka Folder Proyek'),
             ("tools.open_source_folder", 'Buka Folder Sumber'),
@@ -85,7 +85,7 @@ class ToolsPage(PageShell):
         title = QLabel('Peralatan & Pemeliharaan')
         title.setObjectName("PageTitle")
         subtitle = QLabel(
-            "Diagnostics, filesystem shortcuts, database safety, dan audit history."
+            "Diagnostik, pintasan filesystem, keamanan database, dan riwayat audit."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
@@ -284,7 +284,7 @@ class ToolsPage(PageShell):
                 0, 1, QTableWidgetItem("ERROR")
             )
             self.diagnostics_table.setItem(
-                0, 2, QTableWidgetItem("Failed")
+                0, 2, QTableWidgetItem("Gagal")
             )
             self.diagnostics_table.setItem(
                 0, 3, QTableWidgetItem(str(exc))

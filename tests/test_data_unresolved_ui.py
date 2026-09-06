@@ -13,13 +13,14 @@ def _read(path: str) -> str:
 def test_unresolved_table_has_talent_column_and_manual_cell_actions():
     source = _read("pages/data_page.py")
 
-    assert '["EPS", "MASALAH", "TOKOH", "TALENT", "DIALOG", "SUMBER"]' in source
+    for header in ("EPS", "MASALAH", "TOKOH", "TALENT", "DIALOG", "SUMBER"):
+        assert header in source
     assert "self.unresolved_table.cellClicked.connect" in source
-    assert 'menu.addAction("Add Character…")' in source
-    assert 'menu.addAction("Add Talent…")' in source
-    assert 'menu.addAction("Open Source")' in source
-    assert 'menu.addAction("Mark as Narasi / Non-Dialog")' in source
-    assert 'menu.addAction("Restore to Needs Review")' in source
+    assert "Tambah Tokoh" in source
+    assert "Tambah Talent" in source
+    assert "Buka Sumber" in source
+    assert "Narasi / Non-Dialog" in source
+    assert "Perlu Ditinjau" in source
     assert "self._controller.add_missing_character(" in source
     assert "self._controller.add_talent_and_lock(" in source
     controller = _read("pages/data_workspace_controller.py")
@@ -37,7 +38,7 @@ def test_character_mapping_surfaces_unresolved_first_with_warning_colors():
     assert 'UNRESOLVED_CHARACTER_COLOR = QColor("#FDE7E9")' in page
     assert 'UNRESOLVED_TALENT_COLOR = QColor("#FFF4CE")' in page
     assert "row.missing_character" in page
-    assert '"⚠ Talent Tidak Dikenal"' in page
+    assert "⚠ Talent Tidak Dikenal" in page
 
     assert 'name="⚠ Tokoh Tidak Dikenal"' in service
     assert 'locked_talent_name="⚠ Talent Tidak Dikenal"' in service

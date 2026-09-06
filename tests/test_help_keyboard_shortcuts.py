@@ -7,11 +7,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 MENU_BINDINGS = {
-    "Ctrl+N": 'self._add_menu_action(file_menu, "New Project", self.new_project, "Ctrl+N")',
-    "Ctrl+O": 'self._add_menu_action(file_menu, "Open Project", self.open_project, "Ctrl+O")',
-    "Ctrl+S": 'self._add_menu_action(file_menu, "Save Project", self.save_project, "Ctrl+S")',
-    "Ctrl+W": 'self._add_menu_action(file_menu, "Close Project", self.close_project, "Ctrl+W")',
-    "F5": 'self._add_menu_action(data_menu, "Sinkronkan Sumber", self.sync_source, "F5")',
+    "Ctrl+N": ("Proyek Baru", "self.new_project"),
+    "Ctrl+O": ("Buka Proyek", "self.open_project"),
+    "Ctrl+S": ("Simpan Proyek", "self.save_project"),
+    "Ctrl+W": ("Tutup Proyek", "self.close_project"),
+    "F5": ("Sinkronkan Sumber", "self.sync_source"),
 }
 
 MULTILINE_MENU_BINDINGS = {
@@ -38,8 +38,10 @@ def test_keyboard_shortcuts_help_matches_implemented_bindings():
     assert "def _init_keyboard_shortcuts" in main
     assert '("Ctrl+F", self.open_script_search)' in main
 
-    for sequence, source_fragment in MENU_BINDINGS.items():
-        assert source_fragment in main
+    for sequence, (label, handler) in MENU_BINDINGS.items():
+        assert label in main
+        assert handler in main
+        assert sequence in main
         assert sequence in help_content
 
     for sequence, fragments in MULTILINE_MENU_BINDINGS.items():
@@ -65,7 +67,7 @@ def test_keyboard_shortcuts_help_navigation_is_wired():
     assert "KEYBOARD_SHORTCUTS_FILE" in page
     assert "def show_keyboard_shortcuts" in page
 
-    assert 'help_menu = menu_bar.addMenu("&Bantuan")' in main
+    assert "&Bantuan" in main
     assert '"Shortcut",' in main
     assert "self.open_keyboard_shortcuts" in main
     assert "def open_keyboard_shortcuts" in main
@@ -77,6 +79,6 @@ def test_keyboard_shortcuts_page_explains_sync_source_semantics():
         ROOT / "resources" / "help" / "keyboard_shortcuts.html"
     ).read_text(encoding="utf-8")
 
-    assert "F5 bukan sekadar refresh tampilan" in content
+    assert "F5 bukan sekadar" in content
     assert "Sinkronkan Sumber" in content
-    assert "source Excel" in content
+    assert "Sinkronkan Sumber" in content

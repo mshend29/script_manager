@@ -183,7 +183,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     project_page = window.pages["PROJECT"]
     assert project_page.project_name.text() == "Qt Runtime"
     assert project_page.project_identity.text() == "QT  •  Test Client"
-    assert project_page.drive_status.text() == "Main drive: Configured"
+    assert project_page.drive_status.text() == "Drive utama: Dikonfigurasi"
     assert project_page.empty_action_bar.isHidden()
     assert project_page.episodes_card.value_label.text() == "1"
     assert project_page.dialogues_card.value_label.text() == "1"
@@ -242,7 +242,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     qapp.processEvents()
 
     assert dialog_page.table.rowCount() == 1
-    assert "0/1 recorded" in dialog_page.selection_info.text()
+    assert "0/1 direkam" in dialog_page.selection_info.text()
 
     dialog_page.search_edit.setText("not present")
     qapp.processEvents()
@@ -255,7 +255,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     dialog_page.set_all_checked(True)
     qapp.processEvents()
     assert next(iter(dialog_page._checkboxes.values())).isChecked()
-    assert "1/1 recorded" in dialog_page.selection_info.text()
+    assert "1/1 direkam" in dialog_page.selection_info.text()
 
     # Revision is only available after a real current Stem exists. Create the
     # expected output so Tracking's filesystem refresh derives STEMMED first.

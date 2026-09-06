@@ -317,4 +317,4 @@ def test_dialog_page_contains_source_revision_operator_feedback() -> None:
 
     assert "⚠ Sumber Direvisi" in source
     assert "source_revised" in source
-    assert "Recording history tetap dipertahankan" in source
+    assert "Riwayat rekaman tetap dipertahankan" in source

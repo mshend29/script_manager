@@ -329,8 +329,8 @@ class CompactTrackingPage(TrackingPage):
 
         queue_help = QLabel(
             "Episode hanya menampilkan episode yang dimainkan talent terpilih. "
-            "Daftar ini hanya berisi Recorded atau Revision yang masih perlu "
-            "di-stem; setelah Stemmed/Delivered track otomatis keluar dari queue."
+            "Daftar ini hanya berisi track Terekam atau Revisi yang masih perlu "
+            "di-stem; setelah selesai Stem atau Disetor, track otomatis keluar dari antrean."
         )
         queue_help.setObjectName("PageSubtitle")
         queue_help.setWordWrap(True)
@@ -701,7 +701,7 @@ class CompactTrackingPage(TrackingPage):
         entries = self._track_name_entries()
 
         if not entries:
-            label = QLabel("Pilih talent untuk melihat track name suggestion.")
+            label = QLabel("Pilih talent untuk melihat saran nama track.")
             label.setObjectName("MutedLabel")
             label.setWordWrap(True)
             self.track_name_grid.addWidget(label, 0, 0)
@@ -718,7 +718,7 @@ class CompactTrackingPage(TrackingPage):
             )
             alias_text = ", ".join(aliases) if aliases else "—"
             button.setToolTip(
-                f"Track Name: {name}\nAliases: {alias_text}\n"
+                f"Nama Track: {name}\nAlias: {alias_text}\n"
                 'Klik untuk menyalin'
             )
             self.track_name_grid.addWidget(button, index, 0)
@@ -784,7 +784,7 @@ class CompactTrackingPage(TrackingPage):
 
         self.output_episode_table = QTableWidget(0, 4)
         self.output_episode_table.setHorizontalHeaderLabels(
-            ["EPS", "STEM", "DELIVERY", 'PERINGATAN']
+            ["EPS", "STEM", "SETORAN", 'PERINGATAN']
         )
         self.output_episode_table.setMaximumHeight(230)
         self.output_episode_table.setAlternatingRowColors(True)
@@ -961,11 +961,11 @@ class CompactTrackingPage(TrackingPage):
 
             stem_text = (
                 '✓ Lengkap' if total > 0 and stem == total
-                else f"{stem}/{total} Tracks"
+                else f"{stem}/{total} track"
             )
             delivery_text = (
                 '✓ Lengkap' if total > 0 and delivered == total
-                else f"{delivered}/{total} Tracks"
+                else f"{delivered}/{total} track"
             )
             values = [
                 str(episode_number),
@@ -1218,11 +1218,11 @@ class CompactTrackingPage(TrackingPage):
                 source_name = Path(rename_item.source_path).name
                 output = QTableWidgetItem(f"↻ {source_name}")
                 output.setToolTip(
-                    "Rename Recommended\n"
+                    "Saran Ubah Nama\n"
                     f"Saat ini: {source_name}\n"
                     f"Diharapkan: {Path(rename_item.target_path).name}\n"
                     f"{rename_item.detail}\n\n"
-                    "Right-click or double-click to preview rename."
+                    "Klik kanan atau klik dua kali untuk melihat pratinjau perubahan nama."
                 )
                 output.setForeground(QColor(COLORS["attention_text"]))
             else:
@@ -1315,7 +1315,7 @@ class CompactTrackingPage(TrackingPage):
             output.setForeground(QColor(COLORS["attention_text"]))
             output.setToolTip(
                 f"{rename_item.detail}\n\n"
-                "Right-click atau double-click untuk manual match."
+                "Klik kanan atau klik dua kali untuk pencocokan manual."
             )
             output.setData(
                 Qt.ItemDataRole.UserRole,
@@ -1375,7 +1375,7 @@ class CompactTrackingPage(TrackingPage):
             QMessageBox.information(
                 self,
                 'Ubah Nama File Track',
-                "Pilih episode yang akan di-match dan rename.",
+                "Pilih episode yang akan dicocokkan dan diubah namanya.",
             )
             return
 
@@ -1472,7 +1472,7 @@ class CompactTrackingPage(TrackingPage):
             QMessageBox.critical(
                 self,
                 'Ubah Nama File Track',
-                f"Rename gagal. Tidak ada file yang sengaja dioverwrite.\n\n{exc}",
+                f"Ubah nama gagal. Tidak ada file yang ditimpa.\n\n{exc}",
             )
             return
 
@@ -1529,8 +1529,8 @@ class CompactTrackingPage(TrackingPage):
         alias_text = ", ".join(row.aliases) if row.aliases else "—"
         return (
             f"Episode: {row.episode_number}\n"
-            f"Canonical Tokoh: {row.character_name}\n"
-            f"Sumber Aliases in Episode: {alias_text}\n"
+            f"Tokoh Kanonis: {row.character_name}\n"
+            f"Alias Sumber di Episode: {alias_text}\n"
             f"Talent: {row.talent_name}\n"
             f"File Diharapkan: {row.expected_filename}"
         )

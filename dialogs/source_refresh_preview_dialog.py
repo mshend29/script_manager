@@ -41,8 +41,8 @@ class SourceRefreshPreviewDialog(QDialog):
         root.addWidget(title)
 
         subtitle = QLabel(
-            "Preview ini read-only. Database belum diubah. "
-            "Apply Refresh akan membuat safety backup terlebih dahulu."
+            "Pratinjau ini hanya-baca. Database belum diubah. "
+            "Sebelum pembaruan diterapkan, aplikasi akan membuat cadangan pengaman."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)

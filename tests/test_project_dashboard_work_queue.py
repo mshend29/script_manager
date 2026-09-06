@@ -131,7 +131,7 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "action_requested = Signal(str)" in page
-    assert '"PERLU PERHATIAN"' in page
+    assert "PERLU PERHATIAN" in page
     assert '"RECENT ACTIVITY"' in page
     assert "self.action_requested.emit(key)" in page
 
@@ -157,7 +157,7 @@ def test_source_preview_dialog_is_read_only_until_apply():
     )
 
     assert "Database belum diubah" in dialog
-    assert '"Terapkan Pembaruan"' in dialog
+    assert "Terapkan Pembaruan" in dialog
     assert "_source_sync_prepared" in main
     assert "apply_after_prepare" in main
     assert "_pending_report" in controller

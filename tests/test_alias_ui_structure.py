@@ -9,10 +9,10 @@ def _read(path: str) -> str:
 
 def test_character_alias_ui_is_manual_and_reversible():
     source = _read("pages/data_alias_page.py")
-    assert '"ALIAS"' in source
-    assert 'QPushButton("Set as Alias")' in source
-    assert 'QPushButton("Add Alias Name…")' in source
-    assert 'QPushButton("Remove Alias / Restore")' in source
+    assert "ALIAS" in source
+    assert "Jadikan Alias" in source
+    assert "Tambah Nama Alias…" in source
+    assert "Hapus Alias / Pulihkan" in source
     assert "set_character_alias" in source
     assert "remove_alias" in source
 

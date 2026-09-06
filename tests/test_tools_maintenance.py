@@ -134,7 +134,7 @@ def test_tools_page_and_header_expose_real_maintenance_actions():
     header = (root / "widgets" / "page_header.py").read_text(encoding="utf-8")
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert '"Peralatan & Pemeliharaan"' in page
+    assert "Peralatan & Pemeliharaan" in page
     assert '"PROJECT DIAGNOSTICS"' in page
     assert '"FOLDERS & DRIVE LINKS"' in page
     assert '"AUDIT HISTORY"' in page

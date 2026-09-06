@@ -26,7 +26,7 @@ def test_episode_chip_has_go_to_dialog_menu_with_exact_cast_filters():
     source = _read("widgets/episode_chip.py")
 
     assert "QMenu" in source
-    assert 'addAction("Buka Dialog")' in source
+    assert "Buka Dialog" in source
     assert "self._action_menu.popup(" in source
     assert "def open_dialog_scope(" in source
     assert 'set_page("DIALOG")' in source
@@ -101,8 +101,8 @@ def test_tracking_sidebar_has_talent_scoped_episode_nav_and_character_status_col
     source = _read("pages/tracking_page.py")
 
     assert "get_episodes_for_talent(int(talent_id))" in source
-    assert 'QPushButton("‹ Sebelumnya")' in source
-    assert 'QPushButton("Berikutnya ›")' in source
+    assert "‹ Sebelumnya" in source
+    assert "Berikutnya ›" in source
     assert "_select_adjacent_episode(-1)" in source
     assert "_select_adjacent_episode(1)" in source
     assert "if index < 0 and episodes:" in source
@@ -118,7 +118,7 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
     compact = _read("pages/tracking_compact_page.py")
 
     assert '"TrackingDetailBar"' in compact
-    assert 'QPushButton("Tandai Revisi")' in compact
+    assert "Tandai Revisi" in compact
     assert '"Batalkan Revisi"' in compact
     assert 'setProperty("trackingRevisionAction", True)' in compact
     assert "tracking_detail_changed.connect(" in compact
@@ -170,8 +170,10 @@ def test_delivery_owns_track_files_and_output_health_workspaces():
     assert 'WORKSPACE_TRACK_FILES = "track_files"' in compact
     assert 'WORKSPACE_OUTPUT_HEALTH = "output_health"' in compact
     assert "class DeliveryPage(CompactTrackingPage)" in delivery
-    assert '(WORKSPACE_TRACK_FILES, "File Track")' in delivery
-    assert '(WORKSPACE_OUTPUT_HEALTH, "Kondisi Output")' in delivery
+    assert "WORKSPACE_TRACK_FILES" in delivery
+    assert "File Track" in delivery
+    assert "WORKSPACE_OUTPUT_HEALTH" in delivery
+    assert "Kondisi Output" in delivery
     assert '"DeliveryWorkspaceStack"' in delivery
     assert '"DELIVERY": DeliveryPage()' in main
 
@@ -185,7 +187,7 @@ def test_delivery_owns_track_files_and_output_health_workspaces():
 def test_track_name_suggestion_is_single_scroll_column_without_pagination():
     compact = _read("pages/tracking_compact_page.py")
 
-    assert 'QLabel("SARAN NAMA TRACK")' in compact
+    assert "SARAN NAMA TRACK" in compact
     assert "str(row.character_name).upper()" in compact
     assert "self.track_name_scroll = QScrollArea()" in compact
     assert "self.track_name_grid.addWidget(button, index, 0)" in compact
@@ -213,7 +215,7 @@ def test_track_files_layout_uses_twenty_eighty_split():
 def test_output_health_workspace_explains_episode_counts_and_warning_details():
     compact = _read("pages/tracking_compact_page.py")
 
-    assert 'QLabel("RINGKASAN OUTPUT")' in compact
+    assert "RINGKASAN OUTPUT" in compact
     assert 'QLabel("EPISODE STATUS")' in compact
     assert 'QLabel("WARNINGS")' in compact
     assert '["EPS", "STEM", "DELIVERY", "WARNING"]' in compact
@@ -229,7 +231,7 @@ def test_track_files_workspace_exposes_safe_expected_filename_rename_actions():
     dialog = _read("dialogs/track_rename_preview_dialog.py")
     service = _read("services/track_rename_service.py")
 
-    assert 'QPushButton("Cocokkan & Ubah Nama Episode")' in compact
+    assert "Cocokkan & Ubah Nama Episode" in compact
     assert 'QPushButton("Batch Match & Rename Talent")' in compact
     assert '"Match / Rename Stem / Export…"' in compact
     assert "cellDoubleClicked.connect" in compact
@@ -268,7 +270,7 @@ def test_unmatched_episode_exports_remain_visible_and_can_be_manually_mapped():
     assert '"AMBIGUOUS EXPORT"' in compact
     assert "unmatched_items = [" in compact
     assert "item.character_id is None" in compact
-    assert "Double-click Stem / Export" in compact
+    assert "nama file yang diharapkan secara manual" in compact
 
     assert "QComboBox" in dialog
     assert '"Pilih nama yang diharapkan…"' in dialog

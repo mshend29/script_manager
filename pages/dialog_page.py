@@ -833,7 +833,7 @@ class DialogPage(QWidget):
         if count <= 0:
             return
 
-        self.copy_all_button.setText(f"Copied {count} Dialog")
+        self.copy_all_button.setText(f"{count} Dialog Tersalin")
         QTimer.singleShot(
             1500,
             lambda: self.copy_all_button.setText('Salin Semua Dialog'),
@@ -937,14 +937,14 @@ class DialogPage(QWidget):
             if bool(checkbox.property("source_revised"))
         )
         revision_text = (
-            f" • ⚠ {revised} sumber revised"
+            f" • ⚠ {revised} sumber direvisi"
             if revised
             else ""
         )
 
         self.selection_info.setText(
             f"{talent_name} • {character_name} • Episode {episode_number} • "
-            f"{recorded}/{total} recorded{revision_text}"
+            f"{recorded}/{total} direkam{revision_text}"
         )
 
     def _clear_source_revision_marker(self, dialogue_id: int) -> None:

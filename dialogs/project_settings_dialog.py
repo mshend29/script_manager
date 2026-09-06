@@ -110,10 +110,9 @@ class ProjectSettingsDialog(QDialog):
         root.addWidget(title)
 
         subtitle = QLabel(
-            "Folder fields menggunakan filesystem path. Folder Google Drive Desktop "
+            "Kolom folder menggunakan path filesystem. Folder Google Drive Desktop "
             "diperlakukan seperti folder filesystem biasa (mis. D:\\My Drive\\...). "
-            "Client Drive Links pada tab Project adalah URL browser dan tidak digunakan "
-            "untuk membaca file."
+            "Tautan Drive Klien adalah URL browser dan tidak digunakan untuk membaca file."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
@@ -173,8 +172,8 @@ class ProjectSettingsDialog(QDialog):
         project_form.addRow('File Proyek', self.project_file)
 
         location_note = QLabel(
-            "Project File hanya informasi lokasi file .smproj yang sedang dibuka. "
-            "File dapat dipindahkan saat project tidak sedang digunakan."
+            "File Proyek hanya menunjukkan lokasi file .smproj yang sedang dibuka. "
+            "File dapat dipindahkan saat proyek tidak sedang digunakan."
         )
         location_note.setWordWrap(True)
         location_note.setObjectName("PageSubtitle")
@@ -192,8 +191,8 @@ class ProjectSettingsDialog(QDialog):
         self.delivery_drive_url = QLineEdit(settings.delivery_drive_url)
 
         self.main_drive_url.setPlaceholderText("https://drive.google.com/...")
-        self.material_drive_url.setPlaceholderText("optional")
-        self.delivery_drive_url.setPlaceholderText("optional")
+        self.material_drive_url.setPlaceholderText("opsional")
+        self.delivery_drive_url.setPlaceholderText("opsional")
 
         drive_form.addRow('Drive Utama', self.main_drive_url)
         drive_form.addRow('Folder Material', self.material_drive_url)
@@ -238,7 +237,7 @@ class ProjectSettingsDialog(QDialog):
         filename_layout.addWidget(self.read_source_filenames_button)
 
         self.source_pattern_status = QLabel(
-            "Belum membaca filename. Proses ini hanya membaca nama file, "
+            "Belum membaca nama file. Proses ini hanya membaca nama file, "
             "bukan isi workbook."
         )
         self.source_pattern_status.setWordWrap(True)
@@ -290,8 +289,8 @@ class ProjectSettingsDialog(QDialog):
         delimiter_form.addRow('Setelah Nomor Episode', self.episode_after)
 
         delimiter_help = QLabel(
-            "Delimiter diterapkan ke filename yang dibaca dari Folder Sumber. "
-            "Import Source tetap diperlukan untuk membaca isi naskah."
+            "Pemisah diterapkan ke nama file yang dibaca dari Folder Sumber. "
+            "Sinkronkan Sumber tetap diperlukan untuk membaca isi naskah."
         )
         delimiter_help.setWordWrap(True)
         delimiter_help.setObjectName("PageSubtitle")

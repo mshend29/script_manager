@@ -61,21 +61,21 @@ class DashboardCard(QFrame):
         # these role-specific overrides are local to this workspace.
         self.setStyleSheet(
             f"""
-            QFrame#ProyekMetricCard {{
+            QFrame#ProjectMetricCard {{
                 border: none;
                 background: transparent;
                 border-radius: {RADII['md']}px;
             }}
-            QFrame#ProyekMetricCard[dashboardRole="pipeline"] {{
+            QFrame#ProjectMetricCard[dashboardRole="pipeline"] {{
                 padding: 2px;
             }}
-            QFrame#ProyekMetricCard[dashboardRole="pipeline"][pipelineState="ACTIVE"] {{
+            QFrame#ProjectMetricCard[dashboardRole="pipeline"][pipelineState="ACTIVE"] {{
                 background: {COLORS['accent_soft']};
             }}
-            QFrame#ProyekMetricCard[dashboardRole="pipeline"][pipelineState="DONE"] {{
+            QFrame#ProjectMetricCard[dashboardRole="pipeline"][pipelineState="DONE"] {{
                 background: {COLORS['recorded_soft']};
             }}
-            QFrame#ProyekMetricCard[dashboardRole="revision"][pipelineState="REVISION"] {{
+            QFrame#ProjectMetricCard[dashboardRole="revision"][pipelineState="REVISION"] {{
                 background: {COLORS['revision_soft']};
             }}
             """
@@ -160,8 +160,8 @@ class ProjectPage(QWidget):
         production_layout.addWidget(pipeline_title)
 
         pipeline_helper = QLabel(
-            "Follow the work from recording to stem and final delivery. "
-            "Revision appears as a rework loop instead of a separate final stage."
+            "Ikuti alur kerja dari Rekaman ke Stem hingga Setoran akhir. "
+            "Revisi tampil sebagai loop pengerjaan ulang, bukan tahap akhir terpisah."
         )
         pipeline_helper.setObjectName("ProjectSectionHelper")
         pipeline_helper.setWordWrap(True)
@@ -681,7 +681,7 @@ class ProjectPage(QWidget):
 
         self._clear_layout(self.action_layout)
         self.attention_count.setText(str(len(snapshot.actions)))
-        attention_state = "ATTENTION" if snapshot.actions else 'SEHAT'
+        attention_state = "ATTENTION" if snapshot.actions else "HEALTHY"
         self.attention_count.setProperty("healthState", attention_state)
         self.attention_count.style().unpolish(self.attention_count)
         self.attention_count.style().polish(self.attention_count)
@@ -744,7 +744,7 @@ class ProjectPage(QWidget):
                 row_layout.addLayout(text_layout, 1)
                 self.activity_layout.addWidget(row)
         else:
-            label = QLabel("Belum ada audit activity.")
+            label = QLabel("Belum ada aktivitas audit.")
             label.setObjectName("ProjectSectionHelper")
             self.activity_layout.addWidget(label)
 
@@ -761,8 +761,8 @@ class ProjectPage(QWidget):
             state = "ATTENTION"
             text = 'PERLU PERHATIAN'
         else:
-            state = 'SEHAT'
-            text = 'SEHAT'
+            state = "HEALTHY"
+            text = "SEHAT"
 
         self.health_badge.setProperty("healthState", state)
         self.health_badge.setText(text)

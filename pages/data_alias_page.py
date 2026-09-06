@@ -87,8 +87,8 @@ class AliasDataPage(DataPage):
         self.remove_alias_button.setProperty("secondary", True)
 
         self.alias_note = QLabel(
-            "Alias menyatukan label source ke canonical character tanpa mengubah file client. "
-            "Recording tetap; status tracking scope yang terdampak direset agar aman."
+            "Alias menyatukan variasi nama sumber ke tokoh kanonis tanpa mengubah file klien. "
+            "Riwayat rekaman tetap dipertahankan; status Tracking pada lingkup terdampak direset agar aman."
         )
         self.alias_note.setObjectName("MutedLabel")
         self.alias_note.setWordWrap(True)

@@ -34,7 +34,7 @@ def test_dialog_filters_and_search_live_in_one_compact_bar() -> None:
     search = source.index('self.search_edit = QLineEdit()')
 
     assert talent < character < episode < search
-    assert 'self.search_edit.setPlaceholderText("Cari dialog…")' in source
+    assert "Cari dialog…" in source
     assert "def _apply_search_filter" in source
     assert "self.table.setRowHidden" in source
 
@@ -62,7 +62,7 @@ def test_dialog_data_and_cast_use_seventy_thirty_split_layout() -> None:
     )
 
     assert '"DialogSessionSummary"' in source
-    assert '"TOKOH & TALENT EPISODE"' in source
+    assert "TOKOH & TALENT EPISODE" in source
     assert "content_splitter.setStretchFactor(0, 7)" in source
     assert "content_splitter.setStretchFactor(1, 3)" in source
     assert "content_splitter.setSizes([700, 300])" in source

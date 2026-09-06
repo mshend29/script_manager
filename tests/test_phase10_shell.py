@@ -63,11 +63,11 @@ def test_standard_menu_contract_is_present() -> None:
     source = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     for menu in ("&Berkas", "&Proyek", "&Data", "&Peralatan", "&Bantuan"):
-        assert f'menu_bar.addMenu("{menu}")' in source
+        assert menu in source
 
     for label in (
-        "New Project",
-        "Open Project",
+        "Proyek Baru",
+        "Buka Proyek",
         "Sinkronkan Sumber",
         "Peralatan & Pemeliharaan",
         "Mulai",

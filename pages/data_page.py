@@ -97,8 +97,8 @@ class DataPage(PageShell):
         context.add_widget(self.unlock_mapping_button)
 
         self.mapping_note = QLabel(
-            "Manual lock menjadi mapping authoritative untuk cast aktif. "
-            "Unlock hanya melepas kunci; re-resolve berikutnya terjadi saat Muat Ulang Data."
+            "Pemetaan yang dikunci manual menjadi acuan untuk cast aktif. "
+            "Buka kunci hanya melepas kunci; resolusi ulang berikutnya terjadi saat Muat Ulang Data."
         )
         self.mapping_note.setWordWrap(True)
         self.mapping_note.setObjectName("MutedLabel")
@@ -263,7 +263,7 @@ class DataPage(PageShell):
         self.unresolved_view_combo = QComboBox()
         self.unresolved_view_combo.addItem('Perlu Ditinjau', "review")
         self.unresolved_view_combo.addItem('Narasi / Non-Dialog', "narration")
-        self.unresolved_view_combo.addItem("All", "all")
+        self.unresolved_view_combo.addItem("Semua", "all")
         controls.addWidget(self.unresolved_view_combo)
         controls.addStretch(1)
         layout.addLayout(controls)
@@ -275,8 +275,8 @@ class DataPage(PageShell):
             4, QHeaderView.ResizeMode.Stretch
         )
         self.unresolved_table.setToolTip(
-            "Needs Review: klik CHARACTER untuk Add Character, TALENT untuk Add Talent, "
-            "ISSUE untuk Mark as Narration, atau SOURCE untuk membuka source."
+            "Perlu Ditinjau: klik TOKOH untuk menambah tokoh, TALENT untuk menambah talent, "
+            "MASALAH untuk menandai Narasi / Non-Dialog, atau SUMBER untuk membuka file sumber."
         )
         layout.addWidget(self.unresolved_table)
         self.tabs.addTab(tab, 'Belum Dipetakan')
@@ -303,9 +303,9 @@ class DataPage(PageShell):
         layout.setSpacing(8)
 
         summary_row = QHBoxLayout()
-        self.validation_system_label = QLabel("System 0")
-        self.validation_review_label = QLabel("Review 0")
-        self.validation_workflow_label = QLabel("Workflow 0")
+        self.validation_system_label = QLabel("Sistem 0")
+        self.validation_review_label = QLabel("Peninjauan 0")
+        self.validation_workflow_label = QLabel("Alur 0")
         for label in (
             self.validation_system_label,
             self.validation_review_label,
@@ -319,7 +319,7 @@ class DataPage(PageShell):
         summary_row.addStretch(1)
         layout.addLayout(summary_row)
 
-        self.validation_summary = QLabel("Validation belum dijalankan.")
+        self.validation_summary = QLabel("Validasi belum dijalankan.")
         self.validation_summary.setObjectName("PageSubtitle")
         layout.addWidget(self.validation_summary)
 
@@ -344,7 +344,7 @@ class DataPage(PageShell):
         layout.addLayout(filters)
 
         self.validation_table = self._new_table(
-            ['TINGKAT', 'KATEGORI', "EPS", 'ENTITAS', "CODE", 'PESAN', 'AKSI']
+            ['TINGKAT', 'KATEGORI', "EPS", 'ENTITAS', "KODE", 'PESAN', 'AKSI']
         )
         self.validation_table.horizontalHeader().setSectionResizeMode(
             5, QHeaderView.ResizeMode.Stretch
@@ -413,10 +413,10 @@ class DataPage(PageShell):
             self.mapping_talent_combo.clear()
             self.mapping_character_label.setText('Pilih tokoh dari tabel.')
             self.health_label.setText('Belum ada proyek terbuka')
-            self.validation_summary.setText("Validation belum dijalankan.")
-            self.validation_system_label.setText("System 0")
-            self.validation_review_label.setText("Review 0")
-            self.validation_workflow_label.setText("Workflow 0")
+            self.validation_summary.setText("Validasi belum dijalankan.")
+            self.validation_system_label.setText("Sistem 0")
+            self.validation_review_label.setText("Peninjauan 0")
+            self.validation_workflow_label.setText("Alur 0")
             for label in self.overview_values.values():
                 label.setText("0")
         finally:
@@ -475,7 +475,7 @@ class DataPage(PageShell):
 
         if summary.system_errors:
             self.health_label.setText(
-                f"✕ {summary.system_errors} system error. Buka Validation."
+                f"✕ {summary.system_errors} error sistem. Buka Validasi."
             )
         elif needs_review or summary.workflow_warnings:
             self.health_label.setText(

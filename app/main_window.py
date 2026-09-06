@@ -164,7 +164,7 @@ class MainWindow(QMainWindow):
 
         self._init_source_sync_progress_ui()
         self._init_keyboard_shortcuts()
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage("Siap")
         self.set_page("PROJECT")
         self.refresh_project_page()
 
@@ -345,7 +345,7 @@ class MainWindow(QMainWindow):
 
         self.page_stack.setCurrentWidget(self.pages[page_name])
         self.workspace_nav.select_page(page_name)
-        self.statusBar().showMessage(f"{page_name.title()} page")
+        self.statusBar().showMessage(f"Workspace {page_name.title()}")
 
     # ------------------------------------------------------------------
     # PROJECT
@@ -572,14 +572,14 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 'Duplikat Proyek',
-                f"Duplicate gagal.\n\n{exc}",
+                f"Duplikat gagal.\n\n{exc}",
             )
             return
 
         self._record_recent_project(duplicated)
         self._refresh_after_project_switch(duplicated)
         self.statusBar().showMessage(
-            f"Duplicate opened: {duplicated.project_file}",
+            f"Duplikat dibuka: {duplicated.project_file}",
             5000,
         )
 
@@ -668,7 +668,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 'Pulihkan Proyek',
-                f"Recovery gagal.\n\n{exc}",
+                f"Pemulihan gagal.\n\n{exc}",
             )
             return
 
@@ -678,7 +678,7 @@ class MainWindow(QMainWindow):
             self,
             'Pulihkan Proyek',
             (
-                "Project berhasil direcover.\n\n"
+                "Proyek berhasil dipulihkan.\n\n"
                 f"{recovered.project_file}"
             ),
         )
@@ -718,7 +718,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 'Tutup Proyek',
-                f"Proyek ditutup, tetapi terjadi error saat save:\n{exc}",
+                f"Proyek ditutup, tetapi terjadi error saat menyimpan:\n{exc}",
             )
 
         self._clear_data_pages()
@@ -766,7 +766,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 'Pengaturan Proyek',
-                f"Gagal menyimpan settings.\n\n{exc}",
+                f"Gagal menyimpan pengaturan.\n\n{exc}",
             )
             return
 
