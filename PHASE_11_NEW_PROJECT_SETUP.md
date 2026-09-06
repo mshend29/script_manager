@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.04 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.06 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -328,31 +328,33 @@ Checkpoint test setelah 11.02–11.04:
 
 ## 11.05 — Bangun shell wizard Proyek Baru
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.03, 11.04
 
 Tujuan: mengganti form panjang dengan wizard milestone tanpa mengaktifkan create kompleks terlebih dahulu.
 
 UI target:
 
-- [ ] milestone rail di kiri;
-- [ ] active page di kanan;
-- [ ] title `Proyek Baru`;
-- [ ] tombol `?` di header;
-- [ ] footer `< Kembali`, `Berikutnya >`, `Batal`;
-- [ ] milestone terakhir memakai `Buat Proyek`;
-- [ ] state valid/warning/error;
-- [ ] user boleh kembali ke milestone sebelumnya;
-- [ ] forward navigation dikunci oleh validation gate;
-- [ ] data field tetap tersimpan saat Back/Next.
+- [x] milestone rail di kiri;
+- [x] active page di kanan;
+- [x] title `Proyek Baru`;
+- [x] tombol `?` di header;
+- [x] footer `< Kembali`, `Berikutnya >`, `Batal`;
+- [x] milestone terakhir memakai `Buat Proyek`;
+- [x] state valid/warning/error;
+- [x] user boleh kembali ke milestone sebelumnya;
+- [x] forward navigation dikunci oleh validation gate;
+- [x] data field tetap tersimpan saat Back/Next.
 
 Responsiveness:
 
-- [ ] 1920×1080;
-- [ ] 1366×768;
-- [ ] scale 100%;
-- [ ] scale 125%;
-- [ ] scale 150%.
+- [x] 1920×1080;
+- [x] 1366×768;
+- [x] scale 100%;
+- [x] scale 125%;
+- [x] scale 150%.
+
+Automated responsiveness evidence memakai Qt offscreen logical-size + `QT_SCALE_FACTOR` smoke. Windows DPI acceptance nyata tetap diuji kembali pada 11.21/11.23 dan tidak dianggap tergantikan oleh smoke CI ini.
 
 Exit criteria:
 
@@ -363,39 +365,47 @@ Exit criteria:
 
 ## 11.06 — Milestone 1: Inisialisasi Proyek
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.05
 
 Field:
 
-- [ ] Nama Proyek
-- [ ] Kode Proyek
-- [ ] Klien
-- [ ] Tanggal Mulai
-- [ ] Penyimpanan Proyek
-- [ ] preview final `.smproj`
+- [x] Nama Proyek
+- [x] Kode Proyek
+- [x] Klien
+- [x] Tanggal Mulai
+- [x] Penyimpanan Proyek
+- [x] preview final `.smproj`
 
 Validation:
 
-- [ ] semua field wajib terisi;
-- [ ] destination folder valid;
-- [ ] folder dapat dibuat bila perlu;
-- [ ] destination writable;
-- [ ] destination bukan file;
-- [ ] `.smproj` belum ada.
+- [x] semua field wajib terisi;
+- [x] destination folder valid;
+- [x] folder dapat dibuat bila perlu;
+- [x] destination writable;
+- [x] destination bukan file;
+- [x] `.smproj` belum ada.
 
 Auto-code behavior:
 
-- [ ] Kode boleh mengikuti Nama Proyek sebelum user mengedit code manual.
-- [ ] Setelah user mengubah Kode secara manual, perubahan Nama tidak boleh menimpa Kode.
+- [x] Kode boleh mengikuti Nama Proyek sebelum user mengedit code manual.
+- [x] Setelah user mengubah Kode secara manual, perubahan Nama tidak boleh menimpa Kode.
 
 Guardrail:
 
-- belum membuat project/file permanen.
+- [x] belum membuat project/file permanen.
 
 Exit criteria:
 
 - milestone hanya `✓` bila seluruh blocker lolos.
+
+Checkpoint test setelah 11.06:
+
+- full suite: `364 passed, 22 skipped`;
+- compile Python sources: success;
+- Qt runtime Phase 11 + existing runtime: success;
+- Phase 11 wizard scale smoke pada 100% / 125% / 150%: success;
+- tidak ada `.smproj` dibuat selama navigasi/validation Milestone 1.
 
 ---
 
@@ -1175,6 +1185,12 @@ Status: LOCKED
 
 Wizard Proyek Baru menerapkan blocker lengkap Phase 11. `ProjectManager.create()` tetap kompatibel untuk caller programatik/test lama, tetapi semua caller memakai formatter filename resmi yang sama dan manager tetap menolak overwrite destination.
 
+## D-011 — Folder destination hanya dibuat secara eksplisit
+
+Status: LOCKED
+
+Mengetik path destination yang belum ada tidak membuat direktori atau file. Wizard menampilkan blocker dan tombol `Buat Folder`; direktori baru dibuat hanya setelah aksi eksplisit user. Probe writability selalu membersihkan file sementara.
+
 ---
 
 # Progress Log
@@ -1219,6 +1235,20 @@ YYYY-MM-DD — 11.xx
 - keputusan: metadata name/code tidak disanitasi; project existing tidak di-rename; Save As/Duplicate tetap target user.
 - commit/PR: `cc7c589ba3e537fc14f785d83d361da3c91fa03e` / PR #75.
 - next: 11.05 Wizard shell.
+
+2026-09-06 — 11.05
+- perubahan: wizard lima milestone, rail kiri, stacked page, bantuan `?`, Back/Next/Cancel, final `Buat Proyek`, generic validation gate, state preservation, serta runtime coverage ukuran/scaling.
+- test: full regression sesudah shell `358 passed, 17 skipped`; kemudian gate terkini `364 passed, 22 skipped`; Qt runtime + Phase 11 wizard size/scale smoke success.
+- keputusan: automated size/scale test adalah regression proxy; Windows DPI UAT nyata tetap wajib di 11.21/11.23.
+- commit/PR: `3e731fdbb695d28d74741d59af6dbdf517a42c77`, `524ccae6f67f0a06ee29409cfb6318cf1aa17336`, `cf6475e35f326ed2d7201e18d80110a29a0e6280` / PR #75.
+- next: 11.06.
+
+2026-09-06 — 11.06
+- perubahan: validator identity/destination terpisah; Nama/Kode/Klien/Tanggal wajib; filesystem-vs-URL validation; collision dan writable probe; tombol explicit `Buat Folder`; auto-code mengikuti Nama sampai Kode benar-benar diedit manual.
+- test: full suite `364 passed, 22 skipped`; Qt runtime Phase 11 + existing runtime success; size 1920×1080/1366×768 dan scale 100/125/150 smoke success.
+- keputusan: destination belum ada tidak dibuat saat typing; tidak ada `.smproj` selama wizard navigation/validation.
+- commit/PR: `40b34b685ea6f74239000359abf64dc6ebf76c62`, `07a22b1934cd7b9c79c3d5ec994cf6966233aee6`, `cf6475e35f326ed2d7201e18d80110a29a0e6280` / PR #75.
+- next: 11.07 Sumber Naskah.
 
 ---
 
