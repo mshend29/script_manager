@@ -35,6 +35,7 @@ from services.project_setup_validation import (
 from services.source_preflight_service import SourcePreflightReport
 from services.source_setup_validation import SourceFilenameValidation
 from widgets.audio_setup_panel import AudioSetupPanel
+from widgets.folder_drive_help import show_folder_drive_help
 from widgets.folder_links_summary_panel import FolderLinksSummaryPanel
 from widgets.project_configuration import (
     AudioOutputSection,
@@ -114,8 +115,8 @@ class NewProjectDialog(QDialog):
 
         self.help_button = QPushButton("?")
         self.help_button.setObjectName("WizardHelpButton")
-        self.help_button.setToolTip("Bantuan setup proyek")
-        self.help_button.setAccessibleName("Bantuan setup proyek")
+        self.help_button.setToolTip("Bantuan folder dan Google Drive")
+        self.help_button.setAccessibleName("Bantuan folder dan Google Drive")
         self.help_button.setFixedSize(32, 32)
         self.help_button.setProperty("secondary", True)
         self.help_button.clicked.connect(self._show_setup_help)
@@ -820,16 +821,7 @@ class NewProjectDialog(QDialog):
         self._refresh_identity_validation(verify_writable=True)
 
     def _show_setup_help(self) -> None:
-        QMessageBox.information(
-            self,
-            "Bantuan Proyek Baru",
-            (
-                "Gunakan Kembali/Berikutnya untuk berpindah langkah. "
-                "Project belum ditulis ke disk selama navigasi wizard.\n\n"
-                "Bantuan folder filesystem dan Google Drive akan tersedia "
-                "secara kontekstual pada langkah Folder & Tautan."
-            ),
-        )
+        show_folder_drive_help(self)
 
     def reject(self) -> None:
         if self._preflight_running:
