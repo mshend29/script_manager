@@ -4,10 +4,15 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
+    QFrame,
     QHeaderView,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
     QTableView,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -19,7 +24,7 @@ from widgets.page_shell import PageShell
 
 
 class ScriptTableModel(QAbstractTableModel):
-    HEADERS = ("EPS", "IN", "OUT", "DIALOG", "CHARACTER", "TALENT")
+    HEADERS = ("EPISODE", "IN", "OUT", "DIALOG", "TOKOH", "TALENT")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -57,20 +62,24 @@ class ScriptTableModel(QAbstractTableModel):
             if column == 3:
                 return row.dialogue
             if column == 4:
-                return " / ".join(row.characters) if row.characters else "⚠ Unresolved"
+                return (
+                    " / ".join(row.characters)
+                    if row.characters
+                    else "⚠ Belum dipetakan"
+                )
             if column == 5:
                 if not row.characters:
-                    return "⚠ Unresolved"
+                    return "⚠ Belum dipetakan"
                 return " / ".join(
-                    talent if talent else "⚠ Unresolved"
+                    talent if talent else "⚠ Belum dipetakan"
                     for talent in row.talents
                 )
 
         if role == Qt.ItemDataRole.ToolTipRole:
             if column == 3 and row.source_file_name:
-                return f"Source: {row.source_file_name}"
+                return f"Sumber: {row.source_file_name}"
             if column in {4, 5} and row.has_unresolved_cast:
-                return "Character/talent mapping belum sepenuhnya resolved."
+                return "Pemetaan tokoh/talent belum sepenuhnya selesai."
 
         if role == Qt.ItemDataRole.TextAlignmentRole and column in {0, 1, 2}:
             return int(
@@ -109,42 +118,96 @@ class ScriptPage(PageShell):
         self._service: DialogueService | None = None
         self._loading_filters = False
 
-        context = ContextPanel("FILTER")
+        context = ContextPanel("TOKOH & TALENT")
+        self.cast_scope_label = QLabel("Belum ada proyek terbuka")
+        self.cast_scope_label.setObjectName("MutedLabel")
+        self.cast_scope_label.setWordWrap(True)
+        context.add_widget(self.cast_scope_label)
 
-        context.add_widget(QLabel("Episode"))
-        self.episode_combo = QComboBox()
-        self.episode_combo.addItem("All", None)
-        context.add_widget(self.episode_combo)
-
-        context.add_widget(QLabel("Search"))
-        self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("Search script...")
-        self.search_edit.setClearButtonEnabled(True)
-        context.add_widget(self.search_edit)
-        context.add_stretch()
+        self.cast_table = QTableWidget(0, 2)
+        self.cast_table.setObjectName("ScriptCastTable")
+        self.cast_table.setHorizontalHeaderLabels(["TOKOH", "TALENT"])
+        self.cast_table.setAlternatingRowColors(False)
+        self.cast_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.cast_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.NoSelection
+        )
+        self.cast_table.verticalHeader().setVisible(False)
+        self.cast_table.verticalHeader().setDefaultSectionSize(28)
+        self.cast_table.setShowGrid(False)
+        cast_header = self.cast_table.horizontalHeader()
+        cast_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        cast_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        context.layout_root.addWidget(self.cast_table, 1)
 
         workspace = QWidget()
         layout = QVBoxLayout(workspace)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(10)
 
-        title = QLabel("Script")
+        title = QLabel("Naskah")
         title.setObjectName("PageTitle")
         layout.addWidget(title)
 
-        self.result_label = QLabel("No project open")
-        self.result_label.setObjectName("MutedLabel")
-        layout.addWidget(self.result_label)
+        filter_bar = QFrame()
+        filter_bar.setObjectName("ScriptFilterBar")
+        filter_layout = QHBoxLayout(filter_bar)
+        filter_layout.setContentsMargins(12, 9, 12, 9)
+        filter_layout.setSpacing(8)
+
+        self.result_label = QLabel("Belum ada proyek terbuka")
+        self.result_label.setObjectName("ScriptSummary")
+        self.result_label.setMinimumWidth(170)
+        filter_layout.addWidget(self.result_label, 1)
+
+        episode_label = QLabel("Episode")
+        episode_label.setObjectName("ScriptFilterLabel")
+        filter_layout.addWidget(episode_label)
+
+        self.episode_combo = QComboBox()
+        self.episode_combo.setObjectName("ScriptEpisodeFilter")
+        self.episode_combo.addItem("Semua Episode", None)
+        self.episode_combo.setMinimumWidth(138)
+        self.episode_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.episode_combo.setMinimumContentsLength(12)
+        filter_layout.addWidget(self.episode_combo)
+
+        self.prev_episode_button = QPushButton("‹ Sebelumnya")
+        self.prev_episode_button.setObjectName("ScriptPrevEpisode")
+        self.prev_episode_button.setProperty("secondary", True)
+        self.next_episode_button = QPushButton("Berikutnya ›")
+        self.next_episode_button.setObjectName("ScriptNextEpisode")
+        self.next_episode_button.setProperty("secondary", True)
+        filter_layout.addWidget(self.prev_episode_button)
+        filter_layout.addWidget(self.next_episode_button)
+
+        self.search_edit = QLineEdit()
+        self.search_edit.setObjectName("ScriptSearch")
+        self.search_edit.setPlaceholderText("Cari naskah…")
+        self.search_edit.setClearButtonEnabled(True)
+        self.search_edit.setMinimumWidth(210)
+        filter_layout.addWidget(self.search_edit, 1)
+
+        layout.addWidget(filter_bar)
 
         self.table = ScriptTableView()
+        self.table.setObjectName("ScriptTable")
         self.table_model = ScriptTableModel(self.table)
         self.table.setModel(self.table_model)
         self.table.setAlternatingRowColors(True)
         self.table.setWordWrap(True)
         self.table.setSortingEnabled(False)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(44)
 
@@ -167,8 +230,15 @@ class ScriptPage(PageShell):
         self.search_timer.setInterval(250)
         self.search_timer.timeout.connect(self.refresh_rows)
 
-        self.episode_combo.currentIndexChanged.connect(self._filter_changed)
+        self.episode_combo.currentIndexChanged.connect(self._episode_changed)
+        self.prev_episode_button.clicked.connect(
+            lambda: self._select_adjacent_episode(-1)
+        )
+        self.next_episode_button.clicked.connect(
+            lambda: self._select_adjacent_episode(1)
+        )
         self.search_edit.textChanged.connect(self._search_changed)
+        self._update_episode_navigation()
 
     # ------------------------------------------------------------------
     # PROJECT / DATABASE BINDING
@@ -177,6 +247,7 @@ class ScriptPage(PageShell):
     def set_database(self, database: Database | None) -> None:
         if database is self._database and self._service is not None:
             self.refresh_rows()
+            self._refresh_cast_sidebar()
             return
 
         self._database = database
@@ -189,7 +260,7 @@ class ScriptPage(PageShell):
         self.reload()
 
     def refresh_from_database(self, database: Database | None) -> None:
-        """Reload source-derived filters and rows while preserving filters."""
+        """Reload source-derived episode options and rows while preserving scope."""
         if database is not self._database or self._service is None:
             self.set_database(database)
             return
@@ -198,9 +269,6 @@ class ScriptPage(PageShell):
             self.clear_data()
             return
 
-        # set_database() intentionally has a cheap same-database path that only
-        # refreshes rows. A project data revision must also reload filter
-        # options so newly added episodes become available immediately.
         self.reload()
 
     def clear_data(self) -> None:
@@ -217,8 +285,11 @@ class ScriptPage(PageShell):
         finally:
             self._loading_filters = False
 
+        self._update_episode_navigation()
         self.table_model.set_rows([])
-        self.result_label.setText("No project open")
+        self.cast_table.setRowCount(0)
+        self.cast_scope_label.setText("Belum ada proyek terbuka")
+        self.result_label.setText("Belum ada proyek terbuka")
 
     def reload(self) -> None:
         if self._service is None:
@@ -231,7 +302,8 @@ class ScriptPage(PageShell):
             options = self._service.get_script_filter_options()
         except Exception as exc:
             self.table_model.set_rows([])
-            self.result_label.setText(f"Failed to load Script filters: {exc}")
+            self.cast_table.setRowCount(0)
+            self.result_label.setText(f"Gagal membaca filter naskah: {exc}")
             return
 
         self._loading_filters = True
@@ -243,6 +315,8 @@ class ScriptPage(PageShell):
         finally:
             self._loading_filters = False
 
+        self._update_episode_navigation()
+        self._refresh_cast_sidebar()
         self.refresh_rows()
 
     @staticmethod
@@ -250,7 +324,7 @@ class ScriptPage(PageShell):
         combo.blockSignals(True)
         try:
             combo.clear()
-            combo.addItem("All", None)
+            combo.addItem("Semua Episode", None)
         finally:
             combo.blockSignals(False)
 
@@ -260,18 +334,108 @@ class ScriptPage(PageShell):
         combo.setCurrentIndex(index if index >= 0 else 0)
 
     # ------------------------------------------------------------------
-    # FILTERS
+    # FILTER / EPISODE NAVIGATION
     # ------------------------------------------------------------------
 
-    def _filter_changed(self) -> None:
+    def _episode_changed(self) -> None:
         if self._loading_filters:
             return
+        self._update_episode_navigation()
+        self._refresh_cast_sidebar()
         self.refresh_rows()
+
+    def _select_adjacent_episode(self, offset: int) -> None:
+        count = self.episode_combo.count()
+        if count <= 1:
+            return
+
+        current = max(0, self.episode_combo.currentIndex())
+        target = min(max(current + int(offset), 0), count - 1)
+        if target != current:
+            self.episode_combo.setCurrentIndex(target)
+
+    def _update_episode_navigation(self) -> None:
+        count = self.episode_combo.count()
+        current = self.episode_combo.currentIndex()
+        self.prev_episode_button.setEnabled(count > 1 and current > 0)
+        self.next_episode_button.setEnabled(
+            count > 1 and 0 <= current < count - 1
+        )
 
     def _search_changed(self) -> None:
         if self._loading_filters:
             return
         self.search_timer.start()
+
+    # ------------------------------------------------------------------
+    # CAST SIDEBAR
+    # ------------------------------------------------------------------
+
+    def _refresh_cast_sidebar(self) -> None:
+        self.cast_table.setRowCount(0)
+        if self._service is None:
+            self.cast_scope_label.setText("Belum ada proyek terbuka")
+            return
+
+        episode_number = self.episode_combo.currentData()
+        try:
+            rows = self._service.get_script_rows(
+                episode_number=episode_number,
+                search="",
+            )
+        except Exception as exc:
+            self.cast_scope_label.setText(f"Gagal membaca tokoh/talent: {exc}")
+            return
+
+        pairs: set[tuple[str, str]] = set()
+        for row in rows:
+            if not row.characters:
+                pairs.add(("⚠ Belum dipetakan", "—"))
+                continue
+
+            for index, character_name in enumerate(row.characters):
+                talent_name = (
+                    row.talents[index]
+                    if index < len(row.talents)
+                    else None
+                )
+                pairs.add(
+                    (
+                        str(character_name),
+                        str(talent_name) if talent_name else "⚠ Belum dipetakan",
+                    )
+                )
+
+        ordered_pairs = sorted(
+            pairs,
+            key=lambda item: (item[0].casefold(), item[1].casefold()),
+        )
+        self.cast_table.setRowCount(len(ordered_pairs))
+        for row_index, (character_name, talent_name) in enumerate(ordered_pairs):
+            self.cast_table.setItem(
+                row_index,
+                0,
+                QTableWidgetItem(character_name),
+            )
+            self.cast_table.setItem(
+                row_index,
+                1,
+                QTableWidgetItem(talent_name),
+            )
+
+        unique_characters = {
+            character_name
+            for character_name, _ in ordered_pairs
+            if not character_name.startswith("⚠")
+        }
+        scope = (
+            "Semua episode"
+            if episode_number is None
+            else f"Episode {episode_number}"
+        )
+        self.cast_scope_label.setText(
+            f"{scope} • {self._format_count(len(unique_characters))} tokoh"
+        )
 
     # ------------------------------------------------------------------
     # TABLE
@@ -280,27 +444,35 @@ class ScriptPage(PageShell):
     def refresh_rows(self) -> None:
         if self._service is None:
             self.table_model.set_rows([])
-            self.result_label.setText("No project open")
+            self.result_label.setText("Belum ada proyek terbuka")
             return
 
+        episode_number = self.episode_combo.currentData()
         try:
             rows = self._service.get_script_rows(
-                episode_number=self.episode_combo.currentData(),
+                episode_number=episode_number,
                 search=self.search_edit.text(),
             )
         except Exception as exc:
             self.table_model.set_rows([])
-            self.result_label.setText(f"Failed to load Script data: {exc}")
+            self.result_label.setText(f"Gagal membaca data naskah: {exc}")
             return
 
-        # DialogueService returns episode/time/source order.  The view does not
+        # DialogueService returns episode/time/source order. The view does not
         # enable interactive sorting, so EP1 stays before EP2 ... EP110.
         self.table_model.set_rows(rows)
 
         unresolved = sum(1 for row in rows if row.has_unresolved_cast)
-        result_text = f"{self._format_count(len(rows))} dialogues"
+        scope = (
+            "Semua episode"
+            if episode_number is None
+            else f"Episode {episode_number}"
+        )
+        result_text = f"{self._format_count(len(rows))} dialog • {scope}"
         if unresolved:
-            result_text += f" • {self._format_count(unresolved)} unresolved"
+            result_text += (
+                f" • {self._format_count(unresolved)} belum dipetakan"
+            )
         self.result_label.setText(result_text)
 
     @staticmethod
