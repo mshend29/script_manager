@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
-from app.main_window import MainWindow
+from app.application_window import ApplicationWindow
 from app.light_runtime import (
     apply_light_theme,
     install_light_window_chrome,
@@ -91,7 +91,7 @@ def main():
         splash.show()
         app.processEvents()
 
-    window = MainWindow()
+    window = ApplicationWindow()
 
     if smoke_test:
         # Packaging CI uses this path to prove that the frozen executable can
