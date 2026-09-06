@@ -130,7 +130,15 @@ class ProjectSettings:
         ):
             value = str(data.get(key, "") or "").strip()
             if value:
-                data[key] = str(Path(value).expanduser())
+                # Dedicated filesystem validators must be able to identify a
+                # browser URL entered in a Folder field. Converting it through
+                # pathlib first can collapse ``https://`` into ``https:/`` on
+                # POSIX, hiding the actual input from those validators.
+                data[key] = (
+                    value
+                    if "://" in value
+                    else str(Path(value).expanduser())
+                )
 
         for key, value in data.items():
             if isinstance(value, str):
