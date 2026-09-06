@@ -6,31 +6,38 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from app.theme import COLORS, RADII
 from services.project_dashboard_service import ProjectDashboardSnapshot
 
 
 class DashboardCard(QFrame):
+    """Small dashboard value surface used inside larger visual compositions."""
+
     def __init__(
         self,
         value: str,
         label: str,
         *,
         detail: str = "",
+        role: str = "metric",
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.setObjectName("ProjectMetricCard")
-        self.setMinimumHeight(92)
+        self.setProperty("dashboardRole", role)
+        self.setProperty("pipelineState", "IDLE")
+        self.setMinimumHeight(72 if role == "metric" else 88)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(2)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(1)
 
         self.value_label = QLabel(value)
         self.value_label.setObjectName("ProjectMetricValue")
@@ -49,12 +56,42 @@ class DashboardCard(QFrame):
         layout.addWidget(self.detail_label)
         layout.addStretch(1)
 
+        # Project dashboard intentionally uses one large composition instead of
+        # a matrix of bordered cards. Theme tokens stay centralized even though
+        # these role-specific overrides are local to this workspace.
+        self.setStyleSheet(
+            f"""
+            QFrame#ProjectMetricCard {{
+                border: none;
+                background: transparent;
+                border-radius: {RADII['md']}px;
+            }}
+            QFrame#ProjectMetricCard[dashboardRole="pipeline"] {{
+                padding: 2px;
+            }}
+            QFrame#ProjectMetricCard[dashboardRole="pipeline"][pipelineState="ACTIVE"] {{
+                background: {COLORS['accent_soft']};
+            }}
+            QFrame#ProjectMetricCard[dashboardRole="pipeline"][pipelineState="DONE"] {{
+                background: {COLORS['recorded_soft']};
+            }}
+            QFrame#ProjectMetricCard[dashboardRole="revision"][pipelineState="REVISION"] {{
+                background: {COLORS['revision_soft']};
+            }}
+            """
+        )
+
     def set_value(self, value: int | str) -> None:
         self.value_label.setText(str(value))
 
     def set_detail(self, detail: str) -> None:
         self.detail_label.setText(detail)
         self.detail_label.setVisible(bool(detail))
+
+    def set_pipeline_state(self, state: str) -> None:
+        self.setProperty("pipelineState", str(state or "IDLE").upper())
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 
 class ProjectPage(QWidget):
@@ -80,8 +117,8 @@ class ProjectPage(QWidget):
         body = QWidget()
         body.setObjectName("ProjectBody")
         self.body_layout = QVBoxLayout(body)
-        self.body_layout.setContentsMargins(24, 20, 24, 24)
-        self.body_layout.setSpacing(16)
+        self.body_layout.setContentsMargins(28, 24, 28, 30)
+        self.body_layout.setSpacing(18)
         scroll.setWidget(body)
 
         self.body_layout.addWidget(self._build_identity_panel())
@@ -89,85 +126,35 @@ class ProjectPage(QWidget):
         self.empty_action_bar = self._build_empty_action_bar()
         self.body_layout.addWidget(self.empty_action_bar)
 
-        metrics_title = QLabel("PROJECT DATA")
-        metrics_title.setObjectName("ProjectSectionTitle")
-        self.body_layout.addWidget(metrics_title)
+        data_header = QHBoxLayout()
+        data_header.setContentsMargins(2, 0, 2, 0)
+        data_title = QLabel("PROJECT DATA")
+        data_title.setObjectName("ProjectSectionTitle")
+        data_header.addWidget(data_title)
+        data_header.addStretch(1)
+        data_hint = QLabel("A quick read of the current script database")
+        data_hint.setObjectName("ProjectSectionHelper")
+        data_header.addWidget(data_hint)
+        self.body_layout.addLayout(data_header)
 
-        metrics = QGridLayout()
-        metrics.setContentsMargins(0, 0, 0, 0)
-        metrics.setHorizontalSpacing(10)
-        metrics.setVerticalSpacing(10)
-
-        self.episodes_card = DashboardCard("0", "Episodes")
-        self.dialogues_card = DashboardCard("0", "Dialogues")
-        self.characters_card = DashboardCard("0", "Characters")
-        self.talents_card = DashboardCard("0", "Talents")
-
-        for column, card in enumerate(
-            (
-                self.episodes_card,
-                self.dialogues_card,
-                self.characters_card,
-                self.talents_card,
-            )
-        ):
-            metrics.addWidget(card, 0, column)
-            metrics.setColumnStretch(column, 1)
-
-        self.body_layout.addLayout(metrics)
+        self.body_layout.addWidget(self._build_metric_strip())
 
         pipeline_title = QLabel("PRODUCTION PIPELINE")
         pipeline_title.setObjectName("ProjectSectionTitle")
         self.body_layout.addWidget(pipeline_title)
 
-        pipeline = QGridLayout()
-        pipeline.setContentsMargins(0, 0, 0, 0)
-        pipeline.setHorizontalSpacing(10)
-        pipeline.setVerticalSpacing(10)
-
-        self.recording_card = DashboardCard(
-            "0",
-            "Recording incomplete",
-            detail="episode",
+        pipeline_helper = QLabel(
+            "Follow the work from recording to stem and final delivery. "
+            "Revision appears as a rework loop instead of a separate final stage."
         )
-        self.stem_card = DashboardCard(
-            "0",
-            "Recorded / No Stem File",
-            detail="track scope",
-        )
-        self.delivery_card = DashboardCard(
-            "0",
-            "Ready to deliver",
-            detail="track scope",
-        )
-        self.delivered_card = DashboardCard(
-            "0 / 0",
-            "Delivered",
-            detail="track scope",
-        )
-        self.revision_card = DashboardCard(
-            "0",
-            "Revision",
-            detail="needs rework",
-        )
-
-        for column, card in enumerate(
-            (
-                self.recording_card,
-                self.stem_card,
-                self.delivery_card,
-                self.delivered_card,
-                self.revision_card,
-            )
-        ):
-            pipeline.addWidget(card, 0, column)
-            pipeline.setColumnStretch(column, 1)
-
-        self.body_layout.addLayout(pipeline)
+        pipeline_helper.setObjectName("ProjectSectionHelper")
+        pipeline_helper.setWordWrap(True)
+        self.body_layout.addWidget(pipeline_helper)
+        self.body_layout.addWidget(self._build_pipeline_rail())
 
         lower = QGridLayout()
-        lower.setContentsMargins(0, 0, 0, 0)
-        lower.setHorizontalSpacing(12)
+        lower.setContentsMargins(0, 2, 0, 0)
+        lower.setHorizontalSpacing(22)
         lower.setVerticalSpacing(12)
         lower.setColumnStretch(0, 3)
         lower.setColumnStretch(1, 2)
@@ -182,7 +169,7 @@ class ProjectPage(QWidget):
         self.body_layout.addStretch(1)
 
         # Compatibility counters retained for callers/tests while their visual
-        # meaning now lives in the pipeline and Needs Attention panels.
+        # meaning now lives in the production flow and Needs Attention list.
         self.review_card = DashboardCard("0", "Needs Review")
         self.warning_card = DashboardCard("0", "Output Warnings")
         self.review_card.hide()
@@ -193,18 +180,31 @@ class ProjectPage(QWidget):
     def _build_identity_panel(self) -> QFrame:
         panel = QFrame()
         panel.setObjectName("ProjectIdentityCard")
+        panel.setStyleSheet(
+            f"""
+            QFrame#ProjectIdentityCard {{
+                background: {COLORS['accent_soft']};
+                border: 1px solid {COLORS['border']};
+                border-radius: {RADII['lg']}px;
+            }}
+            """
+        )
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(18, 15, 18, 15)
-        layout.setSpacing(10)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(13)
+
+        eyebrow = QLabel("CURRENT PROJECT")
+        eyebrow.setObjectName("ProjectMetaKey")
+        layout.addWidget(eyebrow)
 
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
-        top.setSpacing(12)
+        top.setSpacing(14)
 
         identity = QVBoxLayout()
         identity.setContentsMargins(0, 0, 0, 0)
-        identity.setSpacing(2)
+        identity.setSpacing(3)
 
         self.project_name = QLabel("No project open")
         self.project_name.setObjectName("ProjectIdentityName")
@@ -228,13 +228,12 @@ class ProjectPage(QWidget):
             0,
             Qt.AlignmentFlag.AlignTop,
         )
-
         layout.addLayout(top)
 
         metadata = QGridLayout()
-        metadata.setContentsMargins(0, 4, 0, 0)
-        metadata.setHorizontalSpacing(18)
-        metadata.setVerticalSpacing(5)
+        metadata.setContentsMargins(0, 5, 0, 0)
+        metadata.setHorizontalSpacing(20)
+        metadata.setVerticalSpacing(8)
         metadata.setColumnStretch(1, 1)
         metadata.setColumnStretch(3, 1)
 
@@ -272,23 +271,196 @@ class ProjectPage(QWidget):
 
         self.info = QFrame()
         self.info.setObjectName("ProjectHealthBanner")
-        info_layout = QVBoxLayout(self.info)
+        self.info.setStyleSheet(
+            f"""
+            QFrame#ProjectHealthBanner {{
+                background: {COLORS['surface']};
+                border: none;
+                border-radius: {RADII['md']}px;
+            }}
+            """
+        )
+        info_layout = QHBoxLayout(self.info)
         info_layout.setContentsMargins(12, 9, 12, 9)
-        info_layout.setSpacing(1)
+        info_layout.setSpacing(8)
 
         self.info_title = QLabel("No project open")
         self.info_title.setObjectName("ProjectHealthTitle")
+        info_layout.addWidget(self.info_title)
+
+        info_separator = QLabel("•")
+        info_separator.setObjectName("ProjectSectionHelper")
+        info_layout.addWidget(info_separator)
+
         self.info_text = QLabel(
             "Buat project baru atau buka project yang sudah ada."
         )
         self.info_text.setObjectName("ProjectHealthText")
         self.info_text.setWordWrap(True)
-
-        info_layout.addWidget(self.info_title)
-        info_layout.addWidget(self.info_text)
+        info_layout.addWidget(self.info_text, 1)
         layout.addWidget(self.info)
 
         return panel
+
+    def _build_metric_strip(self) -> QFrame:
+        strip = QFrame()
+        strip.setObjectName("ProjectMetricStrip")
+        strip.setStyleSheet(
+            f"""
+            QFrame#ProjectMetricStrip {{
+                background: {COLORS['surface']};
+                border: 1px solid {COLORS['border']};
+                border-radius: {RADII['lg']}px;
+            }}
+            QFrame#ProjectMetricSeparator {{
+                background: {COLORS['border']};
+                border: none;
+            }}
+            """
+        )
+
+        layout = QHBoxLayout(strip)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(0)
+
+        self.episodes_card = DashboardCard("0", "Episodes", role="metric")
+        self.dialogues_card = DashboardCard("0", "Dialogues", role="metric")
+        self.characters_card = DashboardCard("0", "Characters", role="metric")
+        self.talents_card = DashboardCard("0", "Talents", role="metric")
+
+        cards = (
+            self.episodes_card,
+            self.dialogues_card,
+            self.characters_card,
+            self.talents_card,
+        )
+        for index, card in enumerate(cards):
+            layout.addWidget(card, 1)
+            if index < len(cards) - 1:
+                separator = QFrame()
+                separator.setObjectName("ProjectMetricSeparator")
+                separator.setFixedWidth(1)
+                separator.setMinimumHeight(46)
+                layout.addWidget(separator)
+
+        return strip
+
+    def _build_pipeline_rail(self) -> QFrame:
+        rail = QFrame()
+        rail.setObjectName("ProjectPipelineRail")
+        rail.setStyleSheet(
+            f"""
+            QFrame#ProjectPipelineRail {{
+                background: {COLORS['surface']};
+                border: 1px solid {COLORS['border']};
+                border-radius: {RADII['lg']}px;
+            }}
+            QLabel#ProjectPipelineArrow {{
+                color: {COLORS['text_muted']};
+                font-size: 16pt;
+                font-weight: 700;
+            }}
+            QFrame#ProjectRevisionLoop {{
+                background: {COLORS['surface_subtle']};
+                border: 1px solid {COLORS['border']};
+                border-radius: {RADII['md']}px;
+            }}
+            """
+        )
+
+        root = QVBoxLayout(rail)
+        root.setContentsMargins(14, 12, 14, 12)
+        root.setSpacing(10)
+
+        stages = QHBoxLayout()
+        stages.setContentsMargins(0, 0, 0, 0)
+        stages.setSpacing(8)
+
+        self.recording_card = DashboardCard(
+            "0",
+            "RECORDING",
+            detail="episode incomplete",
+            role="pipeline",
+        )
+        self.stem_card = DashboardCard(
+            "0",
+            "STEM",
+            detail="recorded / waiting output",
+            role="pipeline",
+        )
+        self.delivery_card = DashboardCard(
+            "0",
+            "DELIVERY QUEUE",
+            detail="stemmed / waiting setoran",
+            role="pipeline",
+        )
+        self.delivered_card = DashboardCard(
+            "0 / 0",
+            "DELIVERED",
+            detail="track scope",
+            role="pipeline",
+        )
+
+        stage_cards = (
+            self.recording_card,
+            self.stem_card,
+            self.delivery_card,
+            self.delivered_card,
+        )
+        for index, card in enumerate(stage_cards):
+            stages.addWidget(card, 1)
+            if index < len(stage_cards) - 1:
+                arrow = QLabel("→")
+                arrow.setObjectName("ProjectPipelineArrow")
+                arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                stages.addWidget(arrow)
+        root.addLayout(stages)
+
+        progress_row = QHBoxLayout()
+        progress_row.setContentsMargins(8, 0, 8, 0)
+        progress_row.setSpacing(10)
+
+        self.delivery_progress = QProgressBar()
+        self.delivery_progress.setObjectName("ProjectDeliveryProgress")
+        self.delivery_progress.setRange(0, 1)
+        self.delivery_progress.setValue(0)
+        self.delivery_progress.setTextVisible(False)
+        progress_row.addWidget(self.delivery_progress, 1)
+
+        self.pipeline_progress_text = QLabel("No expected tracks yet")
+        self.pipeline_progress_text.setObjectName("ProjectMetricDetail")
+        progress_row.addWidget(self.pipeline_progress_text)
+        root.addLayout(progress_row)
+
+        revision_loop = QFrame()
+        revision_loop.setObjectName("ProjectRevisionLoop")
+        revision_layout = QHBoxLayout(revision_loop)
+        revision_layout.setContentsMargins(10, 6, 10, 6)
+        revision_layout.setSpacing(8)
+
+        revision_label = QLabel("↺  REVISION LOOP")
+        revision_label.setObjectName("ProjectMetricLabel")
+        revision_layout.addWidget(revision_label)
+
+        revision_help = QLabel(
+            "Rework returns to Stem, then continues through Delivery again."
+        )
+        revision_help.setObjectName("ProjectMetricDetail")
+        revision_help.setWordWrap(True)
+        revision_layout.addWidget(revision_help, 1)
+
+        self.revision_card = DashboardCard(
+            "0",
+            "Revision",
+            detail="needs rework",
+            role="revision",
+        )
+        self.revision_card.setMaximumWidth(150)
+        self.revision_card.setMinimumHeight(54)
+        revision_layout.addWidget(self.revision_card)
+        root.addWidget(revision_loop)
+
+        return rail
 
     def _build_empty_action_bar(self) -> QFrame:
         bar = QFrame()
@@ -331,17 +503,33 @@ class ProjectPage(QWidget):
     def _build_attention_panel(self) -> QFrame:
         panel = QFrame()
         panel.setObjectName("ProjectPanel")
+        panel.setStyleSheet(
+            f"""
+            QFrame#ProjectPanel {{
+                background: {COLORS['surface']};
+                border: 1px solid {COLORS['border']};
+                border-radius: {RADII['lg']}px;
+            }}
+            """
+        )
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setContentsMargins(18, 15, 18, 16)
         layout.setSpacing(9)
 
+        heading = QHBoxLayout()
         title = QLabel("NEEDS ATTENTION")
         title.setObjectName("ProjectSectionTitle")
-        layout.addWidget(title)
+        heading.addWidget(title)
+        heading.addStretch(1)
+        self.attention_count = QLabel("0")
+        self.attention_count.setObjectName("ProjectHealthBadge")
+        self.attention_count.setProperty("healthState", "NEUTRAL")
+        heading.addWidget(self.attention_count)
+        layout.addLayout(heading)
 
         helper = QLabel(
-            "Pekerjaan yang memerlukan keputusan atau tindakan operator."
+            "Only items that need an operator decision or next action appear here."
         )
         helper.setObjectName("ProjectSectionHelper")
         helper.setWordWrap(True)
@@ -349,34 +537,49 @@ class ProjectPage(QWidget):
 
         self.action_holder = QWidget()
         self.action_layout = QGridLayout(self.action_holder)
-        self.action_layout.setContentsMargins(0, 4, 0, 0)
-        self.action_layout.setHorizontalSpacing(8)
-        self.action_layout.setVerticalSpacing(8)
+        self.action_layout.setContentsMargins(0, 5, 0, 0)
+        self.action_layout.setHorizontalSpacing(0)
+        self.action_layout.setVerticalSpacing(7)
         layout.addWidget(self.action_holder)
+        layout.addStretch(1)
 
         return panel
 
     def _build_activity_panel(self) -> QFrame:
         panel = QFrame()
-        panel.setObjectName("ProjectPanel")
+        panel.setObjectName("ProjectActivityPanel")
+        panel.setStyleSheet(
+            f"""
+            QFrame#ProjectActivityPanel {{
+                background: transparent;
+                border: none;
+            }}
+            QLabel#ProjectActivityDot {{
+                color: {COLORS['accent']};
+                font-size: 15pt;
+                font-weight: 700;
+            }}
+            """
+        )
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setContentsMargins(4, 2, 4, 4)
         layout.setSpacing(7)
 
         title = QLabel("RECENT ACTIVITY")
         title.setObjectName("ProjectSectionTitle")
         layout.addWidget(title)
 
-        helper = QLabel("Perubahan terbaru yang tercatat di audit project.")
+        helper = QLabel("Latest meaningful changes recorded in this project.")
         helper.setObjectName("ProjectSectionHelper")
         helper.setWordWrap(True)
         layout.addWidget(helper)
 
         self.activity_layout = QVBoxLayout()
-        self.activity_layout.setContentsMargins(0, 4, 0, 0)
+        self.activity_layout.setContentsMargins(0, 5, 0, 0)
         self.activity_layout.setSpacing(0)
         layout.addLayout(self.activity_layout)
+        layout.addStretch(1)
 
         return panel
 
@@ -424,7 +627,46 @@ class ProjectPage(QWidget):
         self.revision_card.set_value(snapshot.revisions)
         self.warning_card.set_value(snapshot.file_warnings)
 
+        self.recording_card.set_pipeline_state(
+            "ACTIVE" if snapshot.recording_episodes else "DONE"
+        )
+        self.stem_card.set_pipeline_state(
+            "ACTIVE" if snapshot.recorded_waiting_stem else "DONE"
+        )
+        self.delivery_card.set_pipeline_state(
+            "ACTIVE" if snapshot.stemmed_waiting_delivery else "DONE"
+        )
+        delivered_done = (
+            snapshot.total_tracks > 0
+            and snapshot.delivered_tracks >= snapshot.total_tracks
+        )
+        self.delivered_card.set_pipeline_state(
+            "DONE" if delivered_done else "ACTIVE"
+        )
+        self.revision_card.set_pipeline_state(
+            "REVISION" if snapshot.revisions else "IDLE"
+        )
+
+        total_tracks = max(0, int(snapshot.total_tracks))
+        delivered_tracks = max(0, int(snapshot.delivered_tracks))
+        progress_max = max(total_tracks, 1)
+        self.delivery_progress.setRange(0, progress_max)
+        self.delivery_progress.setValue(min(delivered_tracks, progress_max))
+        if total_tracks:
+            percent = round((delivered_tracks / total_tracks) * 100)
+            self.pipeline_progress_text.setText(
+                f"{delivered_tracks}/{total_tracks} tracks delivered  •  {percent}%"
+            )
+        else:
+            self.pipeline_progress_text.setText("No expected tracks yet")
+
         self._clear_layout(self.action_layout)
+        self.attention_count.setText(str(len(snapshot.actions)))
+        attention_state = "ATTENTION" if snapshot.actions else "HEALTHY"
+        self.attention_count.setProperty("healthState", attention_state)
+        self.attention_count.style().unpolish(self.attention_count)
+        self.attention_count.style().polish(self.attention_count)
+
         if snapshot.actions:
             for index, action in enumerate(snapshot.actions):
                 button = QPushButton(
@@ -440,24 +682,33 @@ class ProjectPage(QWidget):
                     lambda checked=False, key=action.key:
                     self.action_requested.emit(key)
                 )
-                self.action_layout.addWidget(
-                    button,
-                    index // 2,
-                    index % 2,
-                )
+                # One action per row keeps this section closer to a work queue
+                # than an ERP-style tile dashboard.
+                self.action_layout.addWidget(button, index, 0)
         else:
             clean = QLabel("✓ Tidak ada action penting yang tertunda.")
             clean.setObjectName("ProjectCleanState")
-            self.action_layout.addWidget(clean, 0, 0, 1, 2)
+            self.action_layout.addWidget(clean, 0, 0)
 
         self._clear_layout(self.activity_layout)
         if snapshot.recent_activity:
             for entry in snapshot.recent_activity:
-                row = QFrame()
-                row.setObjectName("ProjectActivityRow")
-                row_layout = QVBoxLayout(row)
-                row_layout.setContentsMargins(0, 8, 0, 8)
-                row_layout.setSpacing(2)
+                row = QWidget()
+                row_layout = QHBoxLayout(row)
+                row_layout.setContentsMargins(0, 6, 0, 6)
+                row_layout.setSpacing(8)
+
+                dot = QLabel("•")
+                dot.setObjectName("ProjectActivityDot")
+                dot.setAlignment(
+                    Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+                )
+                dot.setFixedWidth(14)
+                row_layout.addWidget(dot)
+
+                text_layout = QVBoxLayout()
+                text_layout.setContentsMargins(0, 0, 0, 0)
+                text_layout.setSpacing(2)
 
                 summary = QLabel(entry.summary)
                 summary.setObjectName("ProjectActivitySummary")
@@ -469,8 +720,9 @@ class ProjectPage(QWidget):
                 meta.setObjectName("ProjectActivityMeta")
                 meta.setWordWrap(True)
 
-                row_layout.addWidget(summary)
-                row_layout.addWidget(meta)
+                text_layout.addWidget(summary)
+                text_layout.addWidget(meta)
+                row_layout.addLayout(text_layout, 1)
                 self.activity_layout.addWidget(row)
         else:
             label = QLabel("Belum ada audit activity.")
