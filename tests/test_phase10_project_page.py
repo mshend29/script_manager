@@ -35,6 +35,32 @@ def test_project_workspace_has_home_and_preserved_dashboard() -> None:
     assert '"RECENT ACTIVITY"' in dashboard
 
 
+def test_project_dashboard_uses_production_flow_instead_of_card_matrix() -> None:
+    source = _read("pages/project_dashboard_page.py")
+
+    assert '"ProjectMetricStrip"' in source
+    assert '"ProjectPipelineRail"' in source
+    assert '"ProjectRevisionLoop"' in source
+    assert 'QLabel("→")' in source
+    assert "self.delivery_progress = QProgressBar()" in source
+    assert "self.pipeline_progress_text" in source
+    assert "snapshot.delivered_tracks / snapshot.total_tracks" not in source
+    assert "delivered_tracks / total_tracks" in source
+
+    # Project metrics live in one strip; the production flow is not rebuilt as
+    # another QGridLayout of equal bordered cards.
+    assert "def _build_metric_strip" in source
+    assert "def _build_pipeline_rail" in source
+    assert 'role="pipeline"' in source
+    assert 'role="revision"' in source
+
+    # Needs Attention is deliberately a vertical work queue, while activity is
+    # a lightweight timeline instead of another heavy dashboard card.
+    assert "self.action_layout.addWidget(button, index, 0)" in source
+    assert '"ProjectActivityPanel"' in source
+    assert '"ProjectActivityDot"' in source
+
+
 def test_project_home_recent_list_supports_search_sort_and_open() -> None:
     source = _read("pages/project_page.py")
 
