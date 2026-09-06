@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -35,6 +35,22 @@ class RecentDateItem(QTableWidgetItem):
 
     def __lt__(self, other) -> bool:
         if isinstance(other, RecentDateItem):
+            return self.sort_key < other.sort_key
+        return super().__lt__(other)
+
+
+class RecentProjectItem(QTableWidgetItem):
+    """Non-visual backing item for recent-project sorting and metadata."""
+
+    def __init__(self, sort_key: str):
+        # The visible name/path is rendered only by RecentProjectCell. Keeping
+        # the native DisplayRole empty prevents Qt selection/focus painting
+        # from ever drawing duplicate text underneath the project icon.
+        super().__init__("")
+        self.sort_key = str(sort_key or "").casefold()
+
+    def __lt__(self, other) -> bool:
+        if isinstance(other, RecentProjectItem):
             return self.sort_key < other.sort_key
         return super().__lt__(other)
 
@@ -193,12 +209,12 @@ class ProjectPage(DashboardProjectPage):
         self.recent_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
         )
-        self.recent_table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
+        # Recent rows behave like launch targets rather than selectable data.
+        # Removing selection also removes the full-row blue highlight.
         self.recent_table.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection
+            QAbstractItemView.SelectionMode.NoSelection
         )
+        self.recent_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.recent_table.setAlternatingRowColors(False)
         self.recent_table.setShowGrid(False)
         self.recent_table.setWordWrap(False)
@@ -215,12 +231,9 @@ class ProjectPage(DashboardProjectPage):
         self.recent_table.setColumnWidth(1, 240)
         header.setSortIndicator(1, Qt.SortOrder.DescendingOrder)
 
-        self.recent_table.itemDoubleClicked.connect(
-            self._open_recent_item
-        )
-        self.recent_table.itemActivated.connect(
-            self._open_recent_item
-        )
+        # One click is enough to open a Recent Project. The custom cell widget
+        # is transparent for mouse events, so clicks still land on the table.
+        self.recent_table.itemClicked.connect(self._open_recent_item)
         content_layout.addWidget(self.recent_table, 1)
 
         self.recent_empty = QLabel("No recent projects yet.")
@@ -268,11 +281,7 @@ class ProjectPage(DashboardProjectPage):
             )
             display_path = self._compact_project_path(item.file_path)
 
-            project_item = QTableWidgetItem(project_name)
-            # Column 0 uses a custom cell widget. Keep the native item text for
-            # sorting/search metadata, but make its paint fully transparent so
-            # it cannot appear underneath the project icon/name widget.
-            project_item.setForeground(QColor(0, 0, 0, 0))
+            project_item = RecentProjectItem(raw_project_name)
             project_item.setData(Qt.ItemDataRole.UserRole, item.file_path)
             project_item.setData(
                 Qt.ItemDataRole.UserRole + 1,
