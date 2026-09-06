@@ -127,7 +127,7 @@ class ValidationService:
                         category=REVIEW,
                         code="MISSING_CHARACTER",
                         episode_number=int(row["episode_number"]),
-                        entity='Tokoh Tidak Dikenal',
+                        entity="Character Unknown",
                         message=str(row["dialog_text"]),
                         action=ACTION_REVIEW,
                         dialogue_id=int(row["dialogue_id"]),
@@ -193,7 +193,7 @@ class ValidationService:
                         entity=f"Episode {episode_number}",
                         message=(
                             f"Episode {episode_number} memiliki "
-                            f"{int(row['total'])} sumber aktif."
+                            f"{int(row['total'])} source aktif."
                         ),
                         action=ACTION_SOURCES,
                     )
@@ -239,7 +239,7 @@ class ValidationService:
                         code="ACTIVE_EPISODE_INACTIVE_SOURCE",
                         episode_number=episode_number,
                         entity=f"Episode {episode_number}",
-                        message='Episode aktif menunjuk file sumber yang tidak aktif.',
+                        message="Episode aktif menunjuk source file yang inactive.",
                         action=ACTION_SOURCES,
                     )
                 )
@@ -274,7 +274,7 @@ class ValidationService:
                         code="ACTIVE_EPISODE_WITHOUT_ACTIVE_DIALOGUES",
                         episode_number=episode_number,
                         entity=f"Episode {episode_number}",
-                        message='Episode/sumber aktif hanya memiliki dialog tidak aktif.',
+                        message="Episode/source aktif hanya memiliki dialogue inactive.",
                         action=ACTION_SOURCES,
                     )
                 )

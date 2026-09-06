@@ -194,10 +194,10 @@ class DataService:
                 0,
                 CharacterAdminRow(
                     id=None,
-                    name='⚠ Tokoh Tidak Dikenal',
+                    name="⚠ Character Unknown",
                     locked_talent_id=None,
-                    locked_talent_name='⚠ Talent Tidak Dikenal',
-                    mapping_source='Belum Dipetakan',
+                    locked_talent_name="⚠ Talent Unknown",
+                    mapping_source="Unresolved",
                     active_dialogues=missing_character_count,
                     unresolved_dialogues=missing_character_count,
                     missing_character=True,
@@ -349,7 +349,7 @@ class DataService:
         clean_name = name.strip()
         normalized = normalize_key(clean_name)
         if not normalized:
-            raise ValueError('Nama tokoh tidak boleh kosong.')
+            raise ValueError("Nama character tidak boleh kosong.")
 
         now = datetime.now().isoformat(timespec="seconds")
         with self.database.connect() as connection:
@@ -440,7 +440,7 @@ class DataService:
             if dialogue is None:
                 raise ValueError("Dialog tidak ditemukan atau sudah inactive.")
             if character is None:
-                raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
+                raise ValueError("Character tidak ditemukan atau sudah inactive.")
 
             existing_cast = connection.execute(
                 "SELECT 1 FROM dialog_cast WHERE dialogue_id = ? LIMIT 1",
@@ -448,7 +448,7 @@ class DataService:
             ).fetchone()
             if existing_cast is not None:
                 raise ValueError(
-                    'Dialog ini sudah memiliki tokoh/talent. Gunakan Pemetaan Tokoh untuk perubahan pemetaan.'
+                    "Dialog ini sudah memiliki character/cast. Gunakan Character Mapping untuk perubahan mapping."
                 )
 
             connection.execute(
@@ -466,7 +466,7 @@ class DataService:
             entity_type="dialogue",
             entity_id=dialogue_id,
             summary=(
-                f"Dialogue {dialogue_id} assigned to tokoh "
+                f"Dialogue {dialogue_id} assigned to character "
                 f"{character_id}."
             ),
             details={"character_id": int(character_id)},
@@ -522,7 +522,7 @@ class DataService:
                 (talent_id,),
             ).fetchone()
             if character is None:
-                raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
+                raise ValueError("Character tidak ditemukan atau sudah inactive.")
             if talent is None:
                 raise ValueError("Talent tidak ditemukan atau sudah inactive.")
 
@@ -620,7 +620,7 @@ class DataService:
                 connection.execute(
                     f"""
                     DELETE FROM stem_status
-                    WHERE tokoh_id = ?
+                    WHERE character_id = ?
                       AND episode_id IN ({placeholders})
                     """,
                     (int(character_id), *episode_ids),
@@ -679,7 +679,7 @@ class DataService:
                 (character_id,),
             ).fetchone()
             if character is None:
-                raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
+                raise ValueError("Character tidak ditemukan atau sudah inactive.")
 
             current_lock = connection.execute(
                 """
@@ -780,7 +780,7 @@ class DataService:
                             ),
                         )
                         if talent_id is None:
-                            restored_labels.add('Belum Dipetakan')
+                            restored_labels.add("Unresolved")
                         else:
                             talent = connection.execute(
                                 "SELECT name FROM talents WHERE id = ?",
@@ -819,7 +819,7 @@ class DataService:
                     ),
                 )
                 if fallback_talent is None:
-                    restored_labels.add('Belum Dipetakan')
+                    restored_labels.add("Unresolved")
                 else:
                     talent = connection.execute(
                         "SELECT name FROM talents WHERE id = ?",
@@ -837,7 +837,7 @@ class DataService:
                 connection.execute(
                     f"""
                     DELETE FROM stem_status
-                    WHERE tokoh_id = ?
+                    WHERE character_id = ?
                       AND episode_id IN ({placeholders})
                     """,
                     (character_id, *episode_ids),
@@ -917,7 +917,7 @@ class DataService:
             if unresolved_count:
                 issues.append(
                     ValidationIssue(
-                        'PERINGATAN',
+                        "WARNING",
                         "UNRESOLVED_CAST",
                         f"{unresolved_count} cast dialog aktif belum memiliki talent.",
                     )
@@ -939,9 +939,9 @@ class DataService:
             if missing_cast_count:
                 issues.append(
                     ValidationIssue(
-                        'PERINGATAN',
+                        "WARNING",
                         "ACTIVE_DIALOGUE_NO_CAST",
-                        f"{missing_cast_count} dialog aktif tidak memiliki tokoh/cast dan memerlukan keputusan manual.",
+                        f"{missing_cast_count} dialog aktif tidak memiliki character/cast dan memerlukan keputusan manual.",
                     )
                 )
 
@@ -960,7 +960,7 @@ class DataService:
                     ValidationIssue(
                         "ERROR",
                         "DUPLICATE_SOURCE_EPISODE",
-                        f"Episode {row['episode_number']} memiliki {row['total']} sumber aktif.",
+                        f"Episode {row['episode_number']} memiliki {row['total']} source aktif.",
                     )
                 )
 
@@ -1008,7 +1008,7 @@ class DataService:
                     ValidationIssue(
                         "ERROR",
                         "ACTIVE_EPISODE_WITHOUT_ACTIVE_DIALOGUES",
-                        f"{empty_active_episode_count} episode/sumber aktif hanya memiliki dialog inactive.",
+                        f"{empty_active_episode_count} episode/source aktif hanya memiliki dialog inactive.",
                     )
                 )
 
@@ -1029,7 +1029,7 @@ class DataService:
                     ValidationIssue(
                         "ERROR",
                         "INACTIVE_CAST_ENTITY",
-                        f"{inactive_entity_count} cast aktif menunjuk tokoh/talent inactive.",
+                        f"{inactive_entity_count} cast aktif menunjuk character/talent inactive.",
                     )
                 )
 
@@ -1055,7 +1055,7 @@ class DataService:
             if invalid_downstream_count:
                 issues.append(
                     ValidationIssue(
-                        'PERINGATAN',
+                        "WARNING",
                         "DOWNSTREAM_BEFORE_RECORDED",
                         f"{invalid_downstream_count} tracking downstream belum memiliki recording lengkap.",
                     )
@@ -1074,7 +1074,7 @@ class DataService:
             event_type="DATABASE",
             action="MANUAL_BACKUP",
             entity_type="project",
-            summary='Cadangan database manual dibuat.',
+            summary="Manual database backup created.",
             details={"backup_path": str(target)},
         )
         return target

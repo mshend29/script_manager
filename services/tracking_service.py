@@ -29,13 +29,13 @@ DOWNSTREAM_STATUSES = {
 }
 
 STATUS_LABELS = {
-    NOT_STARTED: 'Belum Mulai',
-    IN_PROGRESS: 'Berjalan',
-    RECORDED: 'Terekam',
-    READY_TO_STEM: 'Terekam',  # historical compatibility only
-    STEMMED: 'Selesai Stem',
-    DELIVERED: 'Disetor',
-    REVISION: 'Revisi',
+    NOT_STARTED: "Belum Mulai",
+    IN_PROGRESS: "Berjalan",
+    RECORDED: "Terekam",
+    READY_TO_STEM: "Terekam",  # historical compatibility only
+    STEMMED: "Selesai Stem",
+    DELIVERED: "Disetor",
+    REVISION: "Revisi",
 }
 
 
@@ -181,8 +181,8 @@ class TrackingService:
             SELECT
                 e.id AS episode_id,
                 e.episode_number,
-                c.id AS tokoh_id,
-                c.name AS tokoh_name,
+                c.id AS character_id,
+                c.name AS character_name,
                 t.id AS talent_id,
                 t.name AS talent_name,
                 COUNT(DISTINCT d.id) AS total_dialogues,
@@ -201,8 +201,8 @@ class TrackingService:
             JOIN episodes AS e
               ON e.id = d.episode_id
              AND e.is_active = 1
-            JOIN tokohs AS c
-              ON c.id = dc.tokoh_id
+            JOIN characters AS c
+              ON c.id = dc.character_id
              AND c.is_active = 1
             JOIN talents AS t
               ON t.id = dc.talent_id
@@ -212,7 +212,7 @@ class TrackingService:
             LEFT JOIN stem_status AS ss
               ON ss.episode_id = e.id
              AND ss.talent_id = t.id
-             AND ss.tokoh_id = c.id
+             AND ss.character_id = c.id
             WHERE {' AND '.join(where)}
             GROUP BY
                 e.id,
@@ -333,7 +333,7 @@ class TrackingService:
 
             if total < 1:
                 raise ValueError(
-                    'Kombinasi episode, talent, dan tokoh tidak memiliki dialog aktif.'
+                    "Kombinasi episode, talent, dan character tidak memiliki dialog aktif."
                 )
 
             labels = connection.execute(
@@ -385,7 +385,7 @@ class TrackingService:
             if normalized_status == REVISION:
                 if recorded < total:
                     raise ValueError(
-                        'Revisi hanya dapat ditandai setelah rekaman lengkap.'
+                        "Revision hanya dapat ditandai setelah recording lengkap."
                     )
                 if (
                     existing_status != REVISION
@@ -395,7 +395,7 @@ class TrackingService:
                     )
                 ):
                     raise ValueError(
-                        'Revisi hanya dapat ditandai setelah track Selesai Stem atau Disetor.'
+                        "Revision hanya dapat ditandai setelah track Stemmed atau Delivered."
                     )
 
                 # Mark Revision allocates the next expected export generation.
@@ -490,7 +490,7 @@ class TrackingService:
         character_name = (
             str(labels["character_name"])
             if labels is not None
-            else f"Tokoh {character_id}"
+            else f"Character {character_id}"
         )
         talent_name = (
             str(labels["talent_name"])
@@ -503,12 +503,12 @@ class TrackingService:
             revision_label = "REV" if active_revision == 1 else f"REV{active_revision}"
             summary = (
                 f"Episode {episode_number}: {character_name} / "
-                f"{talent_name} marked Revisi {revision_label}."
+                f"{talent_name} marked Revision {revision_label}."
             )
         else:
             action = "CLEAR_REVISION"
             summary = (
-                f"Episode {episode_number}: Revisi cleared for "
+                f"Episode {episode_number}: Revision cleared for "
                 f"{character_name} / {talent_name}."
             )
 

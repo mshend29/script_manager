@@ -64,7 +64,7 @@ class ProjectDiagnosticsService:
         result.checks.append(
             DiagnosticCheck(
                 key="project_file",
-                label='File Proyek',
+                label="Project File",
                 status=STATUS_OK,
                 value=self.project.project_file.name,
                 detail=(
@@ -85,19 +85,19 @@ class ProjectDiagnosticsService:
             [
                 self._folder_check(
                     "source_folder",
-                    'Folder Sumber',
+                    "Source Folder",
                     settings.source_folder,
                     required=True,
                 ),
                 self._folder_check(
                     "stem_output_folder",
-                    'Folder Stem / Export',
+                    "Stem / Export Folder",
                     settings.stem_output_folder,
                     required=False,
                 ),
                 self._folder_check(
                     "delivery_folder",
-                    'Folder Setoran',
+                    "Setoran Folder",
                     settings.delivery_folder,
                     required=False,
                 ),
@@ -108,17 +108,17 @@ class ProjectDiagnosticsService:
             [
                 self._url_check(
                     "main_drive",
-                    'Tautan Drive Utama',
+                    "Main Drive Link",
                     settings.main_drive_url,
                 ),
                 self._url_check(
                     "material_drive",
-                    'Tautan Drive Material',
+                    "Material Drive Link",
                     settings.material_drive_url,
                 ),
                 self._url_check(
                     "delivery_drive",
-                    'Tautan Drive Setoran',
+                    "Delivery Drive Link",
                     settings.delivery_drive_url,
                 ),
             ]
@@ -145,7 +145,7 @@ class ProjectDiagnosticsService:
             result.checks.append(
                 DiagnosticCheck(
                     key="track_scan",
-                    label='Pemindaian File Track',
+                    label="Track File Scan",
                     status=STATUS_WARNING,
                     value="Unavailable",
                     detail=str(exc),
@@ -155,7 +155,7 @@ class ProjectDiagnosticsService:
             result.checks.append(
                 DiagnosticCheck(
                     key="track_scan",
-                    label='Pemindaian File Track',
+                    label="Track File Scan",
                     status=(
                         STATUS_WARNING
                         if result.output_warnings
@@ -163,9 +163,9 @@ class ProjectDiagnosticsService:
                     ),
                     value=f"{result.output_warnings} warning",
                     detail=(
-                        'Buka TRACKING → Kondisi Output untuk detail.'
+                        "Buka TRACKING → Output Health untuk detail."
                         if result.output_warnings
-                        else 'Tidak ada peringatan file yang terdeteksi.'
+                        else "Tidak ada warning file yang terdeteksi."
                     ),
                 )
             )
@@ -175,13 +175,13 @@ class ProjectDiagnosticsService:
         result.checks.append(
             DiagnosticCheck(
                 key="backups",
-                label='Cadangan Database',
+                label="Database Backups",
                 status=STATUS_OK if backups else STATUS_WARNING,
                 value=str(len(backups)),
                 detail=(
                     f"Backup terbaru: {backups[0].name}"
                     if backups
-                    else 'Belum ada cadangan database.'
+                    else "Belum ada database backup."
                 ),
             )
         )
@@ -209,7 +209,7 @@ class ProjectDiagnosticsService:
             checks.append(
                 DiagnosticCheck(
                     key="schema",
-                    label='Skema Database',
+                    label="Database Schema",
                     status=STATUS_OK if schema == str(SCHEMA_VERSION) else STATUS_ERROR,
                     value=f"v{schema}",
                     detail=f"Application schema: v{SCHEMA_VERSION}",
@@ -224,7 +224,7 @@ class ProjectDiagnosticsService:
             checks.append(
                 DiagnosticCheck(
                     key="integrity",
-                    label='Integritas SQLite',
+                    label="SQLite Integrity",
                     status=STATUS_OK if integrity_ok else STATUS_ERROR,
                     value="OK" if integrity_ok else "Failed",
                     detail=(
@@ -241,7 +241,7 @@ class ProjectDiagnosticsService:
             checks.append(
                 DiagnosticCheck(
                     key="foreign_keys",
-                    label='Foreign Key',
+                    label="Foreign Keys",
                     status=STATUS_OK if not foreign_keys else STATUS_ERROR,
                     value="OK" if not foreign_keys else str(len(foreign_keys)),
                     detail=(
@@ -269,7 +269,7 @@ class ProjectDiagnosticsService:
                 label=label,
                 status=STATUS_ERROR if required else STATUS_WARNING,
                 value="Not configured",
-                detail='Isi path melalui Pengaturan Proyek.',
+                detail="Isi path melalui Project Settings.",
             )
 
         path = Path(raw)
@@ -290,5 +290,5 @@ class ProjectDiagnosticsService:
             label=label,
             status=STATUS_OK if raw else STATUS_INFO,
             value="Configured" if raw else "Not configured",
-            detail=raw or 'Tautan navigasi opsional.',
+            detail=raw or "Optional navigation link.",
         )

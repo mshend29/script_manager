@@ -176,28 +176,28 @@ class ProjectDashboardService:
 
         add(
             "system_errors",
-            'Error Sistem',
+            "System Errors",
             snapshot.system_errors,
             "Buka DATA → Validation dan selesaikan error struktur.",
             "ERROR",
         )
         add(
             "needs_review",
-            'Perlu Ditinjau',
+            "Needs Review",
             snapshot.needs_review,
-            'Keputusan operator masih diperlukan di DATA → Belum Dipetakan.',
-            'PERINGATAN',
+            "Keputusan manusia masih diperlukan di DATA → Unresolved.",
+            "WARNING",
         )
         add(
             "revision",
-            'Revisi',
+            "Revision",
             snapshot.revisions,
-            'Lingkup rekaman yang sedang ditandai Revisi.',
+            "Scope recording yang sedang ditandai Revision.",
             "ERROR",
         )
         add(
             "recording",
-            'Rekaman Belum Lengkap',
+            "Recording Incomplete",
             snapshot.recording_episodes,
             "Episode masih memiliki line yang belum checked.",
         )
@@ -205,27 +205,27 @@ class ProjectDashboardService:
             "ready_to_stem",
             "Recorded → Stem",
             snapshot.recorded_waiting_stem,
-            'Track yang diharapkan sudah Terekam tetapi file output belum ada.',
+            "Expected track sudah Recorded tetapi file output belum ada.",
         )
         add(
             "pending_delivery",
-            'Selesai Stem → Setoran',
+            "Stemmed → Delivery",
             snapshot.stemmed_waiting_delivery,
             "Stem valid tersedia tetapi belum ditemukan di SETORAN.",
         )
         add(
             "file_warnings",
-            'Peringatan Output',
+            "Output Warnings",
             snapshot.file_warnings,
             "Periksa format/nama/mismatch file di TRACKING.",
-            'PERINGATAN',
+            "WARNING",
         )
         add(
             "workflow_warnings",
-            'Peringatan Alur',
+            "Workflow Warnings",
             snapshot.workflow_warnings,
-            'Buka DATA → Validasi untuk peringatan alur.',
-            'PERINGATAN',
+            "Buka DATA → Validation untuk workflow warning.",
+            "WARNING",
         )
 
         snapshot.actions = actions

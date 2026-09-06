@@ -221,7 +221,7 @@ class TrackRenameService:
             target = Path(item.target_path)
             if not source.is_file():
                 raise FileNotFoundError(
-                    f"Sumber file tidak ditemukan: {source}"
+                    f"Source file tidak ditemukan: {source}"
                 )
             if source.parent != target.parent:
                 raise ValueError(
@@ -495,18 +495,18 @@ class TrackRenameService:
 
         if source.name.casefold() == target.name.casefold():
             status = RENAME_ALREADY_EXPECTED
-            detail = 'Nama file sudah sesuai yang diharapkan.'
+            detail = "Filename sudah sesuai expected."
         elif target.exists():
             status = RENAME_COLLISION
             detail = (
-                'Nama file yang diharapkan sudah ada. File tidak akan ditimpa.'
+                "Expected filename sudah ada. File tidak akan ditimpa."
             )
         else:
             status = RENAME_MATCHED
             detail = (
                 "Simplified DAW export dikenali."
                 if match_kind == MATCH_SIMPLE_EXPORT
-                else 'Identitas valid; dapat dinormalisasi ke nama yang diharapkan.'
+                else "Identity valid; dapat dinormalisasi ke preferred expected name."
             )
 
         return TrackRenameItem(
@@ -567,7 +567,7 @@ def assign_manual_expected(
         None,
     )
     if choice is None:
-        raise ValueError('Nama file yang diharapkan tidak tersedia untuk file ini.')
+        raise ValueError("Expected filename tidak tersedia untuk file ini.")
 
     source = Path(item.source_path)
     target = source.parent / choice.expected_filename
@@ -582,15 +582,15 @@ def assign_manual_expected(
 
     if source.name.casefold() == target.name.casefold():
         item.status = RENAME_ALREADY_EXPECTED
-        item.detail = 'Nama file sudah sesuai yang diharapkan.'
+        item.detail = "Filename sudah sesuai expected."
     elif target.exists():
         item.status = RENAME_COLLISION
         item.detail = (
-            'Nama file yang diharapkan sudah ada. File tidak akan ditimpa.'
+            "Expected filename sudah ada. File tidak akan ditimpa."
         )
     else:
         item.status = RENAME_MATCHED
-        item.detail = 'Nama file yang diharapkan dipilih manual oleh pengguna.'
+        item.detail = "Expected filename dipilih manual oleh user."
 
 
 def parse_simple_export_filename(

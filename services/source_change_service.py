@@ -102,7 +102,7 @@ class SourceChangeService:
                         change_type="SOURCE_MISSING",
                         episode_number=missing.episode_number,
                         source_row=None,
-                        entity='Sumber',
+                        entity="Source",
                         before=missing.file_path,
                         after="File tidak ditemukan",
                         tracking_affected=tracking,
@@ -364,7 +364,7 @@ class SourceChangeService:
                 f"{pair.character} / {pair.talent}"
                 for pair in row.cast_pairs
             )
-        characters = ", ".join(row.characters) or 'Tokoh Tidak Dikenal'
+        characters = ", ".join(row.characters) or "Character Unknown"
         talents = ", ".join(row.talents) or "Talent Unknown"
         return f"{characters} / {talents}"
 
@@ -400,7 +400,7 @@ class SourceChangeService:
             ).fetchall()
 
         if not rows:
-            return 'Tokoh Tidak Dikenal / Talent Tidak Dikenal'
+            return "Character Unknown / Talent Unknown"
         return ", ".join(
             f"{row['character_name']} / {row['talent_name']}"
             for row in rows

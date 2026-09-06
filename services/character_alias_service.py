@@ -40,11 +40,11 @@ class CharacterAliasService:
                     ca.id,
                     ca.alias_name,
                     ca.normalized_alias,
-                    ca.canonical_tokoh_id,
-                    c.name AS canonical_tokoh_name,
-                    ca.sumber_tokoh_id
-                FROM tokoh_alias AS ca
-                JOIN tokohs AS c ON c.id = ca.canonical_tokoh_id
+                    ca.canonical_character_id,
+                    c.name AS canonical_character_name,
+                    ca.source_character_id
+                FROM character_alias AS ca
+                JOIN characters AS c ON c.id = ca.canonical_character_id
                 {where}
                 ORDER BY ca.alias_name COLLATE NOCASE, ca.id
                 """,
@@ -123,9 +123,9 @@ class CharacterAliasService:
             if existing_character is not None:
                 existing_id = int(existing_character["id"])
                 if existing_id == int(canonical_character_id):
-                    raise ValueError('Alias tidak boleh sama dengan nama tokoh kanonis.')
+                    raise ValueError("Alias tidak boleh sama dengan nama canonical character.")
                 raise ValueError(
-                    f"'{existing_character['name']}' sudah ada sebagai tokoh. "
+                    f"'{existing_character['name']}' sudah ada sebagai character. "
                     "Pilih row character tersebut lalu gunakan Set as Alias of."
                 )
 
@@ -161,7 +161,7 @@ class CharacterAliasService:
         source_id = int(source_character_id)
         canonical_id = int(canonical_character_id)
         if source_id == canonical_id:
-            raise ValueError('Tokoh tidak dapat menjadi alias dirinya sendiri.')
+            raise ValueError("Character tidak dapat menjadi alias dirinya sendiri.")
 
         now = datetime.now().isoformat(timespec="seconds")
         backup = BackupService(self.database).create("before-alias-merge")
@@ -173,14 +173,14 @@ class CharacterAliasService:
                 "SELECT 1 FROM character_alias WHERE source_character_id = ?",
                 (source_id,),
             ).fetchone():
-                raise ValueError('Tokoh ini sudah menjadi alias.')
+                raise ValueError("Character ini sudah menjadi alias.")
 
             if connection.execute(
                 "SELECT 1 FROM character_alias WHERE canonical_character_id = ?",
                 (source_id,),
             ).fetchone():
                 raise ValueError(
-                    'Tokoh ini sudah memiliki alias. Hapus/pindahkan alias tersebut sebelum menjadikannya alias tokoh lain.'
+                    "Character ini sudah memiliki alias. Hapus/pindahkan alias tersebut sebelum menjadikannya alias character lain."
                 )
 
             normalized = str(
@@ -191,7 +191,7 @@ class CharacterAliasService:
                 "SELECT 1 FROM character_alias WHERE normalized_alias = ?",
                 (normalized,),
             ).fetchone():
-                raise ValueError('Nama tokoh ini sudah terdaftar sebagai alias.')
+                raise ValueError("Nama character ini sudah terdaftar sebagai alias.")
 
             source_lock = self._locked_talent(connection, source_id)
             canonical_lock = self._locked_talent(connection, canonical_id)
@@ -615,7 +615,7 @@ class CharacterAliasService:
             action="REMOVE_ALIAS",
             entity_type="character",
             entity_id=source_id,
-            summary=f"Alias '{alias_name}' restored as tokoh.",
+            summary=f"Alias '{alias_name}' restored as character.",
             details={
                 "alias_id": alias_id,
                 "canonical_character_id": canonical_id,
@@ -644,7 +644,7 @@ class CharacterAliasService:
                         category=SYSTEM,
                         code="ALIAS_CANONICAL_INACTIVE",
                         message=(
-                            f"Alias '{row['alias_name']}' menunjuk canonical tokoh inactive."
+                            f"Alias '{row['alias_name']}' menunjuk canonical character inactive."
                         ),
                         entity=str(row["alias_name"]),
                     )
@@ -665,7 +665,7 @@ class CharacterAliasService:
                         category=SYSTEM,
                         code="CHARACTER_ALIAS_CHAIN",
                         message=(
-                            f"Alias '{row['alias_name']}' menunjuk tokoh yang juga merupakan alias "
+                            f"Alias '{row['alias_name']}' menunjuk character yang juga merupakan alias "
                             f"('{row['parent_alias']}')."
                         ),
                         entity=str(row["alias_name"]),
@@ -689,7 +689,7 @@ class CharacterAliasService:
             (int(character_id),),
         ).fetchone()
         if row is None:
-            raise ValueError('Tokoh tidak ditemukan atau sudah tidak aktif.')
+            raise ValueError("Character tidak ditemukan atau sudah inactive.")
         return row
 
     def _require_canonical(self, connection, character_id: int):
@@ -698,7 +698,7 @@ class CharacterAliasService:
             "SELECT 1 FROM character_alias WHERE source_character_id = ?",
             (int(character_id),),
         ).fetchone():
-            raise ValueError('Target kanonis tidak boleh merupakan alias tokoh lain.')
+            raise ValueError("Target canonical tidak boleh merupakan alias character lain.")
         return row
 
     @staticmethod
@@ -751,7 +751,7 @@ class CharacterAliasService:
             f"""
             DELETE FROM stem_status
             WHERE episode_id IN ({placeholders})
-              AND tokoh_id IN (?, ?)
+              AND character_id IN (?, ?)
             """,
             (*sorted(episode_ids), int(source_id), int(canonical_id)),
         )

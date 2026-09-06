@@ -58,13 +58,13 @@ class ProblemReportService:
 
     def _environment(self) -> dict[str, str]:
         return {
-            'Aplikasi': f"{APP_NAME} {self.app_version}",
-            'Format proyek': str(PROJECT_FORMAT_VERSION),
-            'Skema database': str(SCHEMA_VERSION),
+            "Application": f"{APP_NAME} {self.app_version}",
+            "Project format": str(PROJECT_FORMAT_VERSION),
+            "Database schema": str(SCHEMA_VERSION),
             "Python": platform.python_version(),
             "PySide6": self._package_version("PySide6"),
             "OS": f"{platform.system()} {platform.release()}".strip(),
-            'Arsitektur': platform.machine() or "unknown",
+            "Architecture": platform.machine() or "unknown",
         }
 
     @staticmethod
