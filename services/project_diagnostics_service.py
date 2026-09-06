@@ -11,7 +11,7 @@ from services.validation_service import ValidationService
 
 
 STATUS_OK = "OK"
-STATUS_WARNING = 'PERINGATAN'
+STATUS_WARNING = "WARNING"
 STATUS_ERROR = "ERROR"
 STATUS_INFO = "INFO"
 
