@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -123,6 +124,14 @@ def test_semantic_text_has_accessible_contrast(
 
 
 def test_phase10_pr_does_not_modify_unrelated_business_rule_modules() -> None:
+    # This is a pull-request architectural guard, not a permanent assertion
+    # about the latest merge commit on a developer's local main branch. A real
+    # merge commit on main can legitimately contain previously approved service
+    # changes (for example presentation-language copy), which would otherwise
+    # make a normal local `pytest` run fail after pulling main.
+    if os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
+        pytest.skip("Business-rule diff guard only applies to pull request CI.")
+
     result = subprocess.run(
         ["git", "rev-list", "--parents", "-n", "1", "HEAD"],
         cwd=ROOT,
@@ -133,7 +142,7 @@ def test_phase10_pr_does_not_modify_unrelated_business_rule_modules() -> None:
     parts = result.stdout.strip().split()
 
     if len(parts) < 3:
-        pytest.skip("Business-rule diff guard only applies to PR merge refs.")
+        pytest.skip("Business-rule diff guard requires a PR merge ref.")
 
     base_parent = parts[1]
     changed = subprocess.run(
