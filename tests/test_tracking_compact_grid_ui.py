@@ -139,7 +139,7 @@ def test_tracking_detail_bar_preserves_revision_as_only_manual_status_control():
     assert "FILE TRACK" in compact
     for header in ("SARAN TRACK", "STEM / EXPORT", "DISETOR"):
         assert header in compact
-    assert 'QLabel("OUTPUT HEALTH")' in compact
+    assert "KONDISI OUTPUT" in compact
 
 
 
@@ -221,10 +221,11 @@ def test_output_health_workspace_explains_episode_counts_and_warning_details():
     assert "PERINGATAN" in compact
     for header in ("EPS", "STEM", "SETORAN", "PERINGATAN"):
         assert header in compact
-    assert '["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]' in compact
-    assert '"Expected Tracks"' in compact
-    assert '"Valid Stem"' in compact
-    assert '"Valid Delivery"' in compact
+    for header in ("JENIS", "TOKOH", "FILE", "PESAN"):
+        assert header in compact
+    assert "Track Diharapkan" in compact
+    assert "Stem Valid" in compact
+    assert "Setoran Valid" in compact
     assert "warning.message" in compact
 
 
