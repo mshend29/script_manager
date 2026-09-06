@@ -28,7 +28,7 @@ class SourceRefreshPreviewDialog(QDialog):
     ):
         super().__init__(parent)
         self.preview = preview
-        self.setWindowTitle("Source Refresh Preview")
+        self.setWindowTitle('Pratinjau Pembaruan Sumber')
         self.resize(1120, 720)
         self.setMinimumSize(860, 560)
 
@@ -36,13 +36,13 @@ class SourceRefreshPreviewDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(10)
 
-        title = QLabel("Source Refresh Preview")
+        title = QLabel('Pratinjau Pembaruan Sumber')
         title.setObjectName("PageTitle")
         root.addWidget(title)
 
         subtitle = QLabel(
-            "Preview ini read-only. Database belum diubah. "
-            "Apply Refresh akan membuat safety backup terlebih dahulu."
+            "Pratinjau ini hanya-baca. Database belum diubah. "
+            "Sebelum pembaruan diterapkan, aplikasi akan membuat cadangan pengaman."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
@@ -52,14 +52,14 @@ class SourceRefreshPreviewDialog(QDialog):
         metrics.setHorizontalSpacing(10)
         metrics.setVerticalSpacing(6)
         values = [
-            ("Episodes Changed", preview.changed_episodes),
-            ("Source Changed", preview.source_changed),
-            ("Dialog Added", preview.dialogues_added),
-            ("Dialog Removed", preview.dialogues_removed),
-            ("Text Changed", preview.text_changed),
-            ("Cast Changed", preview.cast_changed),
-            ("Recording Affected", preview.recording_affected),
-            ("Tracking Affected", preview.tracking_affected),
+            ('Episode Berubah', preview.changed_episodes),
+            ('Sumber Berubah', preview.source_changed),
+            ('Dialog Ditambahkan', preview.dialogues_added),
+            ('Dialog Dihapus', preview.dialogues_removed),
+            ('Teks Berubah', preview.text_changed),
+            ('Pemetaan Berubah', preview.cast_changed),
+            ('Rekaman Terdampak', preview.recording_affected),
+            ('Tracking Terdampak', preview.tracking_affected),
         ]
         for index, (label, value) in enumerate(values):
             box = QWidget()
@@ -79,7 +79,7 @@ class SourceRefreshPreviewDialog(QDialog):
 
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
-            ["TYPE", "EPS", "ROW", "ENTITY", "BEFORE", "AFTER", "IMPACT"]
+            ['JENIS', "EPS", 'BARIS', 'ENTITAS', 'SEBELUM', 'SESUDAH', 'DAMPAK']
         )
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(
@@ -102,10 +102,10 @@ class SourceRefreshPreviewDialog(QDialog):
 
         if warnings:
             warning_label = QLabel(
-                "Parser/Resolver warnings:\n"
+                "Peringatan parser/resolver:\n"
                 + "\n".join(f"• {item}" for item in warnings[:8])
                 + (
-                    f"\n… {len(warnings) - 8} warning lainnya"
+                    f"\n… {len(warnings) - 8} peringatan lainnya"
                     if len(warnings) > 8
                     else ""
                 )
@@ -118,7 +118,7 @@ class SourceRefreshPreviewDialog(QDialog):
             root.addWidget(warning_label)
 
         if not preview.has_changes:
-            no_change = QLabel("✓ Tidak ada perubahan source yang perlu diterapkan.")
+            no_change = QLabel('✓ Tidak ada perubahan sumber yang perlu diterapkan.')
             no_change.setStyleSheet("font-weight: 700; color: #176b2c;")
             root.addWidget(no_change)
 
@@ -127,9 +127,9 @@ class SourceRefreshPreviewDialog(QDialog):
             | QDialogButtonBox.StandardButton.Cancel
         )
         apply_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
-        apply_button.setText("Apply Refresh" if preview.has_changes else "Close")
+        apply_button.setText('Terapkan Pembaruan' if preview.has_changes else 'Tutup')
         apply_button.setProperty("primary", True)
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancel")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText('Batal')
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
@@ -139,7 +139,7 @@ class SourceRefreshPreviewDialog(QDialog):
         for row_index, change in enumerate(self.preview.items):
             impact_parts = []
             if change.recording_affected:
-                impact_parts.append("Recording")
+                impact_parts.append('Rekaman')
             if change.tracking_affected:
                 impact_parts.append("Tracking")
             impact = ", ".join(impact_parts) or "—"

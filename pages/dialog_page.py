@@ -174,14 +174,14 @@ class DialogPage(QWidget):
         self.episode_combo.setMinimumContentsLength(12)
         filter_layout.addWidget(self.episode_combo)
 
-        self.prev_episode_button = QPushButton("‹ Prev")
+        self.prev_episode_button = QPushButton('‹ Sebelumnya')
         self.prev_episode_button.setProperty("dialogNav", True)
-        self.next_episode_button = QPushButton("Next ›")
+        self.next_episode_button = QPushButton('Berikutnya ›')
         self.next_episode_button.setProperty("dialogNav", True)
         filter_layout.addWidget(self.prev_episode_button)
         filter_layout.addWidget(self.next_episode_button)
 
-        self.open_source_button = QPushButton("Open Source")
+        self.open_source_button = QPushButton('Buka Sumber')
         self.open_source_button.setProperty("secondary", True)
         self.open_source_button.setEnabled(False)
         filter_layout.addWidget(self.open_source_button)
@@ -190,12 +190,12 @@ class DialogPage(QWidget):
 
         self.search_edit = QLineEdit()
         self.search_edit.setObjectName("DialogSearch")
-        self.search_edit.setPlaceholderText("Search dialog…")
+        self.search_edit.setPlaceholderText('Cari dialog…')
         self.search_edit.setClearButtonEnabled(True)
         self.search_edit.setMinimumWidth(180)
         filter_layout.addWidget(self.search_edit, 1)
 
-        self.copy_all_button = QPushButton("Copy All Dialog")
+        self.copy_all_button = QPushButton('Salin Semua Dialog')
         self.copy_all_button.setProperty("secondary", True)
         self.copy_all_button.setEnabled(False)
         self.copy_all_button.setToolTip(
@@ -271,7 +271,7 @@ class DialogPage(QWidget):
         cast_layout.setContentsMargins(12, 10, 12, 12)
         cast_layout.setSpacing(8)
 
-        cast_label = QLabel("CAST EPISODE")
+        cast_label = QLabel('TOKOH & TALENT EPISODE')
         cast_label.setObjectName("DialogFooterLabel")
         cast_layout.addWidget(cast_label)
 
@@ -401,7 +401,7 @@ class DialogPage(QWidget):
         self.search_edit.clear()
         self.cast_table.setRowCount(0)
         self.table.setRowCount(0)
-        self.selection_info.setText("No project open")
+        self.selection_info.setText('Belum ada proyek terbuka')
         self._update_header_checkbox_state()
 
     def reload(
@@ -668,7 +668,7 @@ class DialogPage(QWidget):
         self._source_file_path = ""
         self.open_source_button.setEnabled(False)
         self.copy_all_button.setEnabled(False)
-        self.copy_all_button.setText("Copy All Dialog")
+        self.copy_all_button.setText('Salin Semua Dialog')
         self.cast_table.setRowCount(0)
         self._checkboxes.clear()
         self._dialogue_items.clear()
@@ -694,7 +694,7 @@ class DialogPage(QWidget):
                 talent_text = (
                     member.talent_name
                     if member.is_resolved
-                    else "⚠ Unresolved"
+                    else '⚠ Belum dipetakan'
                 )
                 talent_item = QTableWidgetItem(talent_text)
                 self.cast_table.setItem(row_index, 0, character_item)
@@ -709,7 +709,7 @@ class DialogPage(QWidget):
         self._dialogue_items.clear()
         self._dialogue_rows = list(rows)
         self.copy_all_button.setEnabled(bool(rows))
-        self.copy_all_button.setText("Copy All Dialog")
+        self.copy_all_button.setText('Salin Semua Dialog')
 
         try:
             self.table.clearContents()
@@ -722,8 +722,8 @@ class DialogPage(QWidget):
                 checkbox.setProperty("source_revised", row.source_revised)
                 if row.source_revised:
                     checkbox.setToolTip(
-                        "Source berubah sejak dialog ini terakhir direkam. "
-                        "Rekam ulang lalu update checkbox untuk menerima source terbaru."
+                        "Sumber berubah sejak dialog ini terakhir direkam. "
+                        "Rekam ulang lalu perbarui checkbox untuk menerima sumber terbaru."
                     )
                 checkbox.stateChanged.connect(
                     lambda state, dialogue_id=row.dialogue_id:
@@ -743,15 +743,15 @@ class DialogPage(QWidget):
                 dialogue_text = self._single_line_dialogue(row.dialogue)
                 dialogue_item = QTableWidgetItem(
                     (
-                        f"⚠ Source Revised · {dialogue_text}"
+                        f"⚠ Sumber Direvisi · {dialogue_text}"
                         if row.source_revised
                         else dialogue_text
                     )
                 )
                 dialogue_item.setToolTip(
                     (
-                        "Source berubah sejak dialog terakhir direkam. "
-                        "Recording history tetap dipertahankan.\n\n"
+                        "Sumber berubah sejak dialog terakhir direkam. "
+                        "Riwayat rekaman tetap dipertahankan.\n\n"
                         + row.dialogue
                     )
                     if row.source_revised
@@ -833,10 +833,10 @@ class DialogPage(QWidget):
         if count <= 0:
             return
 
-        self.copy_all_button.setText(f"Copied {count} Dialog")
+        self.copy_all_button.setText(f"{count} Dialog Tersalin")
         QTimer.singleShot(
             1500,
-            lambda: self.copy_all_button.setText("Copy All Dialog"),
+            lambda: self.copy_all_button.setText('Salin Semua Dialog'),
         )
 
     def _recording_checkbox_changed(self, dialogue_id: int, state: int) -> None:
@@ -858,8 +858,8 @@ class DialogPage(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Recording Status",
-                f"Gagal menyimpan status recording.\n\n{exc}",
+                'Status Rekaman',
+                f"Gagal menyimpan status rekaman.\n\n{exc}",
             )
             return
 
@@ -890,8 +890,8 @@ class DialogPage(QWidget):
         except Exception as exc:
             QMessageBox.warning(
                 self,
-                "Recording Status",
-                f"Gagal menyimpan status recording.\n\n{exc}",
+                'Status Rekaman',
+                f"Gagal menyimpan status rekaman.\n\n{exc}",
             )
             return
 
@@ -937,14 +937,14 @@ class DialogPage(QWidget):
             if bool(checkbox.property("source_revised"))
         )
         revision_text = (
-            f" • ⚠ {revised} source revised"
+            f" • ⚠ {revised} sumber direvisi"
             if revised
             else ""
         )
 
         self.selection_info.setText(
             f"{talent_name} • {character_name} • Episode {episode_number} • "
-            f"{recorded}/{total} recorded{revision_text}"
+            f"{recorded}/{total} direkam{revision_text}"
         )
 
     def _clear_source_revision_marker(self, dialogue_id: int) -> None:
@@ -990,16 +990,16 @@ class DialogPage(QWidget):
         if not path.is_file():
             QMessageBox.warning(
                 self,
-                "Open Source File",
-                f"Source file tidak ditemukan.\n\n{path}",
+                'Buka File Sumber',
+                f"Sumber file tidak ditemukan.\n\n{path}",
             )
             return
 
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             QMessageBox.warning(
                 self,
-                "Open Source File",
-                f"Source file tidak dapat dibuka.\n\n{path}",
+                'Buka File Sumber',
+                f"Sumber file tidak dapat dibuka.\n\n{path}",
             )
 
     # ------------------------------------------------------------------

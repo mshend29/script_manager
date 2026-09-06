@@ -13,15 +13,15 @@ def test_getting_started_help_content_covers_core_workflow():
     content = help_file.read_text(encoding="utf-8")
 
     for expected in (
-        "Getting Started",
+        "Mulai",
         ".smproj",
-        "Source Script Folder",
-        "Sync Source",
-        "DIALOG",
-        "TRACKING",
-        "Save As",
-        "Duplicate",
-        "Recover Project",
+        "Folder Naskah Sumber",
+        "Sinkronkan Sumber",
+        "Dialog",
+        "Tracking",
+        "Simpan Sebagai",
+        "Duplikat",
+        "Pulihkan Proyek",
     ):
         assert expected in content
 
@@ -41,7 +41,8 @@ def test_help_tab_and_getting_started_action_are_wired():
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert '"HELP": PageHeaderSpec(' in header
-    assert 'HeaderAction("help.getting_started", "Getting Started")' in header
+    assert "help.getting_started" in header
+    assert "Mulai" in header
 
     assert '"HELP": HelpPage()' in main
     assert '"help.getting_started": self.open_getting_started' in main

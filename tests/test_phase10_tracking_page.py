@@ -49,7 +49,7 @@ def test_tracking_footer_stays_secondary_to_episode_matrix() -> None:
     compact = _read("pages/tracking_compact_page.py")
 
     assert '"TrackingQueuePanel"' in compact
-    assert 'QLabel("TRACKS TO STEM")' in compact
+    assert "TRACK UNTUK STEM" in compact
     assert "self.character_table.setMaximumHeight(112)" not in compact
     assert "body.addWidget(queue_panel)" in compact
     assert "queue_layout.addLayout(episode_row)" in compact

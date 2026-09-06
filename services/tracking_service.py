@@ -29,13 +29,13 @@ DOWNSTREAM_STATUSES = {
 }
 
 STATUS_LABELS = {
-    NOT_STARTED: "Not Started",
-    IN_PROGRESS: "In Progress",
-    RECORDED: "Recorded",
-    READY_TO_STEM: "Recorded",  # historical compatibility only
-    STEMMED: "Stemmed",
-    DELIVERED: "Delivered",
-    REVISION: "Revision",
+    NOT_STARTED: "Belum Mulai",
+    IN_PROGRESS: "Berjalan",
+    RECORDED: "Terekam",
+    READY_TO_STEM: "Terekam",  # historical compatibility only
+    STEMMED: "Selesai Stem",
+    DELIVERED: "Disetor",
+    REVISION: "Revisi",
 }
 
 

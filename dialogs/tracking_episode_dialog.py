@@ -35,16 +35,16 @@ class TrackingEpisodeDialog(QDialog):
         form.addRow("Talent", QLabel(chip.talent_name))
         form.addRow("Status saat ini", QLabel(chip.status_label))
         form.addRow(
-            "Dialog recorded",
+            'Dialog terekam',
             QLabel(f"{chip.recorded_dialogues} / {chip.total_dialogues}"),
         )
 
         self.status_combo = QComboBox()
-        self.status_combo.addItem("Ikuti Recording Status", NOT_READY)
-        self.status_combo.addItem("Ready to Stem", READY_TO_STEM)
-        self.status_combo.addItem("Stemmed", STEMMED)
-        self.status_combo.addItem("Delivered", DELIVERED)
-        self.status_combo.addItem("Revision", REVISION)
+        self.status_combo.addItem('Ikuti Status Rekaman', NOT_READY)
+        self.status_combo.addItem('Siap Stem', READY_TO_STEM)
+        self.status_combo.addItem('Selesai Stem', STEMMED)
+        self.status_combo.addItem('Disetor', DELIVERED)
+        self.status_combo.addItem('Revisi', REVISION)
 
         current_status = chip.downstream_status
         index = self.status_combo.findData(current_status)

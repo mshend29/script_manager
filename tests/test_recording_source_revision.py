@@ -315,6 +315,6 @@ def test_schema_v11_migration_backfills_recorded_source_baseline(tmp_path):
 def test_dialog_page_contains_source_revision_operator_feedback() -> None:
     source = Path("pages/dialog_page.py").read_text(encoding="utf-8")
 
-    assert "⚠ Source Revised" in source
+    assert "⚠ Sumber Direvisi" in source
     assert "source_revised" in source
-    assert "Recording history tetap dipertahankan" in source
+    assert "Riwayat rekaman tetap dipertahankan" in source

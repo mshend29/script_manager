@@ -74,13 +74,13 @@ class DataPage(PageShell):
 
         context = ContextPanel("DATA")
 
-        context.add_section_title("DATA HEALTH")
-        self.health_label = QLabel("No project open")
+        context.add_section_title('KONDISI DATA')
+        self.health_label = QLabel('Belum ada proyek terbuka')
         self.health_label.setWordWrap(True)
         context.add_widget(self.health_label)
 
-        self.cast_mapping_title = context.add_section_title("CAST MAPPING")
-        self.mapping_character_label = QLabel("Pilih character dari tabel.")
+        self.cast_mapping_title = context.add_section_title('PEMETAAN TOKOH & TALENT')
+        self.mapping_character_label = QLabel('Pilih tokoh dari tabel.')
         self.mapping_character_label.setWordWrap(True)
         context.add_widget(self.mapping_character_label)
 
@@ -88,17 +88,17 @@ class DataPage(PageShell):
         self.mapping_talent_combo.setPlaceholderText("Pilih talent")
         context.add_widget(self.mapping_talent_combo)
 
-        self.lock_mapping_button = QPushButton("Lock Mapping")
+        self.lock_mapping_button = QPushButton('Kunci Pemetaan')
         self.lock_mapping_button.setProperty("primary", True)
         context.add_widget(self.lock_mapping_button)
 
-        self.unlock_mapping_button = QPushButton("Unlock Mapping")
+        self.unlock_mapping_button = QPushButton('Buka Kunci Pemetaan')
         self.unlock_mapping_button.setProperty("secondary", True)
         context.add_widget(self.unlock_mapping_button)
 
         self.mapping_note = QLabel(
-            "Manual lock menjadi mapping authoritative untuk cast aktif. "
-            "Unlock hanya melepas kunci; re-resolve berikutnya terjadi saat Refresh Data."
+            "Pemetaan yang dikunci manual menjadi acuan untuk cast aktif. "
+            "Buka kunci hanya melepas kunci; resolusi ulang berikutnya terjadi saat Muat Ulang Data."
         )
         self.mapping_note.setWordWrap(True)
         self.mapping_note.setObjectName("MutedLabel")
@@ -119,12 +119,12 @@ class DataPage(PageShell):
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(10)
 
-        title = QLabel("Data & Validation")
+        title = QLabel('Data & Validasi')
         title.setObjectName("PageTitle")
         layout.addWidget(title)
 
         self.subtitle = QLabel(
-            "Master data, manual review, source health, dan validation project."
+            'Data master, peninjauan manual, kondisi sumber, dan validasi proyek.'
         )
         self.subtitle.setObjectName("PageSubtitle")
         self.subtitle.setWordWrap(True)
@@ -191,15 +191,15 @@ class DataPage(PageShell):
 
         self.overview_values: dict[str, QLabel] = {}
         metrics = [
-            ("active_sources", "Active Sources"),
-            ("active_dialogues", "Script Rows"),
-            ("active_characters", "Characters"),
-            ("active_talents", "Talents"),
-            ("locked_mappings", "Locked Mappings"),
-            ("non_dialogue", "Narration / Non-Dialogue"),
-            ("needs_review", "Needs Review"),
-            ("system_errors", "System Errors"),
-            ("workflow_warnings", "Workflow Warnings"),
+            ("active_sources", 'Sumber Aktif'),
+            ("active_dialogues", 'Baris Naskah'),
+            ("active_characters", 'Tokoh'),
+            ("active_talents", 'Talent'),
+            ("locked_mappings", 'Pemetaan Terkunci'),
+            ("non_dialogue", 'Narasi / Non-Dialog'),
+            ("needs_review", 'Perlu Ditinjau'),
+            ("system_errors", 'Error Sistem'),
+            ("workflow_warnings", 'Peringatan Alur'),
         ]
 
         for index, (key, label_text) in enumerate(metrics):
@@ -219,7 +219,7 @@ class DataPage(PageShell):
 
         root.addWidget(card)
         root.addStretch(1)
-        self.tabs.addTab(tab, "Overview")
+        self.tabs.addTab(tab, 'Ringkasan')
 
     def _build_characters_tab(self) -> None:
         tab = QWidget()
@@ -227,7 +227,7 @@ class DataPage(PageShell):
         layout.setContentsMargins(8, 8, 8, 8)
 
         self.characters_table = self._new_table(
-            ["CHARACTER", "LOCKED TALENT", "SOURCE", "DIALOGUES", "UNRESOLVED"]
+            ['TOKOH', 'TALENT TERKUNCI', 'SUMBER', 'DIALOG', 'BELUM DIPETAKAN']
         )
         self.characters_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
@@ -236,7 +236,7 @@ class DataPage(PageShell):
             1, QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self.characters_table)
-        self.tabs.addTab(tab, "Character Mapping")
+        self.tabs.addTab(tab, 'Pemetaan Tokoh')
 
     def _build_talents_tab(self) -> None:
         tab = QWidget()
@@ -244,13 +244,13 @@ class DataPage(PageShell):
         layout.setContentsMargins(8, 8, 8, 8)
 
         self.talents_table = self._new_table(
-            ["TALENT", "CHARACTERS", "ACTIVE DIALOGUES"]
+            ["TALENT", 'TOKOH', 'DIALOG AKTIF']
         )
         self.talents_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self.talents_table)
-        self.tabs.addTab(tab, "Talents")
+        self.tabs.addTab(tab, 'Talent')
 
     def _build_unresolved_tab(self) -> None:
         tab = QWidget()
@@ -259,27 +259,27 @@ class DataPage(PageShell):
         layout.setSpacing(8)
 
         controls = QHBoxLayout()
-        controls.addWidget(QLabel("View"))
+        controls.addWidget(QLabel('Tampilan'))
         self.unresolved_view_combo = QComboBox()
-        self.unresolved_view_combo.addItem("Needs Review", "review")
-        self.unresolved_view_combo.addItem("Narration / Non-Dialogue", "narration")
-        self.unresolved_view_combo.addItem("All", "all")
+        self.unresolved_view_combo.addItem('Perlu Ditinjau', "review")
+        self.unresolved_view_combo.addItem('Narasi / Non-Dialog', "narration")
+        self.unresolved_view_combo.addItem("Semua", "all")
         controls.addWidget(self.unresolved_view_combo)
         controls.addStretch(1)
         layout.addLayout(controls)
 
         self.unresolved_table = self._new_table(
-            ["EPS", "ISSUE", "CHARACTER", "TALENT", "DIALOG", "SOURCE"]
+            ["EPS", 'MASALAH', 'TOKOH', "TALENT", "DIALOG", 'SUMBER']
         )
         self.unresolved_table.horizontalHeader().setSectionResizeMode(
             4, QHeaderView.ResizeMode.Stretch
         )
         self.unresolved_table.setToolTip(
-            "Needs Review: klik CHARACTER untuk Add Character, TALENT untuk Add Talent, "
-            "ISSUE untuk Mark as Narration, atau SOURCE untuk membuka source."
+            "Perlu Ditinjau: klik TOKOH untuk menambah tokoh, TALENT untuk menambah talent, "
+            "MASALAH untuk menandai Narasi / Non-Dialog, atau SUMBER untuk membuka file sumber."
         )
         layout.addWidget(self.unresolved_table)
-        self.tabs.addTab(tab, "Unresolved")
+        self.tabs.addTab(tab, 'Belum Dipetakan')
 
     def _build_sources_tab(self) -> None:
         tab = QWidget()
@@ -287,14 +287,14 @@ class DataPage(PageShell):
         layout.setContentsMargins(8, 8, 8, 8)
 
         self.sources_table = self._new_table(
-            ["EPS", "FILE", "STATE", "IMPORTED", "LAST SEEN"]
+            ["EPS", "FILE", 'KONDISI', 'DIIMPOR', 'TERAKHIR TERLIHAT']
         )
         self.sources_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
-        self.sources_table.setToolTip("Double-click source untuk membuka workbook.")
+        self.sources_table.setToolTip('Klik dua kali sumber untuk membuka workbook.')
         layout.addWidget(self.sources_table)
-        self.tabs.addTab(tab, "Sources")
+        self.tabs.addTab(tab, 'Sumber')
 
     def _build_validation_tab(self) -> None:
         tab = QWidget()
@@ -303,9 +303,9 @@ class DataPage(PageShell):
         layout.setSpacing(8)
 
         summary_row = QHBoxLayout()
-        self.validation_system_label = QLabel("System 0")
-        self.validation_review_label = QLabel("Review 0")
-        self.validation_workflow_label = QLabel("Workflow 0")
+        self.validation_system_label = QLabel("Sistem 0")
+        self.validation_review_label = QLabel("Peninjauan 0")
+        self.validation_workflow_label = QLabel("Alur 0")
         for label in (
             self.validation_system_label,
             self.validation_review_label,
@@ -319,24 +319,24 @@ class DataPage(PageShell):
         summary_row.addStretch(1)
         layout.addLayout(summary_row)
 
-        self.validation_summary = QLabel("Validation belum dijalankan.")
+        self.validation_summary = QLabel("Validasi belum dijalankan.")
         self.validation_summary.setObjectName("PageSubtitle")
         layout.addWidget(self.validation_summary)
 
         filters = QHBoxLayout()
         self.validation_severity_combo = QComboBox()
-        self.validation_severity_combo.addItem("All Severity", None)
+        self.validation_severity_combo.addItem('Semua Tingkat', None)
         self.validation_severity_combo.addItem("Error", ERROR)
-        self.validation_severity_combo.addItem("Warning", WARNING)
+        self.validation_severity_combo.addItem('Peringatan', WARNING)
         self.validation_category_combo = QComboBox()
-        self.validation_category_combo.addItem("All Categories", None)
-        self.validation_category_combo.addItem("System", SYSTEM)
-        self.validation_category_combo.addItem("Needs Review", REVIEW)
-        self.validation_category_combo.addItem("Workflow", WORKFLOW)
+        self.validation_category_combo.addItem('Semua Kategori', None)
+        self.validation_category_combo.addItem('Sistem', SYSTEM)
+        self.validation_category_combo.addItem('Perlu Ditinjau', REVIEW)
+        self.validation_category_combo.addItem('Alur', WORKFLOW)
         self.validation_episode_combo = QComboBox()
-        self.validation_episode_combo.addItem("All Episodes", None)
+        self.validation_episode_combo.addItem('Semua Episode', None)
         self.validation_search = QLineEdit()
-        self.validation_search.setPlaceholderText("Search validation…")
+        self.validation_search.setPlaceholderText('Cari validasi…')
         filters.addWidget(self.validation_severity_combo)
         filters.addWidget(self.validation_category_combo)
         filters.addWidget(self.validation_episode_combo)
@@ -344,13 +344,13 @@ class DataPage(PageShell):
         layout.addLayout(filters)
 
         self.validation_table = self._new_table(
-            ["SEVERITY", "CATEGORY", "EPS", "ENTITY", "CODE", "MESSAGE", "ACTION"]
+            ['TINGKAT', 'KATEGORI', "EPS", 'ENTITAS', "KODE", 'PESAN', 'AKSI']
         )
         self.validation_table.horizontalHeader().setSectionResizeMode(
             5, QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self.validation_table)
-        self.tabs.addTab(tab, "Validation")
+        self.tabs.addTab(tab, 'Validasi')
 
     @staticmethod
     def _new_table(headers: list[str]) -> QTableWidget:
@@ -411,12 +411,12 @@ class DataPage(PageShell):
             ):
                 table.setRowCount(0)
             self.mapping_talent_combo.clear()
-            self.mapping_character_label.setText("Pilih character dari tabel.")
-            self.health_label.setText("No project open")
-            self.validation_summary.setText("Validation belum dijalankan.")
-            self.validation_system_label.setText("System 0")
-            self.validation_review_label.setText("Review 0")
-            self.validation_workflow_label.setText("Workflow 0")
+            self.mapping_character_label.setText('Pilih tokoh dari tabel.')
+            self.health_label.setText('Belum ada proyek terbuka')
+            self.validation_summary.setText("Validasi belum dijalankan.")
+            self.validation_system_label.setText("Sistem 0")
+            self.validation_review_label.setText("Peninjauan 0")
+            self.validation_workflow_label.setText("Alur 0")
             for label in self.overview_values.values():
                 label.setText("0")
         finally:
@@ -475,15 +475,15 @@ class DataPage(PageShell):
 
         if summary.system_errors:
             self.health_label.setText(
-                f"✕ {summary.system_errors} system error. Buka Validation."
+                f"✕ {summary.system_errors} error sistem. Buka Validasi."
             )
         elif needs_review or summary.workflow_warnings:
             self.health_label.setText(
-                f"⚠ {needs_review} item needs review • "
-                f"{summary.workflow_warnings} workflow warning."
+                f"⚠ {needs_review} item perlu ditinjau • "
+                f"{summary.workflow_warnings} peringatan alur."
             )
         else:
-            self.health_label.setText("✓ Project data healthy.")
+            self.health_label.setText('✓ Data proyek sehat.')
 
     def _load_characters(self) -> None:
         if not self._controller.is_bound:
@@ -511,7 +511,7 @@ class DataPage(PageShell):
             if row.locked_talent_name:
                 locked_text = row.locked_talent_name
             elif unresolved_dialogues:
-                locked_text = "⚠ Talent Unknown"
+                locked_text = '⚠ Talent Tidak Dikenal'
             else:
                 locked_text = "—"
 
@@ -538,7 +538,7 @@ class DataPage(PageShell):
                     self.UNRESOLVED_CHARACTER_COLOR,
                 )
                 character_item.setToolTip(
-                    "Double-click untuk membuka Needs Review / Missing Character."
+                    'Klik dua kali untuk membuka Perlu Ditinjau / Tokoh Belum Ada.'
                 )
             elif unresolved_dialogues:
                 self._set_table_row_color(
@@ -547,7 +547,7 @@ class DataPage(PageShell):
                     self.UNRESOLVED_TALENT_COLOR,
                 )
                 unresolved_item.setToolTip(
-                    "Double-click untuk membuka unresolved character ini."
+                    'Klik dua kali untuk membuka tokoh yang belum dipetakan ini.'
                 )
 
     def _load_talents(self) -> None:
@@ -622,9 +622,9 @@ class DataPage(PageShell):
             if kind == "review":
                 assert isinstance(row, UnresolvedCastRow)
                 issue_text = (
-                    "Missing Character"
+                    'Tokoh Belum Ada'
                     if row.character_id is None
-                    else "Missing Talent"
+                    else 'Talent Belum Ada'
                 )
                 values = (
                     str(row.episode_number),
@@ -644,7 +644,7 @@ class DataPage(PageShell):
                 assert isinstance(row, ReviewedDialogueRow)
                 values = (
                     str(row.episode_number),
-                    "Narration / Non-Dialogue",
+                    'Narasi / Non-Dialog',
                     "—",
                     "—",
                     row.dialogue,
@@ -696,27 +696,27 @@ class DataPage(PageShell):
         if kind == "review":
             assert isinstance(row, UnresolvedCastRow)
             if column == 1 and row.character_id is None:
-                mark_narration = menu.addAction("Mark as Narration / Non-Dialogue")
+                mark_narration = menu.addAction('Tandai sebagai Narasi / Non-Dialog')
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is mark_narration:
                     self._mark_non_dialogue(row)
             elif column == 2:
-                add_character = menu.addAction("Add Character…")
+                add_character = menu.addAction('Tambah Tokoh…')
                 add_character.setEnabled(row.character_id is None)
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is add_character:
                     self._add_character_to_unresolved(row)
             elif column == 3:
-                add_talent = menu.addAction("Add Talent…")
+                add_talent = menu.addAction('Tambah Talent…')
                 add_talent.setEnabled(row.character_id is not None)
                 if row.character_id is None:
-                    hint = menu.addAction("Add Character terlebih dahulu")
+                    hint = menu.addAction('Tambahkan Tokoh terlebih dahulu')
                     hint.setEnabled(False)
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is add_talent:
                     self._add_talent_to_unresolved(row)
             elif column == 5:
-                open_source = menu.addAction("Open Source")
+                open_source = menu.addAction('Buka Sumber')
                 open_source.setEnabled(bool(row.source_file_path))
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is open_source:
@@ -724,12 +724,12 @@ class DataPage(PageShell):
         else:
             assert isinstance(row, ReviewedDialogueRow)
             if column in {1, 4}:
-                restore = menu.addAction("Restore to Needs Review")
+                restore = menu.addAction('Kembalikan ke Perlu Ditinjau')
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is restore:
                     self._restore_to_review(row)
             elif column == 5:
-                open_source = menu.addAction("Open Source")
+                open_source = menu.addAction('Buka Sumber')
                 open_source.setEnabled(bool(row.source_file_path))
                 chosen = self._exec_cell_menu(menu, item)
                 if chosen is open_source:
@@ -745,7 +745,7 @@ class DataPage(PageShell):
             return
         answer = QMessageBox.question(
             self,
-            "Mark as Narration / Non-Dialogue",
+            'Tandai sebagai Narasi / Non-Dialog',
             (
                 f"Episode {row.episode_number}\n\n{row.dialogue}\n\n"
                 "Tandai row ini sebagai narasi/non-dialogue? Row tetap ada di SCRIPT, "
@@ -757,7 +757,7 @@ class DataPage(PageShell):
         try:
             self._controller.mark_non_dialogue(row.dialogue_id)
         except Exception as exc:
-            QMessageBox.critical(self, "Manual Review", str(exc))
+            QMessageBox.critical(self, 'Peninjauan Manual', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
@@ -769,7 +769,7 @@ class DataPage(PageShell):
         try:
             self._controller.restore_to_review(row.dialogue_id)
         except Exception as exc:
-            QMessageBox.critical(self, "Manual Review", str(exc))
+            QMessageBox.critical(self, 'Peninjauan Manual', str(exc))
             return
         self.unresolved_view_combo.setCurrentIndex(0)
         self.reload()
@@ -782,8 +782,8 @@ class DataPage(PageShell):
             return
         name, accepted = QInputDialog.getText(
             self,
-            "Add Character",
-            f"Character untuk Episode {row.episode_number}:\n{row.dialogue}",
+            'Tambah Tokoh',
+            f"Tokoh untuk Episode {row.episode_number}:\n{row.dialogue}",
         )
         if not accepted or not name.strip():
             return
@@ -793,7 +793,7 @@ class DataPage(PageShell):
                 name,
             )
         except Exception as exc:
-            QMessageBox.critical(self, "Add Character", str(exc))
+            QMessageBox.critical(self, 'Tambah Tokoh', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
@@ -805,7 +805,7 @@ class DataPage(PageShell):
             return
         name, accepted = QInputDialog.getText(
             self,
-            "Add Talent",
+            'Tambah Talent',
             f"Talent untuk {row.character_name}:",
         )
         if not accepted or not name.strip():
@@ -816,7 +816,7 @@ class DataPage(PageShell):
                 name,
             )
         except Exception as exc:
-            QMessageBox.critical(self, "Add Talent", str(exc))
+            QMessageBox.critical(self, 'Tambah Talent', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["unresolved"])
@@ -897,7 +897,7 @@ class DataPage(PageShell):
             return
         row = self.characters_table.currentRow()
         if row < 0:
-            self.mapping_character_label.setText("Pilih character dari tabel.")
+            self.mapping_character_label.setText('Pilih tokoh dari tabel.')
             self.mapping_talent_combo.setCurrentIndex(0)
             self._set_mapping_enabled(False)
             return
@@ -908,12 +908,12 @@ class DataPage(PageShell):
         character_id = character_item.data(Qt.ItemDataRole.UserRole)
         if character_id is None:
             self.mapping_character_label.setText(
-                "Character Unknown — selesaikan manual dari tab Unresolved."
+                'Tokoh Tidak Dikenal — selesaikan manual dari tab Belum Dipetakan.'
             )
             self.mapping_talent_combo.setCurrentIndex(0)
             self._set_mapping_enabled(False)
             return
-        self.mapping_character_label.setText(f"Character: {character_item.text()}")
+        self.mapping_character_label.setText(f"Tokoh: {character_item.text()}")
         locked_talent_id = (
             talent_item.data(Qt.ItemDataRole.UserRole)
             if talent_item is not None
@@ -953,8 +953,8 @@ class DataPage(PageShell):
         if character_id is None or talent_id is None:
             QMessageBox.information(
                 self,
-                "Cast Mapping",
-                "Pilih character dan talent terlebih dahulu.",
+                'Pemetaan Tokoh & Talent',
+                'Pilih tokoh dan talent terlebih dahulu.',
             )
             return
         row = self.characters_table.currentRow()
@@ -962,7 +962,7 @@ class DataPage(PageShell):
         talent_name = self.mapping_talent_combo.currentText()
         answer = QMessageBox.question(
             self,
-            "Lock Cast Mapping",
+            'Kunci Pemetaan Tokoh & Talent',
             (
                 f"Kunci {character_name} → {talent_name}?\n\n"
                 "Cast aktif untuk character ini akan langsung memakai talent tersebut."
@@ -976,7 +976,7 @@ class DataPage(PageShell):
                 int(talent_id),
             )
         except Exception as exc:
-            QMessageBox.critical(self, "Cast Mapping", str(exc))
+            QMessageBox.critical(self, 'Pemetaan Tokoh & Talent', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])
@@ -991,7 +991,7 @@ class DataPage(PageShell):
         try:
             self._controller.unlock_mapping(character_id)
         except Exception as exc:
-            QMessageBox.critical(self, "Cast Mapping", str(exc))
+            QMessageBox.critical(self, 'Pemetaan Tokoh & Talent', str(exc))
             return
         self.reload()
         self.tabs.setCurrentIndex(self.TAB_INDEX["characters"])
@@ -1023,15 +1023,15 @@ class DataPage(PageShell):
         if not path.is_file():
             QMessageBox.warning(
                 self,
-                "Open Source",
-                f"Source file tidak ditemukan.\n\n{path}",
+                'Buka Sumber',
+                f"Sumber file tidak ditemukan.\n\n{path}",
             )
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             QMessageBox.warning(
                 self,
-                "Open Source",
-                f"Source file tidak dapat dibuka.\n\n{path}",
+                'Buka Sumber',
+                f"Sumber file tidak dapat dibuka.\n\n{path}",
             )
 
     # ------------------------------------------------------------------
@@ -1052,13 +1052,13 @@ class DataPage(PageShell):
         if summary.system_errors:
             self.validation_summary.setText(
                 f"✕ {summary.system_errors} system error • "
-                f"{summary.needs_review} needs review • "
-                f"{summary.workflow_warnings} workflow warning"
+                f"{summary.needs_review} perlu ditinjau • "
+                f"{summary.workflow_warnings} peringatan alur"
             )
         elif summary.needs_review or summary.workflow_warnings:
             self.validation_summary.setText(
-                f"✓ System healthy • {summary.needs_review} needs review • "
-                f"{summary.workflow_warnings} workflow warning"
+                f"✓ System healthy • {summary.needs_review} perlu ditinjau • "
+                f"{summary.workflow_warnings} peringatan alur"
             )
         else:
             self.validation_summary.setText(
@@ -1076,7 +1076,7 @@ class DataPage(PageShell):
         self.validation_episode_combo.blockSignals(True)
         try:
             self.validation_episode_combo.clear()
-            self.validation_episode_combo.addItem("All Episodes", None)
+            self.validation_episode_combo.addItem('Semua Episode', None)
             for episode in episodes:
                 self.validation_episode_combo.addItem(f"Episode {episode}", episode)
             index = self.validation_episode_combo.findData(current_episode)
@@ -1118,7 +1118,7 @@ class DataPage(PageShell):
         self.validation_table.setRowCount(len(issues))
         action_labels = {
             ACTION_REVIEW: "Review",
-            ACTION_SOURCES: "Sources",
+            ACTION_SOURCES: 'Sumber',
             ACTION_TRACKING: "Tracking",
         }
         for row_index, issue in enumerate(issues):
@@ -1190,12 +1190,12 @@ class DataPage(PageShell):
 
     def backup_database(self) -> Path:
         if not self._controller.is_bound:
-            raise RuntimeError("Belum ada project yang dibuka.")
+            raise RuntimeError('Belum ada proyek yang dibuka.')
         return self._controller.backup_database()
 
     def rebuild_indexes(self) -> None:
         if not self._controller.is_bound:
-            raise RuntimeError("Belum ada project yang dibuka.")
+            raise RuntimeError('Belum ada proyek yang dibuka.')
         self._controller.rebuild_indexes()
         self.reload()
 

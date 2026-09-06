@@ -122,12 +122,12 @@ class DataWorkspaceController:
 
     def mark_non_dialogue(self, dialogue_id: int) -> None:
         if self.review is None:
-            raise RuntimeError("DATA workspace belum terhubung ke project.")
+            raise RuntimeError('Workspace DATA belum terhubung ke proyek.')
         self.review.mark_non_dialogue(int(dialogue_id))
 
     def restore_to_review(self, dialogue_id: int) -> None:
         if self.review is None:
-            raise RuntimeError("DATA workspace belum terhubung ke project.")
+            raise RuntimeError('Workspace DATA belum terhubung ke proyek.')
         self.review.restore_to_review(int(dialogue_id))
 
     def add_missing_character(
@@ -177,5 +177,5 @@ class DataWorkspaceController:
 
     def _require_data(self) -> DataService:
         if self.data is None:
-            raise RuntimeError("DATA workspace belum terhubung ke project.")
+            raise RuntimeError('Workspace DATA belum terhubung ke proyek.')
         return self.data

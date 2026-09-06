@@ -90,7 +90,7 @@ class EpisodeChipButton(QPushButton):
         self.setFixedSize(46, 34)
 
         self._action_menu = QMenu(self)
-        go_to_dialog = self._action_menu.addAction("Go to Dialog")
+        go_to_dialog = self._action_menu.addAction('Buka Dialog')
         go_to_dialog.triggered.connect(self._go_to_dialog)
 
         self.clicked.connect(self._request_detail)

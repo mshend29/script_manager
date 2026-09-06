@@ -72,7 +72,7 @@ class BackupService:
     def validate_backup(self, backup_path: str | Path) -> tuple[bool, str]:
         path = Path(backup_path)
         if not path.is_file():
-            return False, "Backup file tidak ditemukan."
+            return False, 'File cadangan tidak ditemukan.'
 
         version = 0
         try:
@@ -109,17 +109,17 @@ class BackupService:
                     """
                 ).fetchone()
                 if row is None:
-                    return False, "Schema version backup tidak ditemukan."
+                    return False, 'Versi skema cadangan tidak ditemukan.'
 
                 try:
                     version = int(str(row[0]))
                 except ValueError:
-                    return False, "Schema version backup tidak valid."
+                    return False, 'Versi skema cadangan tidak valid.'
 
                 if version > SCHEMA_VERSION:
                     return (
                         False,
-                        f"Backup schema v{version} lebih baru dari aplikasi "
+                        f"Skema cadangan v{version} lebih baru dari aplikasi "
                         f"yang mendukung sampai v{SCHEMA_VERSION}.",
                     )
 
@@ -142,13 +142,13 @@ class BackupService:
                         format_row is not None
                         and str(format_row[0]) != PROJECT_FORMAT_ID
                     ):
-                        return False, "Backup bukan Script Management Project."
+                        return False, 'Cadangan bukan Proyek Script Manager.'
             finally:
                 connection.close()
         except sqlite3.DatabaseError as exc:
             return False, f"Backup database tidak dapat dibaca: {exc}"
 
-        return True, f"Valid Script Manager backup (schema v{version})."
+        return True, f"Cadangan Script Manager valid (skema v{version})."
 
     def restore(self, backup_path: str | Path) -> tuple[Path, int]:
         source_path = Path(backup_path)
@@ -167,7 +167,7 @@ class BackupService:
             and current_project_id != source_project_id
         ):
             raise ValueError(
-                "Backup berasal dari project yang berbeda."
+                'Cadangan berasal dari proyek yang berbeda.'
             )
 
         safety_backup = self.create("before-restore")

@@ -35,13 +35,15 @@ def test_project_settings_dialog_uses_two_tabs_and_constrained_wav_spec():
     source = _read("dialogs/project_settings_dialog.py")
 
     assert "QTabWidget" in source
-    assert 'self.tabs.addTab(self._build_project_tab(settings), "Project")' in source
-    assert '"Track Output & Delivery"' in source
+    assert "self._build_project_tab(settings)" in source
+    assert "Proyek" in source
+    assert "Output Track & Setoran" in source
     assert "filesystem path" in source
     assert "Google Drive Desktop" in source
 
-    assert "Stem / Mixdown / Export Folder" in source
-    assert "Setoran Folder (Google Drive Desktop)" in source
+    assert "Stem / Mixdown / Export" in source
+    assert "Folder Setoran" in source
+    assert "Google Drive Desktop" in source
     assert 'format_value = QLabel("WAV")' in source
     assert "QSpinBox" not in source
     assert '("44.100 Hz", 44100)' in source
@@ -58,12 +60,12 @@ def test_project_settings_dialog_uses_two_tabs_and_constrained_wav_spec():
 def test_project_settings_source_filename_helper_replaces_manual_test_filename():
     source = _read("dialogs/project_settings_dialog.py")
 
-    assert 'QPushButton("Get Source Filenames")' in source
+    assert "Baca Nama File Sumber" in source
     assert "read_source_filenames(self.source_folder.text())" in source
     assert "self.source_filename_example" in source
-    assert 'QPushButton("Copy")' in source
-    assert "Episode Preview:" in source
-    assert 'QGroupBox("Episode Delimiter")' in source
+    assert "Salin" in source
+    assert "Pratinjau Episode:" in source
+    assert "Pemisah Episode" in source
     assert "filename_sample" not in source
     assert '"Test Filename"' not in source
 

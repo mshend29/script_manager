@@ -13,19 +13,19 @@ def test_user_guide_covers_current_application_areas():
     content = guide_file.read_text(encoding="utf-8")
 
     for expected in (
-        "User Guide",
+        "Panduan Pengguna",
         ".smproj",
-        "Project Settings",
-        "Sync Source",
-        "SCRIPT",
+        "Pengaturan Proyek",
+        "Sinkronkan Sumber",
+        "NASKAH",
         "DIALOG",
         "TRACKING",
         "DATA",
-        "TOOLS",
-        "Character Alias",
-        "Output Health",
-        "Restore Backup",
-        "Recover Project",
+        "Peralatan &amp; Pemeliharaan",
+        "Tokoh Alias",
+        "Kondisi Output",
+        "Pulihkan Cadangan",
+        "Pulihkan Proyek",
     ):
         assert expected in content
 
@@ -34,7 +34,7 @@ def test_help_page_can_switch_between_getting_started_and_user_guide():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
 
     assert "USER_GUIDE_FILE" in page
-    assert 'QPushButton("User Guide")' in page
+    assert 'QPushButton("Panduan Pengguna")' in page
     assert "def show_user_guide" in page
     assert "def _set_active_button" in page
     assert 'button.setProperty("primary", is_active)' in page
@@ -45,7 +45,7 @@ def test_user_guide_action_is_wired_to_header_and_main_window():
     header = (ROOT / "widgets" / "page_header.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert 'HeaderAction("help.user_guide", "User Guide", primary=True)' in header
+    assert 'HeaderAction("help.user_guide", "Panduan Pengguna", primary=True)' in header
     assert '"help.user_guide": self.open_user_guide' in main
     assert "def open_user_guide" in main
     assert "page.show_user_guide()" in main

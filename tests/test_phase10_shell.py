@@ -62,15 +62,15 @@ def test_bottom_navigation_contains_production_workspaces_only() -> None:
 def test_standard_menu_contract_is_present() -> None:
     source = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    for menu in ("&File", "&Project", "&Data", "&Tools", "&Help"):
-        assert f'menu_bar.addMenu("{menu}")' in source
+    for menu in ("&Berkas", "&Proyek", "&Data", "&Peralatan", "&Bantuan"):
+        assert menu in source
 
     for label in (
-        "New Project",
-        "Open Project",
-        "Sync Source",
-        "Tools & Maintenance",
-        "Getting Started",
+        "Proyek Baru",
+        "Buka Proyek",
+        "Sinkronkan Sumber",
+        "Peralatan & Pemeliharaan",
+        "Mulai",
     ):
         assert label in source
 

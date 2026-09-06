@@ -72,8 +72,8 @@ class DeliveryPage(CompactTrackingPage):
 
         self.workspace_buttons: dict[str, QPushButton] = {}
         for key, label in (
-            (WORKSPACE_TRACK_FILES, "Track Files"),
-            (WORKSPACE_OUTPUT_HEALTH, "Output Health"),
+            (WORKSPACE_TRACK_FILES, 'File Track'),
+            (WORKSPACE_OUTPUT_HEALTH, 'Kondisi Output'),
         ):
             button = QPushButton(label)
             button.setProperty("secondary", True)

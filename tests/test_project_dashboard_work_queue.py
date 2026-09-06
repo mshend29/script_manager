@@ -131,13 +131,13 @@ def test_project_dashboard_ui_exposes_clickable_next_actions():
     main = (root / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert "action_requested = Signal(str)" in page
-    assert '"NEEDS ATTENTION"' in page
-    assert '"RECENT ACTIVITY"' in page
+    assert "PERLU PERHATIAN" in page
+    assert "AKTIVITAS TERBARU" in page
     assert "self.action_requested.emit(key)" in page
 
     assert "handle_project_dashboard_action" in main
-    assert 'page.show_section("Unresolved")' in main
-    assert 'page.show_section("Validation")' in main
+    assert "page.show_section('Belum Dipetakan')" in main
+    assert "page.show_section('Validasi')" in main
     assert 'self.set_page("TRACKING")' in main
 
 
@@ -157,7 +157,7 @@ def test_source_preview_dialog_is_read_only_until_apply():
     )
 
     assert "Database belum diubah" in dialog
-    assert '"Apply Refresh"' in dialog
+    assert "Terapkan Pembaruan" in dialog
     assert "_source_sync_prepared" in main
     assert "apply_after_prepare" in main
     assert "_pending_report" in controller

@@ -274,7 +274,7 @@ class TrackFileService:
                 self._audio_warnings(
                     delivery_check,
                     code="INVALID_DELIVERY_FORMAT",
-                    label="Delivered",
+                    label='Disetor',
                     item=item,
                 )
             )
@@ -509,7 +509,7 @@ class TrackFileService:
             return [], [
                 TrackFileWarning(
                     code=f"{folder_code}_FOLDER_NOT_CONFIGURED",
-                    message=f"{folder_code.title()} folder belum diatur di Project Settings.",
+                    message=f"{folder_code.title()} folder belum diatur di Proyek Settings.",
                 )
             ]
 

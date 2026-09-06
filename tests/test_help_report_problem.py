@@ -12,15 +12,15 @@ def test_report_problem_help_content_explains_privacy_and_manual_submit():
     ).read_text(encoding="utf-8")
 
     for expected in (
-        "Report a Problem",
-        "Open GitHub Issue",
-        "Copy Report Template",
-        "nama project",
-        "nama client",
-        "Source Folder",
+        "Laporkan Masalah",
+        "Buka GitHub Issue",
+        "Salin Template Laporan",
+        "nama proyek",
+        "nama klien",
+        "Folder Sumber",
         "Drive URL",
-        "dialogue text",
-        "Periksa kembali isi laporan sebelum Submit",
+        "teks dialog",
+        "Periksa kembali isi laporan sebelum mengirim",
     ):
         assert expected in content
 
@@ -30,8 +30,8 @@ def test_report_problem_is_wired_to_help_header_and_main_window():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert 'HeaderAction("help.report_problem", "Report a Problem")' in header
-    assert 'QPushButton("Report a Problem")' in page
+    assert 'HeaderAction("help.report_problem", "Laporkan Masalah")' in header
+    assert 'QPushButton("Laporkan Masalah")' in page
     assert '"help.report_problem": self.report_problem' in main
     assert "ProblemReportService().build()" in main
     assert 'self.pages["HELP"].show_report_problem(report)' in main
@@ -41,8 +41,8 @@ def test_report_problem_has_open_issue_and_copy_fallback():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert 'QPushButton("Open GitHub Issue")' in page
-    assert 'QPushButton("Copy Report Template")' in page
+    assert 'QPushButton("Buka GitHub Issue")' in page
+    assert 'QPushButton("Salin Template Laporan")' in page
     assert "issue_requested = Signal(str)" in page
     assert "self.issue_requested.emit(self._issue_url)" in page
     assert "QApplication.clipboard().setText" in page

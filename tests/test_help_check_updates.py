@@ -23,8 +23,8 @@ def test_check_updates_is_wired_to_help_and_background_worker():
         ROOT / "app" / "update_check_worker.py"
     ).read_text(encoding="utf-8")
 
-    assert 'HeaderAction("help.check_updates", "Check for Updates")' in header
-    assert 'QPushButton("Check for Updates")' in page
+    assert 'HeaderAction("help.check_updates", "Periksa Pembaruan")' in header
+    assert 'QPushButton("Periksa Pembaruan")' in page
     assert '"help.check_updates": self.check_for_updates' in main
     assert "def check_for_updates" in main
     assert "QThread(self)" in main
@@ -37,12 +37,12 @@ def test_help_page_has_all_update_check_states():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
 
     for expected in (
-        "Checking for updates",
-        "Update available",
-        "You are up to date",
-        "No release published yet",
-        "Update check failed",
-        "Open Release Page",
+        "Memeriksa pembaruan",
+        "Pembaruan tersedia",
+        "Aplikasi sudah terbaru",
+        "Belum ada rilis yang dipublikasikan",
+        "Pemeriksaan pembaruan gagal",
+        "Buka Halaman Rilis",
     ):
         assert expected in page
 

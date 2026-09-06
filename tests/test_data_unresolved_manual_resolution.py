@@ -84,9 +84,9 @@ def test_missing_character_is_visible_and_kept_manual(tmp_path):
     assert len(rows) == 2
     assert rows[0].dialogue_id == ids["narration"]
     assert rows[0].character_id is None
-    assert rows[0].character_name == "⚠ Missing Character"
+    assert rows[0].character_name == "⚠ Tokoh Tidak Dikenal"
     assert rows[0].talent_id is None
-    assert rows[0].talent_name == "⚠ Missing Talent"
+    assert rows[0].talent_name == "⚠ Talent Tidak Dikenal"
     assert rows[0].dialogue == "Setengah bulan kemudian"
     assert rows[0].source_file_name == "ep53.xlsx"
     assert rows[0].source_file_path == "ep53.xlsx"
@@ -94,8 +94,8 @@ def test_missing_character_is_visible_and_kept_manual(tmp_path):
     characters = service.get_characters()
     assert characters[0].id is None
     assert characters[0].missing_character is True
-    assert characters[0].name == "⚠ Character Unknown"
-    assert characters[0].locked_talent_name == "⚠ Talent Unknown"
+    assert characters[0].name == "⚠ Tokoh Tidak Dikenal"
+    assert characters[0].locked_talent_name == "⚠ Talent Tidak Dikenal"
     assert characters[0].unresolved_dialogues == 1
 
     codes = {issue.code for issue in service.validate()}

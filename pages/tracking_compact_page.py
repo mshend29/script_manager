@@ -295,7 +295,7 @@ class CompactTrackingPage(TrackingPage):
         queue_layout.setContentsMargins(10, 9, 10, 10)
         queue_layout.setSpacing(6)
 
-        queue_title = QLabel("TRACKS TO STEM")
+        queue_title = QLabel('TRACK UNTUK STEM')
         queue_title.setObjectName("TrackingFooterTitle")
         queue_layout.addWidget(queue_title)
 
@@ -329,8 +329,8 @@ class CompactTrackingPage(TrackingPage):
 
         queue_help = QLabel(
             "Episode hanya menampilkan episode yang dimainkan talent terpilih. "
-            "Daftar ini hanya berisi Recorded atau Revision yang masih perlu "
-            "di-stem; setelah Stemmed/Delivered track otomatis keluar dari queue."
+            "Daftar ini hanya berisi track Terekam atau Revisi yang masih perlu "
+            "di-stem; setelah selesai Stem atau Disetor, track otomatis keluar dari antrean."
         )
         queue_help.setObjectName("PageSubtitle")
         queue_help.setWordWrap(True)
@@ -381,14 +381,14 @@ class CompactTrackingPage(TrackingPage):
         self.detail_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.detail_status)
 
-        self.detail_go_dialog_button = QPushButton("Go to Dialog")
+        self.detail_go_dialog_button = QPushButton('Buka Dialog')
         self.detail_go_dialog_button.setProperty("secondary", True)
         self.detail_go_dialog_button.clicked.connect(
             self._go_to_selected_dialog
         )
         layout.addWidget(self.detail_go_dialog_button)
 
-        self.detail_revision_button = QPushButton("Mark Revision")
+        self.detail_revision_button = QPushButton('Tandai Revisi')
         self.detail_revision_button.setProperty("trackingRevisionAction", True)
         self.detail_revision_button.clicked.connect(
             self._tracking_revision_clicked
@@ -430,9 +430,9 @@ class CompactTrackingPage(TrackingPage):
         )
 
         self.detail_revision_button.setText(
-            "Clear Revision"
+            'Batalkan Revisi'
             if chip.display_status == REVISION
-            else "Mark Revision"
+            else 'Tandai Revisi'
         )
         self.tracking_detail_bar.show()
 
@@ -484,7 +484,7 @@ class CompactTrackingPage(TrackingPage):
         layout.addStretch(1)
 
     def _add_output_health_sidebar(self) -> None:
-        self.output_health_title = QLabel("OUTPUT HEALTH")
+        self.output_health_title = QLabel('KONDISI OUTPUT')
         self.output_health_title.setObjectName("TrackingFooterTitle")
 
         holder = QFrame()
@@ -495,11 +495,11 @@ class CompactTrackingPage(TrackingPage):
         health_layout.setHorizontalSpacing(10)
         health_layout.setVerticalSpacing(4)
 
-        self.stemmed_health_label = QLabel("Stemmed")
+        self.stemmed_health_label = QLabel('Selesai Stem')
         self.stemmed_health_value = QLabel("0/0")
-        self.delivered_health_label = QLabel("Delivered")
+        self.delivered_health_label = QLabel('Disetor')
         self.delivered_health_value = QLabel("0/0")
-        self.warning_health_label = QLabel("Warnings")
+        self.warning_health_label = QLabel('Peringatan')
         self.warning_health_value = QLabel("0")
 
         for label in (
@@ -525,7 +525,7 @@ class CompactTrackingPage(TrackingPage):
         health_layout.addWidget(self.warning_health_label, 3, 0)
         health_layout.addWidget(self.warning_health_value, 3, 1)
 
-        self.go_output_health_button = QPushButton("Go to Output Health")
+        self.go_output_health_button = QPushButton('Buka Kondisi Output')
         self.go_output_health_button.setProperty("secondary", True)
         self.go_output_health_button.clicked.connect(
             lambda: self.show_workspace(WORKSPACE_OUTPUT_HEALTH)
@@ -561,12 +561,12 @@ class CompactTrackingPage(TrackingPage):
         suggestion_root.setContentsMargins(10, 10, 10, 10)
         suggestion_root.setSpacing(7)
 
-        suggestion_title = QLabel("TRACK NAME SUGGESTION")
+        suggestion_title = QLabel('SARAN NAMA TRACK')
         suggestion_title.setObjectName("SectionTitle")
         suggestion_root.addWidget(suggestion_title)
 
         suggestion_help = QLabel(
-            "Canonical character name untuk track DAW. "
+            "Nama tokoh kanonis untuk track DAW. "
             "Klik nama untuk menyalin."
         )
         suggestion_help.setObjectName("MutedLabel")
@@ -600,26 +600,26 @@ class CompactTrackingPage(TrackingPage):
         track_files_header.setContentsMargins(0, 0, 0, 0)
         track_files_header.setSpacing(6)
 
-        self.track_files_title = QLabel("TRACK FILES")
+        self.track_files_title = QLabel('FILE TRACK')
         self.track_files_title.setObjectName("SectionTitle")
         track_files_header.addWidget(self.track_files_title)
         track_files_header.addStretch(1)
 
-        self.rename_episode_button = QPushButton("Match & Rename Episode")
+        self.rename_episode_button = QPushButton('Cocokkan & Ubah Nama Episode')
         self.rename_episode_button.setProperty("secondary", True)
         self.rename_episode_button.clicked.connect(
             self._rename_current_episode
         )
         track_files_header.addWidget(self.rename_episode_button)
 
-        self.rename_talent_button = QPushButton("Batch Match & Rename Talent")
+        self.rename_talent_button = QPushButton('Cocokkan & Ubah Nama Talent')
         self.rename_talent_button.setProperty("secondary", True)
         self.rename_talent_button.clicked.connect(
             self._rename_current_talent
         )
         track_files_header.addWidget(self.rename_talent_button)
 
-        self.refresh_track_files_button = QPushButton("Refresh Files")
+        self.refresh_track_files_button = QPushButton('Muat Ulang File')
         self.refresh_track_files_button.setProperty("secondary", True)
         self.refresh_track_files_button.clicked.connect(
             self.refresh_track_files
@@ -630,7 +630,7 @@ class CompactTrackingPage(TrackingPage):
 
         self.track_files_table = QTableWidget(0, 3)
         self.track_files_table.setHorizontalHeaderLabels(
-            ["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]
+            ['SARAN TRACK', "STEM / EXPORT", 'DISETOR']
         )
         self.track_files_table.setAlternatingRowColors(True)
         self.track_files_table.setEditTriggers(
@@ -701,7 +701,7 @@ class CompactTrackingPage(TrackingPage):
         entries = self._track_name_entries()
 
         if not entries:
-            label = QLabel("Pilih talent untuk melihat track name suggestion.")
+            label = QLabel("Pilih talent untuk melihat saran nama track.")
             label.setObjectName("MutedLabel")
             label.setWordWrap(True)
             self.track_name_grid.addWidget(label, 0, 0)
@@ -718,8 +718,8 @@ class CompactTrackingPage(TrackingPage):
             )
             alias_text = ", ".join(aliases) if aliases else "—"
             button.setToolTip(
-                f"Track Name: {name}\nAliases: {alias_text}\n"
-                "Click to copy"
+                f"Nama Track: {name}\nAlias: {alias_text}\n"
+                'Klik untuk menyalin'
             )
             self.track_name_grid.addWidget(button, index, 0)
 
@@ -731,7 +731,7 @@ class CompactTrackingPage(TrackingPage):
         QApplication.clipboard().setText(text)
         QToolTip.showText(
             QCursor.pos(),
-            f"Copied: {text}",
+            f"Tersalin: {text}",
         )
 
     # ------------------------------------------------------------------
@@ -744,7 +744,7 @@ class CompactTrackingPage(TrackingPage):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
-        summary_title = QLabel("OUTPUT SUMMARY")
+        summary_title = QLabel('RINGKASAN OUTPUT')
         summary_title.setObjectName("SectionTitle")
         root.addWidget(summary_title)
 
@@ -758,12 +758,12 @@ class CompactTrackingPage(TrackingPage):
         self.output_summary_values: dict[str, QLabel] = {}
         for column, (key, label) in enumerate(
             (
-                ("expected", "Expected Tracks"),
-                ("stem", "Valid Stem"),
-                ("delivery", "Valid Delivery"),
-                ("stem_ep", "Stemmed Episodes"),
-                ("delivery_ep", "Delivered Episodes"),
-                ("warnings", "Warnings"),
+                ("expected", 'Track Diharapkan'),
+                ("stem", 'Stem Valid'),
+                ("delivery", 'Setoran Valid'),
+                ("stem_ep", 'Episode Selesai Stem'),
+                ("delivery_ep", 'Episode Disetor'),
+                ("warnings", 'Peringatan'),
             )
         ):
             value = QLabel("0")
@@ -778,13 +778,13 @@ class CompactTrackingPage(TrackingPage):
 
         root.addWidget(summary_frame)
 
-        episode_title = QLabel("EPISODE STATUS")
+        episode_title = QLabel('STATUS EPISODE')
         episode_title.setObjectName("SectionTitle")
         root.addWidget(episode_title)
 
         self.output_episode_table = QTableWidget(0, 4)
         self.output_episode_table.setHorizontalHeaderLabels(
-            ["EPS", "STEM", "DELIVERY", "WARNING"]
+            ["EPS", "STEM", "SETORAN", 'PERINGATAN']
         )
         self.output_episode_table.setMaximumHeight(230)
         self.output_episode_table.setAlternatingRowColors(True)
@@ -806,13 +806,13 @@ class CompactTrackingPage(TrackingPage):
         )
         root.addWidget(self.output_episode_table)
 
-        warning_title = QLabel("WARNINGS")
+        warning_title = QLabel('PERINGATAN')
         warning_title.setObjectName("SectionTitle")
         root.addWidget(warning_title)
 
         self.output_warning_table = QTableWidget(0, 5)
         self.output_warning_table.setHorizontalHeaderLabels(
-            ["TYPE", "EPS", "CHARACTER", "FILE", "MESSAGE"]
+            ['JENIS', "EPS", 'TOKOH', "FILE", 'PESAN']
         )
         self.output_warning_table.setAlternatingRowColors(True)
         self.output_warning_table.setEditTriggers(
@@ -889,8 +889,8 @@ class CompactTrackingPage(TrackingPage):
                 else:
                     rename_message = (
                         f"{Path(rename_item.source_path).name} belum cocok "
-                        "otomatis. Double-click untuk memilih expected "
-                        "filename secara manual."
+                        "otomatis. Klik dua kali untuk memilih nama file "
+                        "yang diharapkan secara manual."
                     )
 
                 synthetic = TrackFileWarning(
@@ -960,12 +960,12 @@ class CompactTrackingPage(TrackingPage):
             )
 
             stem_text = (
-                "✓ Complete" if total > 0 and stem == total
-                else f"{stem}/{total} Tracks"
+                '✓ Lengkap' if total > 0 and stem == total
+                else f"{stem}/{total} track"
             )
             delivery_text = (
-                "✓ Complete" if total > 0 and delivered == total
-                else f"{delivered}/{total} Tracks"
+                '✓ Lengkap' if total > 0 and delivered == total
+                else f"{delivered}/{total} track"
             )
             values = [
                 str(episode_number),
@@ -1218,11 +1218,11 @@ class CompactTrackingPage(TrackingPage):
                 source_name = Path(rename_item.source_path).name
                 output = QTableWidgetItem(f"↻ {source_name}")
                 output.setToolTip(
-                    "Rename Recommended\n"
-                    f"Current: {source_name}\n"
-                    f"Expected: {Path(rename_item.target_path).name}\n"
+                    "Saran Ubah Nama\n"
+                    f"Saat ini: {source_name}\n"
+                    f"Diharapkan: {Path(rename_item.target_path).name}\n"
                     f"{rename_item.detail}\n\n"
-                    "Right-click or double-click to preview rename."
+                    "Klik kanan atau klik dua kali untuk melihat pratinjau perubahan nama."
                 )
                 output.setForeground(QColor(COLORS["attention_text"]))
             else:
@@ -1278,7 +1278,7 @@ class CompactTrackingPage(TrackingPage):
                 suggestion.setBackground(QColor(COLORS["attention_soft"]))
                 suggestion.setToolTip(
                     suggestion.toolTip()
-                    + "\n\nWarnings:\n"
+                    + "\n\nPeringatan:\n"
                     + "\n".join(
                         f"• {warning.message}"
                         for warning in row.warnings
@@ -1305,8 +1305,8 @@ class CompactTrackingPage(TrackingPage):
             suggestion.setBackground(QColor(COLORS["attention_soft"]))
             suggestion.setToolTip(
                 rename_item.detail
-                + "\n\nDouble-click Stem / Export untuk memilih "
-                "expected filename secara manual."
+                + "\n\nKlik dua kali Stem / Export untuk memilih "
+                "nama file yang diharapkan secara manual."
             )
 
             output = QTableWidgetItem(
@@ -1315,7 +1315,7 @@ class CompactTrackingPage(TrackingPage):
             output.setForeground(QColor(COLORS["attention_text"]))
             output.setToolTip(
                 f"{rename_item.detail}\n\n"
-                "Right-click atau double-click untuk manual match."
+                "Klik kanan atau klik dua kali untuk pencocokan manual."
             )
             output.setData(
                 Qt.ItemDataRole.UserRole,
@@ -1367,15 +1367,15 @@ class CompactTrackingPage(TrackingPage):
         if talent_id is None:
             QMessageBox.information(
                 self,
-                "Rename Track Files",
+                'Ubah Nama File Track',
                 "Pilih talent terlebih dahulu.",
             )
             return
         if episode_number is None:
             QMessageBox.information(
                 self,
-                "Rename Track Files",
-                "Pilih episode yang akan di-match dan rename.",
+                'Ubah Nama File Track',
+                "Pilih episode yang akan dicocokkan dan diubah namanya.",
             )
             return
 
@@ -1390,7 +1390,7 @@ class CompactTrackingPage(TrackingPage):
         if talent_id is None:
             QMessageBox.information(
                 self,
-                "Rename Track Files",
+                'Ubah Nama File Track',
                 "Pilih talent terlebih dahulu.",
             )
             return
@@ -1415,7 +1415,7 @@ class CompactTrackingPage(TrackingPage):
             return
 
         menu = QMenu(self.track_files_table)
-        action = menu.addAction("Match / Rename Stem / Export…")
+        action = menu.addAction('Cocokkan / Ubah Nama Stem / Export…')
         selected = menu.exec(
             self.track_files_table.viewport().mapToGlobal(position)
         )
@@ -1454,8 +1454,8 @@ class CompactTrackingPage(TrackingPage):
         if not plan.items:
             QMessageBox.information(
                 self,
-                "Rename Track Files",
-                "Tidak ada file yang cocok pada scope ini.",
+                'Ubah Nama File Track',
+                "Tidak ada file yang cocok pada lingkup ini.",
             )
             return
 
@@ -1471,16 +1471,16 @@ class CompactTrackingPage(TrackingPage):
         except Exception as exc:
             QMessageBox.critical(
                 self,
-                "Rename Track Files",
-                f"Rename gagal. Tidak ada file yang sengaja dioverwrite.\n\n{exc}",
+                'Ubah Nama File Track',
+                f"Ubah nama gagal. Tidak ada file yang ditimpa.\n\n{exc}",
             )
             return
 
         self.refresh_track_files()
         QMessageBox.information(
             self,
-            "Rename Track Files",
-            f"{len(renamed)} file berhasil dinormalisasi ke expected filename.",
+            'Ubah Nama File Track',
+            f"{len(renamed)} file berhasil dinormalisasi ke nama file yang diharapkan.",
         )
 
     def _set_output_health_empty(self) -> None:
@@ -1496,7 +1496,7 @@ class CompactTrackingPage(TrackingPage):
         if check.exists:
             return "⚠ " + Path(check.path).name
         if pending:
-            return "Pending Delivery"
+            return 'Menunggu Setoran'
         return "—"
 
     @staticmethod
@@ -1529,10 +1529,10 @@ class CompactTrackingPage(TrackingPage):
         alias_text = ", ".join(row.aliases) if row.aliases else "—"
         return (
             f"Episode: {row.episode_number}\n"
-            f"Canonical Character: {row.character_name}\n"
-            f"Source Aliases in Episode: {alias_text}\n"
+            f"Tokoh Kanonis: {row.character_name}\n"
+            f"Alias Sumber di Episode: {alias_text}\n"
             f"Talent: {row.talent_name}\n"
-            f"Expected File: {row.expected_filename}"
+            f"File Diharapkan: {row.expected_filename}"
         )
 
     @staticmethod

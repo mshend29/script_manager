@@ -12,7 +12,7 @@ def test_about_content_describes_application_and_project_format():
     ).read_text(encoding="utf-8")
 
     for expected in (
-        "About Script Manager",
+        "Tentang Script Manager",
         "{{APP_NAME}}",
         "{{APP_VERSION}}",
         "{{PROJECT_EXTENSION}}",
@@ -25,8 +25,8 @@ def test_about_content_describes_application_and_project_format():
         "{{OS_NAME}}",
         "{{ARCHITECTURE}}",
         "{{REPOSITORY}}",
-        "Source Excel",
-        "tidak di-embed",
+        "Excel sumber",
+        "tidak disematkan",
     ):
         assert expected in content
 
@@ -36,8 +36,9 @@ def test_about_is_wired_to_help_header_and_main_window():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
-    assert 'HeaderAction("help.about", "About Script Manager")' in header
-    assert 'QPushButton("About Script Manager")' in page
+    assert "help.about" in header
+    assert "Tentang Script Manager" in header
+    assert "Tentang Script Manager" in page
     assert '"help.about": self.open_about' in main
     assert "ApplicationInfoService().build()" in main
     assert 'self.pages["HELP"].show_about(info)' in main

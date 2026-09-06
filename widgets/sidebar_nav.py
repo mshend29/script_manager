@@ -19,15 +19,15 @@ class SidebarNavigation(QFrame):
     page_requested = Signal(str)
 
     PRIMARY_PAGES = (
-        ("PROJECT", "Project"),
-        ("SCRIPT", "Script"),
+        ("PROJECT", 'Proyek'),
+        ("SCRIPT", 'Naskah'),
         ("DIALOG", "Dialog"),
         ("TRACKING", "Tracking"),
         ("DATA", "Data"),
     )
     SECONDARY_PAGES = (
-        ("TOOLS", "Tools"),
-        ("HELP", "Help"),
+        ("TOOLS", 'Peralatan'),
+        ("HELP", 'Bantuan'),
     )
 
     def __init__(self, parent=None) -> None:
@@ -91,7 +91,7 @@ class SidebarNavigation(QFrame):
         )
         text.addWidget(title)
 
-        version = QLabel("Production workspace")
+        version = QLabel('Workspace produksi')
         version.setObjectName("SidebarBrandVersion")
         text.addWidget(version)
 
