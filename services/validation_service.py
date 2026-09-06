@@ -343,7 +343,7 @@ class ValidationService:
                 JOIN episodes AS e ON e.id = ss.episode_id
                 JOIN talents AS t ON t.id = ss.talent_id
                 JOIN characters AS c ON c.id = ss.character_id
-                WHERE ss.status IN ('READY_TO_STEM', 'STEMMED', 'DELIVERED')
+                WHERE ss.status IN ('READY_TO_STEM', 'STEMMED', 'DELIVERED', 'REVISION')
                   AND EXISTS (
                       SELECT 1
                       FROM dialogues AS d

@@ -216,23 +216,87 @@ def test_revision_is_the_only_manual_downstream_status(tmp_path):
                 status=automatic_status,
             )
 
-    service.set_downstream_status(
-        episode_id=ids["episode_1"],
-        talent_id=ids["brama"],
-        character_id=ids["hendra"],
-        status=REVISION,
-    )
-    chips = _chips_by_character(service, ids["brama"])
-    assert chips["Hendra"][1].display_status == REVISION
+    with pytest.raises(ValueError, match="Stemmed atau Delivered"):
+        service.set_downstream_status(
+            episode_id=ids["episode_1"],
+            talent_id=ids["brama"],
+            character_id=ids["joko"],
+            status=REVISION,
+        )
+
+    with pytest.raises(ValueError, match="recording lengkap"):
+        service.set_downstream_status(
+            episode_id=ids["episode_1"],
+            talent_id=ids["brama"],
+            character_id=ids["hendra"],
+            status=REVISION,
+        )
+
+    with database.connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id, talent_id, character_id, status, note
+            ) VALUES(?, ?, ?, 'STEMMED', ?)
+            """,
+            (
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+                AUTO_FILE_STATUS_NOTE,
+            ),
+        )
 
     service.set_downstream_status(
         episode_id=ids["episode_1"],
         talent_id=ids["brama"],
-        character_id=ids["hendra"],
+        character_id=ids["joko"],
+        status=REVISION,
+    )
+    chips = _chips_by_character(service, ids["brama"])
+    assert chips["Joko"][1].display_status == REVISION
+    assert chips["Joko"][1].revision_number == 1
+
+    service.set_downstream_status(
+        episode_id=ids["episode_1"],
+        talent_id=ids["brama"],
+        character_id=ids["joko"],
         status=NOT_READY,
     )
     chips = _chips_by_character(service, ids["brama"])
-    assert chips["Hendra"][1].display_status == IN_PROGRESS
+    assert chips["Joko"][1].display_status == RECORDED
+
+
+def test_revision_from_delivered_advances_to_next_generation(tmp_path):
+    database = Database(tmp_path / "project.db")
+    ids = _seed_tracking_database(database)
+    service = TrackingService(database)
+
+    with database.connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id, talent_id, character_id, status, note
+            ) VALUES(?, ?, ?, 'DELIVERED', ?)
+            """,
+            (
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+                f"{AUTO_FILE_STATUS_NOTE};revision:1",
+            ),
+        )
+
+    service.set_downstream_status(
+        episode_id=ids["episode_1"],
+        talent_id=ids["brama"],
+        character_id=ids["joko"],
+        status=REVISION,
+    )
+
+    chip = _chips_by_character(service, ids["brama"])["Joko"][1]
+    assert chip.display_status == REVISION
+    assert chip.revision_number == 2
 
 
 def test_only_automatic_file_cache_can_show_stemmed_or_delivered(tmp_path):
@@ -300,6 +364,23 @@ def test_character_to_stem_queue_shows_recorded_or_revision_only(tmp_path):
         ("Joko", RECORDED)
     ]
 
+    with database.connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO stem_status(
+                episode_id, talent_id, character_id, status, note
+            ) VALUES(?, ?, ?, 'STEMMED', ?)
+            """,
+            (
+                ids["episode_1"],
+                ids["brama"],
+                ids["joko"],
+                AUTO_FILE_STATUS_NOTE,
+            ),
+        )
+
+    assert service.get_characters_to_stem(ids["brama"], 1) == []
+
     service.set_downstream_status(
         episode_id=ids["episode_1"],
         talent_id=ids["brama"],
@@ -322,7 +403,7 @@ def test_character_to_stem_queue_shows_recorded_or_revision_only(tmp_path):
             WHERE episode_id = ? AND talent_id = ? AND character_id = ?
             """,
             (
-                AUTO_FILE_STATUS_NOTE,
+                f"{AUTO_FILE_STATUS_NOTE};revision:1",
                 ids["episode_1"],
                 ids["brama"],
                 ids["joko"],
@@ -339,7 +420,7 @@ def test_character_to_stem_queue_shows_recorded_or_revision_only(tmp_path):
             WHERE episode_id = ? AND talent_id = ? AND character_id = ?
             """,
             (
-                AUTO_FILE_STATUS_NOTE,
+                f"{AUTO_FILE_STATUS_NOTE};revision:1",
                 ids["episode_1"],
                 ids["brama"],
                 ids["joko"],

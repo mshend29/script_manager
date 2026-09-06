@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import wave
 
 from openpyxl import Workbook
 import pytest
@@ -55,9 +56,21 @@ def _write_source(path, *, episode: int, dialogue: str) -> None:
     workbook.close()
 
 
+def _write_wav(path) -> None:
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(3)
+        handle.setframerate(48000)
+        handle.writeframes(b"\x00\x00\x00" * 64)
+
+
 def _project(tmp_path):
     source = tmp_path / "source"
     source.mkdir()
+    output = tmp_path / "output"
+    output.mkdir()
+    delivery = tmp_path / "delivery"
+    delivery.mkdir()
 
     source_file = source / "AA23-第1集_中文.xlsx"
     _write_source(source_file, episode=1, dialogue="Halo")
@@ -69,6 +82,8 @@ def _project(tmp_path):
             project_code="QT",
             client_name="Test Client",
             source_folder=str(source),
+            stem_output_folder=str(output),
+            delivery_folder=str(delivery),
             episode_before="第",
             episode_after="集",
             main_drive_url="https://drive.google.com/example",
@@ -242,6 +257,10 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert next(iter(dialog_page._checkboxes.values())).isChecked()
     assert "1/1 recorded" in dialog_page.selection_info.text()
 
+    # Revision is only available after a real current Stem exists. Create the
+    # expected output so Tracking's filesystem refresh derives STEMMED first.
+    _write_wav(tmp_path / "output" / "1_HENDRA_Brama.wav")
+
     window.resize(1100, 700)
     window.set_page("TRACKING")
     qapp.processEvents()
@@ -275,6 +294,7 @@ def test_project_open_source_sync_and_lazy_page_reload(qapp, tmp_path) -> None:
     assert len(tracking_page._workspace_rows[0].chips) == 1
 
     chip = tracking_page._workspace_rows[0].chips[0]
+    assert chip.display_status == "STEMMED"
     tracking_page._select_episode_detail(chip)
     qapp.processEvents()
 

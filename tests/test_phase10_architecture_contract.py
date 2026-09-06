@@ -153,13 +153,15 @@ def test_phase10_pr_does_not_modify_unrelated_business_rule_modules() -> None:
         "core/project_settings.py",
     }
 
-    # Revision-aware Track Files intentionally spans status derivation,
-    # filesystem matching and rename normalization. Other services remain
-    # protected by this architectural diff guard.
+    # Revision workflow intentionally spans Tracking, filesystem matching,
+    # dashboard aggregation and Validation. Other services remain protected by
+    # this architectural diff guard.
     allowed_service_changes = {
         "services/tracking_service.py",
         "services/track_file_service.py",
         "services/track_rename_service.py",
+        "services/project_dashboard_service.py",
+        "services/validation_service.py",
     }
     offenders = [
         path

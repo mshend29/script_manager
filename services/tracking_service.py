@@ -373,15 +373,31 @@ class TrackingService:
                 if existing is not None
                 else NOT_READY
             )
-            existing_revision = (
-                revision_number_from_note(existing["note"])
+            existing_note = (
+                str(existing["note"] or "")
                 if existing is not None
-                else 0
+                else ""
             )
+            existing_revision = revision_number_from_note(existing_note)
             if existing_status == REVISION and existing_revision < 1:
                 existing_revision = 1
 
             if normalized_status == REVISION:
+                if recorded < total:
+                    raise ValueError(
+                        "Revision hanya dapat ditandai setelah recording lengkap."
+                    )
+                if (
+                    existing_status != REVISION
+                    and (
+                        existing_status not in {STEMMED, DELIVERED}
+                        or not is_auto_file_status_note(existing_note)
+                    )
+                ):
+                    raise ValueError(
+                        "Revision hanya dapat ditandai setelah track Stemmed atau Delivered."
+                    )
+
                 # Mark Revision allocates the next expected export generation.
                 # Calling it again while already in Revision is idempotent.
                 active_revision = (
