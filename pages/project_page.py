@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.theme import COLORS
 from core.recent_projects import RecentProjectsStore
 from core.resource_paths import project_file_icon_path
 from pages.project_dashboard_page import ProjectPage as DashboardProjectPage
@@ -53,6 +54,30 @@ class RecentProjectItem(QTableWidgetItem):
         if isinstance(other, RecentProjectItem):
             return self.sort_key < other.sort_key
         return super().__lt__(other)
+
+
+class RecentProjectTable(QTableWidget):
+    """Recent list with row hover feedback but no persistent selection."""
+
+    hover_row_changed = Signal(int)
+
+    def __init__(self, rows: int, columns: int, parent=None) -> None:
+        super().__init__(rows, columns, parent)
+        self._hover_row = -1
+        self.setMouseTracking(True)
+
+    def mouseMoveEvent(self, event) -> None:
+        row = self.indexAt(event.position().toPoint()).row()
+        if row != self._hover_row:
+            self._hover_row = row
+            self.hover_row_changed.emit(row)
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        if self._hover_row != -1:
+            self._hover_row = -1
+            self.hover_row_changed.emit(-1)
+        super().leaveEvent(event)
 
 
 class RecentProjectCell(QWidget):
@@ -110,6 +135,10 @@ class RecentProjectCell(QWidget):
 
         layout.addLayout(text_layout, 1)
 
+    def set_hovered(self, hovered: bool) -> None:
+        background = COLORS["accent_soft"] if hovered else "transparent"
+        self.setStyleSheet(f"background: {background};")
+
 
 class ProjectPage(DashboardProjectPage):
     """Project workspace with a Recent-project home and the existing dashboard."""
@@ -121,6 +150,7 @@ class ProjectPage(DashboardProjectPage):
 
     def __init__(self, parent: QWidget | None = None):
         self._recent_store = RecentProjectsStore(limit=30)
+        self._recent_hover_row = -1
         super().__init__(parent)
 
         root = self.layout()
@@ -201,7 +231,7 @@ class ProjectPage(DashboardProjectPage):
         self.recent_search.textChanged.connect(self._filter_recent_projects)
         content_layout.addWidget(self.recent_search)
 
-        self.recent_table = QTableWidget(0, 2)
+        self.recent_table = RecentProjectTable(0, 2)
         self.recent_table.setObjectName("ProjectRecentTable")
         self.recent_table.setHorizontalHeaderLabels(
             ["PROJECT", "LAST OPENED"]
@@ -210,7 +240,8 @@ class ProjectPage(DashboardProjectPage):
             QAbstractItemView.EditTrigger.NoEditTriggers
         )
         # Recent rows behave like launch targets rather than selectable data.
-        # Removing selection also removes the full-row blue highlight.
+        # Selection stays disabled, while RecentProjectTable provides a
+        # temporary hover cue so the row under the pointer is still obvious.
         self.recent_table.setSelectionMode(
             QAbstractItemView.SelectionMode.NoSelection
         )
@@ -221,6 +252,9 @@ class ProjectPage(DashboardProjectPage):
         self.recent_table.verticalHeader().setVisible(False)
         self.recent_table.verticalHeader().setDefaultSectionSize(62)
         self.recent_table.setSortingEnabled(True)
+        self.recent_table.hover_row_changed.connect(
+            self._set_recent_hover_row
+        )
 
         header = self.recent_table.horizontalHeader()
         header.setSectionsClickable(True)
@@ -266,6 +300,7 @@ class ProjectPage(DashboardProjectPage):
         sort_column = header.sortIndicatorSection()
         sort_order = header.sortIndicatorOrder()
 
+        self._recent_hover_row = -1
         self.recent_table.setSortingEnabled(False)
         self.recent_table.setRowCount(0)
 
@@ -317,6 +352,32 @@ class ProjectPage(DashboardProjectPage):
         self._filter_recent_projects(self.recent_search.text())
         self.recent_empty.setVisible(self.recent_table.rowCount() == 0)
         self.recent_table.setVisible(self.recent_table.rowCount() > 0)
+
+    def _set_recent_hover_row(self, row: int) -> None:
+        previous = self._recent_hover_row
+        if previous == row:
+            return
+
+        self._paint_recent_hover_row(previous, hovered=False)
+        self._recent_hover_row = row
+        self._paint_recent_hover_row(row, hovered=True)
+
+    def _paint_recent_hover_row(self, row: int, *, hovered: bool) -> None:
+        if not hasattr(self, "recent_table"):
+            return
+        if row < 0 or row >= self.recent_table.rowCount():
+            return
+
+        color = COLORS["accent_soft"] if hovered else COLORS["surface"]
+        brush = QBrush(QColor(color))
+        for column in range(self.recent_table.columnCount()):
+            item = self.recent_table.item(row, column)
+            if item is not None:
+                item.setBackground(brush)
+
+        cell = self.recent_table.cellWidget(row, 0)
+        if isinstance(cell, RecentProjectCell):
+            cell.set_hovered(hovered)
 
     @staticmethod
     def _compact_project_path(value: str) -> str:
