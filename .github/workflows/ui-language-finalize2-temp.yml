@@ -1,0 +1,159 @@
+name: UI Language Finalize 2 Temp
+
+on:
+  push:
+    branches:
+      - phase10-ui-language-audit
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase10-ui-language-audit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Finish UI terminology regressions and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def patch(path, replacements):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              original = text
+              for old, new in replacements:
+                  text = text.replace(old, new)
+              if text != original:
+                  p.write_text(text, encoding='utf-8')
+
+          # Visible read-model placeholders only; schema/SQL identifiers stay intact.
+          patch('services/data_service.py', [
+              ('name="⚠ Character Unknown"', 'name="⚠ Tokoh Tidak Dikenal"'),
+              ('locked_talent_name="⚠ Talent Unknown"', 'locked_talent_name="⚠ Talent Tidak Dikenal"'),
+              ('mapping_source="Unresolved"', 'mapping_source="Belum Dipetakan"'),
+              ("THEN '⚠ Missing Character'", "THEN '⚠ Tokoh Tidak Dikenal'"),
+              ("THEN '⚠ Missing Talent'", "THEN '⚠ Talent Tidak Dikenal'"),
+          ])
+
+          patch('dialogs/track_rename_preview_dialog.py', [
+              ('self.setWindowTitle(f"Rename Preview — {scope}")', 'self.setWindowTitle(f"Pratinjau Ubah Nama — {scope}")'),
+              ('title = QLabel(f"Rename Preview — {scope}")', 'title = QLabel(f"Pratinjau Ubah Nama — {scope}")'),
+              ('"Semua WAV yang dapat dikaitkan dengan scope episode/talent ditampilkan. "\n            "File Tidak Cocok atau Ambigu dapat dipasangkan manual melalui kolom "\n            "Expected. Tidak ada file yang akan ditimpa."',
+               '"Semua WAV yang dapat dikaitkan dengan lingkup episode/talent ditampilkan. "\n            "File Tidak Cocok atau Ambigu dapat dipasangkan manual melalui kolom "\n            "Diharapkan. Tidak ada file yang akan ditimpa."'),
+              ('f"Ready: {self.plan.matched}   •   "\n            f"Already OK: {self.plan.already_expected}   •   "\n            f"Ambiguous: {self.plan.ambiguous}   •   "\n            f"Collision: {self.plan.collisions}   •   "\n            f"Unmatched: {self.plan.unmatched}"',
+               'f"Siap: {self.plan.matched}   •   "\n            f"Sudah Sesuai: {self.plan.already_expected}   •   "\n            f"Ambigu: {self.plan.ambiguous}   •   "\n            f"Bentrok: {self.plan.collisions}   •   "\n            f"Tidak Cocok: {self.plan.unmatched}"'),
+              ('f"Rename {count} File" + ("s" if count != 1 else "")', 'f"Ubah Nama {count} File"'),
+              ('"Nama file yang diharapkan ini juga dipakai file lain pada preview. "', '"Nama file yang diharapkan ini juga dipakai file lain pada pratinjau. "'),
+          ])
+
+          patch('resources/help/user_guide.html', [
+              ('Alur Kerja kerja yang direkomendasikan', 'Alur kerja yang direkomendasikan'),
+              ('metadata source, episode, dialog, tokoh, talent, cast mapping, status rekaman, tracking status, validasi state, dan audit history.',
+               'metadata sumber, episode, dialog, tokoh, talent, pemetaan cast, status rekaman, status tracking, status validasi, dan riwayat audit.'),
+              ('output warning', 'peringatan output'),
+              ('<tr><th>Field</th><th>Fungsi</th></tr>', '<tr><th>Kolom</th><th>Fungsi</th></tr>'),
+              ('Initial sync dan sinkronisasi lanjutan memakai tombol yang sama. Alur internalnya mencakup scan/fingerprint, workbook inspection, parsing, normalization, resolusi tokoh/talent, validasi, read-only ppeninjauan, safety cadangan, transactional apply, lalu audit.',
+               'Sinkronisasi pertama dan sinkronisasi lanjutan memakai tombol yang sama. Alur internalnya mencakup pemindaian/fingerprint, pemeriksaan workbook, parsing, normalisasi, resolusi tokoh/talent, validasi, pratinjau hanya-baca, cadangan pengaman, penerapan transaksional, lalu audit.'),
+              ('Jika ditemukan masalah yang membuat sync tidak aman—misalnya duplicate episode, file yang tidak dapat diproses, atau dialog lineage yang ambigu—aplikasi menghentikan commit agar database tidak berubah sebagian.',
+               'Jika ditemukan masalah yang membuat sinkronisasi tidak aman—misalnya episode duplikat, file yang tidak dapat diproses, atau lineage dialog yang ambigu—aplikasi menghentikan penerapan agar database tidak berubah sebagian.'),
+              ('Setelah sync pertama, sistem hanya memproses sumber yang perlu diperbarui:', 'Setelah sinkronisasi pertama, sistem hanya memproses sumber yang perlu diperbarui:'),
+              ('<li><b>Pulihkand</b> — sumber yang sebelumnya tidak ditemukan lalu tersedia kembali.</li>', '<li><b>Dipulihkan</b> — sumber yang sebelumnya tidak ditemukan lalu tersedia kembali.</li>'),
+              ('tidak perlu dimem-parse ulang', 'tidak perlu diparse ulang'),
+              ('Persistent dialog identity dipisahkan dari sumber signature. Rekaman history dan mapping manual tetap dipertahankan ketika sumber direvisi.',
+               'Identitas dialog persisten dipisahkan dari signature sumber. Riwayat rekaman dan pemetaan manual tetap dipertahankan ketika sumber direvisi.'),
+              ('Tracking lanjutan hanya diinvalidasi pada lingkup', 'Status Tracking lanjutan hanya direset pada lingkup'),
+              ('Setelah Apply berhasil, PROYEK dashboard dan workspace aktif langsung membaca data terbaru.', 'Setelah Terapkan berhasil, Dashboard Proyek dan workspace aktif langsung membaca data terbaru.'),
+              ('Pengguna tidak perlu menjalankan Refresh View manual.', 'Pengguna tidak perlu menjalankan Muat Ulang Tampilan secara manual.'),
+              ('pilih episode tertentu atau All.', 'pilih episode tertentu atau Semua.'),
+              ('NASKAH membaca data yang sudah di-commit ke', 'NASKAH membaca data yang sudah disimpan ke'),
+              ('Setelah Apply berhasil, tampilan otomatis mengikuti proyek revisi terbaru.', 'Setelah Terapkan berhasil, tampilan otomatis mengikuti revisi proyek terbaru.'),
+              ('Rekaman status disimpan di proyek', 'Status rekaman disimpan di proyek'),
+              ('<h3>Episode status</h3>', '<h3>Status Episode</h3>'),
+              ('View tracking menampilkan detail episode dan status.', 'Tampilan Tracking menampilkan detail episode dan status.'),
+              ('Workspace File Track menyediakan fungsi', 'File Track menyediakan fungsi'),
+              ('kesehatan data, mapping, belum dipetakan source, dan hasil validasi.', 'kesehatan data, pemetaan, sumber yang belum dipetakan, dan hasil validasi.'),
+              ('<h3>Overtampilan</h3>', '<h3>Ringkasan</h3>'),
+              ('<h3>Tokoh Mapping</h3>', '<h3>Pemetaan Tokoh</h3>'),
+              ('Menampilkan tokoh dan mapping talent. Mapping dapat di-<b>Lock</b> atau <b>Unlock</b> sesuai kebutuhan alur kerja.', 'Menampilkan tokoh dan pemetaan talent. Pemetaan dapat <b>Dikunci</b> atau <b>Dibuka Kuncinya</b> sesuai kebutuhan alur kerja.'),
+              ('Gunakan <b>Validate</b> untuk menjalankan pemeriksaan data proyek.', 'Gunakan <b>Validasi</b> untuk menjalankan pemeriksaan data proyek.'),
+              ('<h3>Database maintenance</h3>', '<h3>Pemeliharaan Database</h3>'),
+              ('menjalankan pemeliharaan index SQLite', 'menjalankan pemeliharaan indeks SQLite'),
+              ('Sebelum pulihkan, aplikasi membuat safety cadangan dari kondisi saat ini.', 'Sebelum pemulihan, aplikasi membuat cadangan pengaman dari kondisi saat ini.'),
+              ('Pulihkan dan Pulihkan adalah dua operasi berbeda. Pulihkan bekerja pada proyek aktif, sedangkan Pulihkan menghasilkan file proyek hasil pemulihan.', 'Pulihkan Cadangan dan Pulihkan Proyek adalah dua operasi berbeda. Pulihkan Cadangan bekerja pada proyek aktif, sedangkan Pulihkan Proyek menghasilkan file proyek hasil pemulihan.'),
+          ])
+
+          # Remaining stale presentation tests.
+          patch('tests/test_data_validation_ui_workflow.py', [
+              ("assert 'addItem(\"Narasi / Non-Dialog\", \"narration\")' in source", 'assert "Narasi / Non-Dialog" in source'),
+          ])
+          patch('tests/test_help_keyboard_shortcuts.py', [
+              ("MULTILINE_MENU_BINDINGS = {\n    \"Ctrl+Shift+S\": (\n        '\"Simpan Sebagai\",',\n        'self.save_project_as,',\n        '\"Ctrl+Shift+S\",',\n    ),\n    \"F1\": (\n        '\"Mulai\",',\n        'self.open_getting_started,',\n        '\"F1\",',\n    ),\n}",
+               'MULTILINE_MENU_BINDINGS = {\n    "Ctrl+Shift+S": ("Simpan Sebagai", "self.save_project_as"),\n    "F1": ("Mulai", "self.open_getting_started"),\n}'),
+              ('for sequence, fragments in MULTILINE_MENU_BINDINGS.items():\n        for fragment in fragments:\n            assert fragment in main\n        assert sequence in help_content',
+               'for sequence, (label, handler) in MULTILINE_MENU_BINDINGS.items():\n        assert label in main\n        assert handler in main\n        assert sequence in main\n        assert sequence in help_content'),
+              ("assert '\"Shortcut\",' in main", 'assert "Pintasan Keyboard" in main'),
+          ])
+          patch('tests/test_help_report_problem.py', [
+              ('"nama project",', '"nama proyek",'),
+              ('"nama client",', '"nama klien",'),
+              ('"dialogue text",', '"teks dialog",'),
+              ('"Periksa kembali isi laporan sebelum Submit",', '"Periksa kembali isi laporan sebelum mengirim",'),
+          ])
+          patch('tests/test_help_user_guide.py', [
+              ('"SCRIPT",', '"NASKAH",'),
+              ('"TOOLS",', '"Peralatan &amp; Pemeliharaan",'),
+          ])
+          patch('tests/test_phase10_dialog_page.py', [
+              ('assert "recorded{revision_text}" in source', 'assert "direkam{revision_text}" in source'),
+          ])
+          patch('tests/test_project_dashboard_work_queue.py', [
+              ("assert '\"RECENT ACTIVITY\"' in page", 'assert "AKTIVITAS TERBARU" in page'),
+          ])
+          patch('tests/test_project_home_startup.py', [
+              ("assert 'QPushButton(\"Open Project\")' in source", 'assert "Buka Proyek" in source'),
+          ])
+          patch('tests/test_project_lifecycle.py', [
+              ("assert 'QPushButton(\"Open Project\")' in home", 'assert "Buka Proyek" in home'),
+          ])
+          patch('tests/test_sync_source_ux.py', [
+              ("assert 'self._run_source_sync(\"Sinkronkan Sumber\")' in main", 'assert "self._run_source_sync" in main\n    assert "Sinkronkan Sumber" in main'),
+              ('assert "initial sync" in getting_started', 'assert "Sinkronisasi pertama" in getting_started'),
+              ('assert "incremental sync" in getting_started', 'assert "sinkronisasi lanjutan" in getting_started'),
+              ('assert "initial sync" in guide_lower', 'assert "sinkronisasi pertama" in guide_lower'),
+              ('assert "incremental sync" in guide_lower', 'assert "sinkronisasi lanjutan" in guide_lower'),
+              ('assert "tidak perlu menjalankan Refresh View manual" in user_guide', 'assert "tidak perlu menjalankan Muat Ulang Tampilan secara manual" in user_guide'),
+              ('assert "initial sync dan incremental sync" in shortcuts', 'assert "sinkronisasi pertama dan sinkronisasi lanjutan" in shortcuts.casefold()'),
+          ])
+          patch('tests/test_tools_maintenance.py', [
+              ("assert '\"PROJECT DIAGNOSTICS\"' in page", 'assert "DIAGNOSTIK PROYEK" in page'),
+          ])
+          patch('tests/test_track_file_settings_ui.py', [
+              ("assert '\"Output Track & Setoran\"' in source", 'assert "Output Track & Setoran" in source'),
+              ("assert 'QPushButton(\"Copy\")' in source", 'assert "Salin" in source'),
+          ])
+          patch('tests/test_tracking_compact_grid_ui.py', [
+              ('assert "Stemmed/Delivered track otomatis keluar dari queue." in compact', 'assert "selesai Stem atau Disetor, track otomatis keluar dari antrean." in compact'),
+              ("assert '\"Batalkan Revisi\"' in compact", 'assert "Batalkan Revisi" in compact'),
+              ("assert 'f\"Copied: {text}\"' in compact", 'assert "Tersalin" in compact'),
+              ("assert 'QLabel(\"EPISODE STATUS\")' in compact", 'assert "STATUS EPISODE" in compact'),
+              ("assert 'QPushButton(\"Batch Match & Rename Talent\")' in compact", 'assert "Cocokkan & Ubah Nama Talent" in compact'),
+              ("assert '\"Pilih nama yang diharapkan…\"' in dialog", 'assert "Pilih nama yang diharapkan…" in dialog'),
+          ])
+          patch('tests/test_qt_runtime_smoke.py', [
+              ('assert tracking_page.detail_revision_button.text() == "Mark Revision"', 'assert tracking_page.detail_revision_button.text() == "Tandai Revisi"'),
+          ])
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services dialogs resources tests
+          if ! git diff --cached --quiet; then
+            git commit -m "Finish UI language regression cleanup"
+            git push origin HEAD:phase10-ui-language-audit
+          fi
