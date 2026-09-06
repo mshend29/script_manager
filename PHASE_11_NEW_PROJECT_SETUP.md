@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.06 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.07 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -411,35 +411,42 @@ Checkpoint test setelah 11.06:
 
 ## 11.07 — Milestone 2: Sumber Naskah
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.05
 
 Tujuan: source folder dan episode extraction harus benar sejak awal.
 
 Pekerjaan:
 
-- [ ] Folder Sumber wajib.
-- [ ] Scan `.xlsx/.xlsm` otomatis saat folder dipilih.
-- [ ] Reuse `SourceFilenameAnalysis` / source filename service existing.
-- [ ] Tampilkan jumlah file.
-- [ ] Tampilkan representative filenames.
-- [ ] Tampilkan pola filename.
-- [ ] Input delimiter sebelum/after nomor episode.
-- [ ] Preview episode awal/tengah/akhir.
-- [ ] Validasi delimiter terhadap **seluruh filename**, bukan hanya preview.
+- [x] Folder Sumber wajib.
+- [x] Scan `.xlsx/.xlsm` otomatis saat folder dipilih.
+- [x] Reuse `SourceFilenameAnalysis` / source filename service existing.
+- [x] Tampilkan jumlah file.
+- [x] Tampilkan representative filenames.
+- [x] Tampilkan pola filename.
+- [x] Input delimiter sebelum/after nomor episode.
+- [x] Preview episode awal/tengah/akhir.
+- [x] Validasi delimiter terhadap **seluruh filename**, bukan hanya preview.
 
 Deteksi:
 
-- [ ] filename gagal dibaca;
-- [ ] episode non-numeric;
-- [ ] duplicate episode;
-- [ ] lebih dari satu pola;
-- [ ] gap episode sebagai warning terpisah;
-- [ ] source folder tanpa workbook.
+- [x] filename gagal dibaca;
+- [x] episode non-numeric;
+- [x] duplicate episode;
+- [x] lebih dari satu pola;
+- [x] gap episode sebagai warning terpisah;
+- [x] source folder tanpa workbook.
 
 Exit criteria:
 
 - seluruh source yang dianggap naskah dapat dipetakan ke episode secara deterministic.
+
+Checkpoint test setelah 11.07:
+
+- full suite: `372 passed, 24 skipped`;
+- Qt runtime termasuk source milestone + existing runtime: success;
+- Phase 11 wizard scale smoke: success;
+- filename validation tidak membuka isi workbook dan tidak menulis database/fingerprint.
 
 ---
 
@@ -1191,6 +1198,12 @@ Status: LOCKED
 
 Mengetik path destination yang belum ada tidak membuat direktori atau file. Wizard menampilkan blocker dan tombol `Buat Folder`; direktori baru dibuat hanya setelah aksi eksplisit user. Probe writability selalu membersihkan file sementara.
 
+## D-012 — Extension workbook bukan pola filename
+
+Status: LOCKED
+
+Milestone 2 membandingkan pola berdasarkan stem filename. `.xlsx` dan `.xlsm` sama-sama format workbook yang didukung dan tidak memecah satu konvensi nama menjadi dua pola. Filename validation hanya membaca filesystem metadata/nama file; isi workbook dan fingerprint tetap menjadi scope 11.08/11.15.
+
 ---
 
 # Progress Log
@@ -1249,6 +1262,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: destination belum ada tidak dibuat saat typing; tidak ada `.smproj` selama wizard navigation/validation.
 - commit/PR: `40b34b685ea6f74239000359abf64dc6ebf76c62`, `07a22b1934cd7b9c79c3d5ec994cf6966233aee6`, `cf6475e35f326ed2d7201e18d80110a29a0e6280` / PR #75.
 - next: 11.07 Sumber Naskah.
+
+2026-09-06 — 11.07
+- perubahan: filename-only source gate; auto scan/debounce pada wizard; validasi seluruh `.xlsx/.xlsm`; mapping episode; count/pattern/representative preview; duplicate/multiple-pattern/extraction blocker; gap warning; milestone state terhubung ke navigation gate.
+- test: full suite `372 passed, 24 skipped`; Qt runtime + Phase 11 source milestone + wizard scale smoke success.
+- keputusan: extension workbook tidak termasuk pola naming; validator 11.07 tidak membuka workbook, tidak menghitung fingerprint, dan tidak menyentuh database.
+- commit/PR: `7140b211ad2c132962376ecbe6ef2eadfdcb3552`, `7883f6309ba438e6b4c9b05a880c9816657240a7`, `e437829ae9faaa7eb87ca023b6e31b7b0de245e2` / PR #75.
+- next: 11.08 Source Preflight read-only.
 
 ---
 
