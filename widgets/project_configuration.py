@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -27,13 +27,10 @@ from core.project_settings import (
     ProjectSettingsIssue,
     validate_project_settings_contract,
 )
-from import_engine.episode_extractor import (
-    EpisodeExtractionError,
-    extract_episode_number,
-)
-from services.source_filename_service import (
-    SourceFilenameAnalysis,
-    read_source_filenames,
+from services.source_filename_service import SourceFilenameAnalysis
+from services.source_setup_validation import (
+    SourceFilenameValidation,
+    validate_source_filenames as validate_source_filename_setup,
 )
 
 
@@ -140,14 +137,25 @@ class ProjectIdentitySection(QGroupBox):
 
 
 class SourceConfigurationSection(QGroupBox):
+    validation_changed = Signal(object)
+
     def __init__(
         self,
         settings: ProjectSettings | None = None,
+        *,
+        auto_validate: bool = False,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__("Naskah Sumber", parent)
         self._source_filename_analysis: SourceFilenameAnalysis | None = None
+        self._source_filename_validation: SourceFilenameValidation | None = None
         self._source_filename_examples: list[str] = []
+        self._auto_validate = bool(auto_validate)
+
+        self._validation_timer = QTimer(self)
+        self._validation_timer.setSingleShot(True)
+        self._validation_timer.setInterval(300)
+        self._validation_timer.timeout.connect(self.validate_source_filenames)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
@@ -207,7 +215,7 @@ class SourceConfigurationSection(QGroupBox):
         filename_layout.addWidget(self.source_pattern_details)
 
         self.filename_preview = QLabel(
-            "Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu."
+            "Pratinjau Episode: validasi nama file belum dijalankan."
         )
         self.filename_preview.setWordWrap(True)
         self.filename_preview.setObjectName("PageSubtitle")
@@ -225,8 +233,8 @@ class SourceConfigurationSection(QGroupBox):
         delimiter_form.addRow("Setelah Nomor Episode", self.episode_after)
 
         delimiter_help = QLabel(
-            "Pemisah diterapkan ke nama file yang dibaca dari Folder Sumber. "
-            "Sinkronkan Sumber tetap diperlukan untuk membaca isi naskah."
+            "Pemisah diterapkan ke seluruh nama file pada Folder Sumber. "
+            "Isi workbook belum dibaca pada tahap filename validation."
         )
         delimiter_help.setWordWrap(True)
         delimiter_help.setObjectName("PageSubtitle")
@@ -236,9 +244,9 @@ class SourceConfigurationSection(QGroupBox):
         helper_grid.addWidget(delimiter_box, 0, 1)
         root.addLayout(helper_grid)
 
-        self.episode_before.textChanged.connect(self._update_episode_preview)
-        self.episode_after.textChanged.connect(self._update_episode_preview)
-        self.source_folder.edit.textChanged.connect(self._source_folder_changed)
+        self.episode_before.textChanged.connect(self._configuration_changed)
+        self.episode_after.textChanged.connect(self._configuration_changed)
+        self.source_folder.edit.textChanged.connect(self._configuration_changed)
 
         self.load_settings(settings or ProjectSettings())
 
@@ -246,11 +254,15 @@ class SourceConfigurationSection(QGroupBox):
     def analysis(self) -> SourceFilenameAnalysis | None:
         return self._source_filename_analysis
 
+    @property
+    def validation(self) -> SourceFilenameValidation | None:
+        return self._source_filename_validation
+
     def load_settings(self, settings: ProjectSettings) -> None:
         self.source_folder.setText(settings.source_folder)
         self.episode_before.setText(settings.episode_before)
         self.episode_after.setText(settings.episode_after)
-        self._source_folder_changed()
+        self._configuration_changed()
 
     def values(self) -> dict[str, object]:
         return {
@@ -259,105 +271,122 @@ class SourceConfigurationSection(QGroupBox):
             "episode_after": self.episode_after.text(),
         }
 
-    def _source_folder_changed(self) -> None:
+    def _configuration_changed(self, _value: object = None) -> None:
+        self._validation_timer.stop()
         self._source_filename_analysis = None
+        self._source_filename_validation = None
         self._source_filename_examples = []
         self.source_filename_example.clear()
         self.copy_source_filename_button.setEnabled(False)
-        self.source_pattern_status.setText(
-            "Folder Sumber berubah. Klik Baca Nama File Sumber untuk membaca ulang."
-        )
         self.source_pattern_details.clear()
         self.filename_preview.setText(
-            "Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu."
+            "Pratinjau Episode: validasi nama file belum dijalankan."
         )
 
-    def read_source_filenames(self) -> None:
-        try:
-            analysis = read_source_filenames(self.source_folder.text())
-        except Exception as exc:
-            self._source_filename_analysis = None
-            self._source_filename_examples = []
-            self.source_filename_example.clear()
-            self.copy_source_filename_button.setEnabled(False)
-            self.source_pattern_status.setText(f"⚠ {exc}")
-            self.source_pattern_details.clear()
-            self._update_episode_preview()
-            return
-
-        self._source_filename_analysis = analysis
-        self._source_filename_examples = self._preview_examples(list(analysis.filenames))
-
-        if not analysis.filenames:
-            self.source_filename_example.clear()
-            self.copy_source_filename_button.setEnabled(False)
+        if self._auto_validate and self.source_folder.text():
             self.source_pattern_status.setText(
-                "⚠ Tidak ada file .xlsx/.xlsm pada Folder Sumber."
+                "Membaca dan memvalidasi seluruh nama file sumber…"
             )
-            self.source_pattern_details.clear()
-            self._update_episode_preview()
-            return
+            self._validation_timer.start()
+        elif self.source_folder.text():
+            self.source_pattern_status.setText(
+                "Konfigurasi sumber berubah. Klik Baca Nama File Sumber untuk "
+                "memvalidasi ulang seluruh filename."
+            )
+        else:
+            self.source_pattern_status.setText("Folder Sumber belum dipilih.")
 
-        representative = analysis.representative_filename
+        self.validation_changed.emit(None)
+
+    def read_source_filenames(self) -> SourceFilenameValidation:
+        return self.validate_source_filenames()
+
+    def validate_source_filenames(self) -> SourceFilenameValidation:
+        self._validation_timer.stop()
+        result = validate_source_filename_setup(
+            self.source_folder.text(),
+            episode_before=self.episode_before.text(),
+            episode_after=self.episode_after.text(),
+        )
+        self._source_filename_validation = result
+        self._source_filename_analysis = result.analysis
+        self._source_filename_examples = [
+            item.file_name for item in result.preview_mappings
+        ]
+        self._render_source_validation(result)
+        self.validation_changed.emit(result)
+        return result
+
+    def _render_source_validation(self, result: SourceFilenameValidation) -> None:
+        analysis = result.analysis
+        representative = analysis.representative_filename if analysis is not None else ""
         self.source_filename_example.setText(representative)
         self.copy_source_filename_button.setEnabled(bool(representative))
 
-        if analysis.is_consistent:
-            pattern = analysis.patterns[0]
+        if result.errors:
             self.source_pattern_status.setText(
-                f"✓ {pattern.count} filename mengikuti satu pola."
+                f"✕ {result.file_count} file sumber ditemukan; "
+                f"{len(result.errors)} masalah blocking."
             )
-            self.source_pattern_details.setText(f"Pattern: {pattern.pattern}")
+        elif result.warnings:
+            self.source_pattern_status.setText(
+                f"⚠ {result.file_count} file sumber terbaca; "
+                f"{len(result.warnings)} warning."
+            )
         else:
             self.source_pattern_status.setText(
-                "⚠ Ditemukan lebih dari satu pola filename atau lebih dari satu "
-                "bagian angka yang berubah."
+                f"✓ {result.file_count} file sumber terbaca dan seluruh episode valid."
             )
-            details: list[str] = []
-            for pattern in analysis.patterns[:8]:
-                marker = "✓" if pattern.is_episode_candidate else "⚠"
-                details.append(f"{marker} {pattern.count} × {pattern.pattern}")
-            if len(analysis.patterns) > 8:
-                details.append(f"… {len(analysis.patterns) - 8} pola lainnya")
-            self.source_pattern_details.setText("\n".join(details))
 
-        self._update_episode_preview()
+        detail_lines: list[str] = []
+        if analysis is not None and analysis.patterns:
+            for pattern in analysis.patterns[:8]:
+                marker = "✓" if len(analysis.patterns) == 1 else "✕"
+                detail_lines.append(
+                    f"{marker} {pattern.count} × {pattern.pattern}"
+                )
+            if len(analysis.patterns) > 8:
+                detail_lines.append(f"… {len(analysis.patterns) - 8} pola lainnya")
+
+        issue_lines = [
+            f"{'⚠' if issue.severity == 'warning' else '✕'} {issue.message}"
+            for issue in result.issues[:8]
+        ]
+        if len(result.issues) > 8:
+            issue_lines.append(f"… {len(result.issues) - 8} masalah lainnya")
+
+        self.source_pattern_details.setText(
+            "\n".join([*detail_lines, *issue_lines])
+        )
+
+        if result.preview_mappings:
+            lines = ["Pratinjau Episode (awal / tengah / akhir):"]
+            for item in result.preview_mappings:
+                lines.append(
+                    f"{item.file_name}  →  {item.raw_value} "
+                    f"(Episode {item.episode_number})"
+                )
+            self.filename_preview.setText("\n".join(lines))
+        else:
+            filename_errors = [
+                issue.message
+                for issue in result.errors
+                if issue.field == "source_filename"
+            ]
+            if filename_errors:
+                self.filename_preview.setText(
+                    "Pratinjau Episode:\n"
+                    + "\n".join(f"✕ {message}" for message in filename_errors[:3])
+                )
+            else:
+                self.filename_preview.setText(
+                    "Pratinjau Episode: belum ada episode yang dapat ditampilkan."
+                )
 
     def _copy_source_filename(self) -> None:
         filename = self.source_filename_example.text().strip()
         if filename:
             QApplication.clipboard().setText(filename)
-
-    @staticmethod
-    def _preview_examples(filenames: list[str]) -> list[str]:
-        if not filenames:
-            return []
-        indexes = {0, len(filenames) // 2, len(filenames) - 1}
-        return [filenames[index] for index in sorted(indexes)]
-
-    def _update_episode_preview(self) -> None:
-        if not self._source_filename_examples:
-            self.filename_preview.setText(
-                "Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu."
-            )
-            return
-
-        before = self.episode_before.text()
-        after = self.episode_after.text()
-        lines = ["Pratinjau Episode:"]
-        for filename in self._source_filename_examples:
-            try:
-                result = extract_episode_number(
-                    filename,
-                    before=before,
-                    after=after,
-                )
-            except EpisodeExtractionError:
-                episode_text = "⚠ tidak terbaca"
-            else:
-                episode_text = result.raw_value
-            lines.append(f"{filename}  →  {episode_text}")
-        self.filename_preview.setText("\n".join(lines))
 
 
 class AudioOutputSection(QGroupBox):

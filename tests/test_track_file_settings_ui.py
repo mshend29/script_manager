@@ -66,12 +66,13 @@ def test_project_settings_source_filename_helper_is_reusable():
     widgets = _read("widgets/project_configuration.py")
 
     assert "Baca Nama File Sumber" in widgets
-    assert "read_source_filenames(self.source_folder.text())" in widgets
+    assert "validate_source_filename_setup(" in widgets
     assert "self.source_filename_example" in widgets
     assert "Salin" in widgets
-    assert "Pratinjau Episode:" in widgets
+    assert "Pratinjau Episode" in widgets
     assert "Pemisah Episode" in widgets
-    assert "extract_episode_number(" in widgets
+    assert "validation_changed = Signal(object)" in widgets
+    assert "auto_validate" in widgets
     assert "filename_sample" not in widgets
     assert '"Test Filename"' not in widgets
 

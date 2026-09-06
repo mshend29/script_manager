@@ -23,6 +23,7 @@ from services.project_setup_validation import (
     create_project_destination_folder,
     validate_project_identity_destination,
 )
+from services.source_setup_validation import SourceFilenameValidation
 from widgets.project_configuration import (
     AudioOutputSection,
     DriveLinksSection,
@@ -104,7 +105,10 @@ class NewProjectDialog(QDialog):
         root.addLayout(header)
 
         self.identity_section = ProjectIdentitySection(self._settings)
-        self.source_section = SourceConfigurationSection(self._settings)
+        self.source_section = SourceConfigurationSection(
+            self._settings,
+            auto_validate=True,
+        )
         self.audio_section = AudioOutputSection(self._settings)
         self.links_section = DriveLinksSection(self._settings)
         self.sections = ProjectConfigurationSections(
@@ -188,7 +192,8 @@ class NewProjectDialog(QDialog):
         self.page_stack.addWidget(
             self._make_page(
                 "2. Sumber Naskah",
-                "Pilih sumber naskah dan aturan pembacaan nomor episode.",
+                "Pilih sumber naskah dan aturan pembacaan nomor episode. "
+                "Seluruh filename divalidasi otomatis; isi workbook belum dibaca.",
                 self.source_section,
             )
         )
@@ -261,6 +266,9 @@ class NewProjectDialog(QDialog):
         self.client_name.textChanged.connect(self._refresh_identity_validation)
         self.start_date.dateChanged.connect(self._refresh_identity_validation)
         self.location_edit.textChanged.connect(self._update_destination_preview)
+        self.source_section.validation_changed.connect(
+            self._source_validation_changed
+        )
 
         self._refresh_identity_validation()
         self._show_step(0)
@@ -336,6 +344,9 @@ class NewProjectDialog(QDialog):
         self.validation_status.setText(self._step_messages[index])
         self._update_navigation_buttons()
 
+        if index == 1 and self.source_section.validation is None:
+            self.source_section.validate_source_filenames()
+
     def _go_back(self) -> None:
         if self._current_step > 0:
             self._show_step(self._current_step - 1)
@@ -343,6 +354,9 @@ class NewProjectDialog(QDialog):
     def _go_next(self) -> None:
         if self._current_step == 0:
             self._refresh_identity_validation(verify_writable=True)
+        elif self._current_step == 1:
+            self.source_section.validate_source_filenames()
+
         if not self._can_advance_current_step():
             return
         if self._current_step < len(self.STEP_TITLES) - 1:
@@ -430,6 +444,48 @@ class NewProjectDialog(QDialog):
             first_issue.message,
         )
 
+    def _source_validation_changed(
+        self,
+        result: SourceFilenameValidation | None,
+    ) -> None:
+        if result is None:
+            if self._current_step == 1:
+                message = (
+                    "Folder Sumber wajib dipilih."
+                    if not self.source_folder.text().strip()
+                    else "Konfigurasi sumber berubah; validasi ulang sedang disiapkan."
+                )
+                self.set_step_state(1, WizardMilestoneState.ERROR, message)
+            return
+
+        if result.errors:
+            self.set_step_state(
+                1,
+                WizardMilestoneState.ERROR,
+                result.errors[0].message,
+            )
+            return
+
+        episodes = result.episode_numbers
+        episode_text = (
+            f"episode {episodes[0]}–{episodes[-1]}"
+            if episodes
+            else "episode belum terbaca"
+        )
+        if result.warnings:
+            self.set_step_state(
+                1,
+                WizardMilestoneState.WARNING,
+                f"⚠ {result.file_count} file valid ({episode_text}). "
+                f"{result.warnings[0].message}",
+            )
+        else:
+            self.set_step_state(
+                1,
+                WizardMilestoneState.VALID,
+                f"✓ {result.file_count} file sumber valid ({episode_text}).",
+            )
+
     def _create_destination_folder(self) -> None:
         try:
             create_project_destination_folder(
@@ -474,6 +530,16 @@ class NewProjectDialog(QDialog):
             )
             self._refresh_identity_validation()
             self._show_step(0)
+            return
+
+        source_validation = self.source_section.validate_source_filenames()
+        if not source_validation.is_valid:
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                source_validation.errors[0].message,
+            )
+            self._show_step(1)
             return
 
         issues = self.sections.validate_basic(strict_new_project=False)
