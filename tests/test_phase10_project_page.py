@@ -61,6 +61,24 @@ def test_project_dashboard_uses_production_flow_instead_of_card_matrix() -> None
     assert '"ProjectActivityDot"' in source
 
 
+def test_project_dashboard_after_hero_uses_weighted_two_columns() -> None:
+    source = _read("pages/project_dashboard_page.py")
+
+    assert 'setObjectName("ProjectDashboardColumns")' in source
+    assert 'setObjectName("ProjectProductionColumn")' in source
+    assert 'setObjectName("ProjectMonitoringColumn")' in source
+    assert "dashboard_columns.setColumnStretch(0, 13)" in source
+    assert "dashboard_columns.setColumnStretch(1, 7)" in source
+
+    # Left side owns the project metrics and production flow.
+    assert "production_layout.addWidget(self._build_metric_strip())" in source
+    assert "production_layout.addWidget(self._build_pipeline_rail())" in source
+
+    # Right side stacks operator attention above the activity timeline.
+    assert "monitoring_layout.addWidget(self.attention_panel)" in source
+    assert "monitoring_layout.addWidget(self.activity_frame, 1)" in source
+
+
 def test_project_home_recent_list_supports_search_sort_and_open() -> None:
     source = _read("pages/project_page.py")
 

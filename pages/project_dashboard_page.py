@@ -126,6 +126,22 @@ class ProjectPage(QWidget):
         self.empty_action_bar = self._build_empty_action_bar()
         self.body_layout.addWidget(self.empty_action_bar)
 
+        dashboard_columns = QGridLayout()
+        dashboard_columns.setObjectName("ProjectDashboardColumns")
+        dashboard_columns.setContentsMargins(0, 0, 0, 0)
+        dashboard_columns.setHorizontalSpacing(22)
+        dashboard_columns.setVerticalSpacing(0)
+        # Keep the production side clearly dominant while leaving enough room
+        # for attention/activity copy at common desktop sizes (~65 / 35).
+        dashboard_columns.setColumnStretch(0, 13)
+        dashboard_columns.setColumnStretch(1, 7)
+
+        production_column = QWidget()
+        production_column.setObjectName("ProjectProductionColumn")
+        production_layout = QVBoxLayout(production_column)
+        production_layout.setContentsMargins(0, 0, 0, 0)
+        production_layout.setSpacing(12)
+
         data_header = QHBoxLayout()
         data_header.setContentsMargins(2, 0, 2, 0)
         data_title = QLabel("PROJECT DATA")
@@ -135,13 +151,13 @@ class ProjectPage(QWidget):
         data_hint = QLabel("A quick read of the current script database")
         data_hint.setObjectName("ProjectSectionHelper")
         data_header.addWidget(data_hint)
-        self.body_layout.addLayout(data_header)
-
-        self.body_layout.addWidget(self._build_metric_strip())
+        production_layout.addLayout(data_header)
+        production_layout.addWidget(self._build_metric_strip())
+        production_layout.addSpacing(4)
 
         pipeline_title = QLabel("PRODUCTION PIPELINE")
         pipeline_title.setObjectName("ProjectSectionTitle")
-        self.body_layout.addWidget(pipeline_title)
+        production_layout.addWidget(pipeline_title)
 
         pipeline_helper = QLabel(
             "Follow the work from recording to stem and final delivery. "
@@ -149,23 +165,26 @@ class ProjectPage(QWidget):
         )
         pipeline_helper.setObjectName("ProjectSectionHelper")
         pipeline_helper.setWordWrap(True)
-        self.body_layout.addWidget(pipeline_helper)
-        self.body_layout.addWidget(self._build_pipeline_rail())
+        production_layout.addWidget(pipeline_helper)
+        production_layout.addWidget(self._build_pipeline_rail())
+        production_layout.addStretch(1)
 
-        lower = QGridLayout()
-        lower.setContentsMargins(0, 2, 0, 0)
-        lower.setHorizontalSpacing(22)
-        lower.setVerticalSpacing(12)
-        lower.setColumnStretch(0, 3)
-        lower.setColumnStretch(1, 2)
+        monitoring_column = QWidget()
+        monitoring_column.setObjectName("ProjectMonitoringColumn")
+        monitoring_layout = QVBoxLayout(monitoring_column)
+        monitoring_layout.setContentsMargins(0, 0, 0, 0)
+        monitoring_layout.setSpacing(18)
 
         self.attention_panel = self._build_attention_panel()
-        lower.addWidget(self.attention_panel, 0, 0)
+        monitoring_layout.addWidget(self.attention_panel)
 
         self.activity_frame = self._build_activity_panel()
-        lower.addWidget(self.activity_frame, 0, 1)
+        monitoring_layout.addWidget(self.activity_frame, 1)
 
-        self.body_layout.addLayout(lower)
+        dashboard_columns.addWidget(production_column, 0, 0)
+        dashboard_columns.addWidget(monitoring_column, 0, 1)
+        dashboard_columns.setRowStretch(0, 1)
+        self.body_layout.addLayout(dashboard_columns, 1)
         self.body_layout.addStretch(1)
 
         # Compatibility counters retained for callers/tests while their visual
