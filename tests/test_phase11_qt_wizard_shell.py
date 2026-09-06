@@ -49,7 +49,7 @@ def test_new_project_wizard_shell_navigates_and_preserves_state(qapp, tmp_path):
     assert dialog.next_button.isHidden() is False
     assert dialog.next_button.isEnabled() is False
     assert dialog.create_button.isHidden() is True
-    assert dialog.help_button.accessibleName() == "Bantuan setup proyek"
+    assert dialog.help_button.accessibleName() == "Bantuan folder dan Google Drive"
 
     _fill_identity(dialog, tmp_path)
     qapp.processEvents()
