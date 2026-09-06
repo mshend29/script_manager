@@ -8,11 +8,14 @@ from pathlib import Path
 
 from core.database import Database
 from services.tracking_service import (
-    AUTO_FILE_STATUS_NOTE,
     DELIVERED,
+    NOT_READY,
     READY_TO_STEM,
     REVISION,
     STEMMED,
+    is_auto_file_status_note,
+    revision_number_from_note,
+    revision_status_note,
 )
 
 
@@ -29,6 +32,7 @@ _AUDIO_LIKE_SUFFIXES = {
 }
 _INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f_]+')
 _WHITESPACE = re.compile(r"\s+")
+_REVISION_SUFFIX = re.compile(r"_REV(?P<number>\d*)$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -44,6 +48,7 @@ class ParsedTrackFilename:
     episode_number: int
     character_block: str
     talent_name: str
+    revision_number: int = 0
 
 
 @dataclass(frozen=True)
@@ -84,6 +89,7 @@ class TrackFileRow:
     talent_name: str
     total_dialogues: int
     recorded_dialogues: int
+    revision_number: int
     track_suggestion: str
     expected_filename: str
     output: AudioFileCheck
@@ -190,11 +196,16 @@ class TrackFileService:
                 item["talent_id"],
             )
             alias_names = aliases.get(key, ())
-            suggestion = build_track_suggestion(
+            base_suggestion = build_track_suggestion(
                 item["episode_number"],
                 item["character_name"],
                 alias_names,
                 item["talent_name"],
+            )
+            revision_number = int(item["revision_number"])
+            suggestion = build_revision_track_name(
+                base_suggestion,
+                revision_number,
             )
             expected_filename = suggestion + ".wav"
 
@@ -204,6 +215,7 @@ class TrackFileService:
                 canonical_character=str(item["character_name"]),
                 aliases=alias_names,
                 talent_name=str(item["talent_name"]),
+                revision_number=revision_number,
             )
             delivery_matches = self._matching_files(
                 delivery_files,
@@ -211,6 +223,7 @@ class TrackFileService:
                 canonical_character=str(item["character_name"]),
                 aliases=alias_names,
                 talent_name=str(item["talent_name"]),
+                revision_number=revision_number,
             )
 
             output_path = output_matches[0] if output_matches else None
@@ -319,6 +332,7 @@ class TrackFileService:
                     talent_name=item["talent_name"],
                     total_dialogues=item["total_dialogues"],
                     recorded_dialogues=item["recorded_dialogues"],
+                    revision_number=revision_number,
                     track_suggestion=suggestion,
                     expected_filename=expected_filename,
                     output=output_check,
@@ -334,6 +348,7 @@ class TrackFileService:
                 output_files,
                 matched_output,
                 expectations,
+                aliases=aliases,
                 folder_label="Stem / Export",
             )
         )
@@ -342,6 +357,7 @@ class TrackFileService:
                 delivery_files,
                 matched_delivery,
                 expectations,
+                aliases=aliases,
                 folder_label="SETORAN",
             )
         )
@@ -371,7 +387,9 @@ class TrackFileService:
                         DISTINCT CASE
                             WHEN COALESCE(rs.is_recorded, 0) = 1 THEN d.id
                         END
-                    ) AS recorded_dialogues
+                    ) AS recorded_dialogues,
+                    COALESCE(ss.status, '') AS downstream_status,
+                    COALESCE(ss.note, '') AS downstream_note
                 FROM dialog_cast AS dc
                 JOIN dialogues AS d
                   ON d.id = dc.dialogue_id
@@ -387,13 +405,19 @@ class TrackFileService:
                  AND t.is_active = 1
                 LEFT JOIN recording_status AS rs
                   ON rs.dialogue_id = d.id
+                LEFT JOIN stem_status AS ss
+                  ON ss.episode_id = e.id
+                 AND ss.talent_id = t.id
+                 AND ss.character_id = c.id
                 GROUP BY
                     e.id,
                     e.episode_number,
                     c.id,
                     c.name,
                     t.id,
-                    t.name
+                    t.name,
+                    ss.status,
+                    ss.note
                 ORDER BY
                     e.episode_number,
                     c.name COLLATE NOCASE,
@@ -401,19 +425,28 @@ class TrackFileService:
                 """
             ).fetchall()
 
-        return [
-            {
-                "episode_id": int(row["episode_id"]),
-                "episode_number": int(row["episode_number"]),
-                "character_id": int(row["character_id"]),
-                "character_name": str(row["character_name"]),
-                "talent_id": int(row["talent_id"]),
-                "talent_name": str(row["talent_name"]),
-                "total_dialogues": int(row["total_dialogues"] or 0),
-                "recorded_dialogues": int(row["recorded_dialogues"] or 0),
-            }
-            for row in rows
-        ]
+        result: list[dict[str, int | str]] = []
+        for row in rows:
+            status = str(row["downstream_status"] or "").strip().upper()
+            revision_number = revision_number_from_note(
+                str(row["downstream_note"] or "")
+            )
+            if status == REVISION and revision_number < 1:
+                revision_number = 1
+            result.append(
+                {
+                    "episode_id": int(row["episode_id"]),
+                    "episode_number": int(row["episode_number"]),
+                    "character_id": int(row["character_id"]),
+                    "character_name": str(row["character_name"]),
+                    "talent_id": int(row["talent_id"]),
+                    "talent_name": str(row["talent_name"]),
+                    "total_dialogues": int(row["total_dialogues"] or 0),
+                    "recorded_dialogues": int(row["recorded_dialogues"] or 0),
+                    "revision_number": revision_number,
+                }
+            )
+        return result
 
     def _get_episode_aliases(
         self,
@@ -539,6 +572,7 @@ class TrackFileService:
         canonical_character: str,
         aliases: tuple[str, ...] | list[str],
         talent_name: str,
+        revision_number: int,
     ) -> list[Path]:
         return [
             path
@@ -549,6 +583,7 @@ class TrackFileService:
                 canonical_character=canonical_character,
                 aliases=aliases,
                 talent_name=talent_name,
+                revision_number=revision_number,
             )
         ]
 
@@ -629,6 +664,7 @@ class TrackFileService:
         matched: set[Path],
         expectations: list[dict[str, int | str]],
         *,
+        aliases: dict[tuple[int, int, int], tuple[str, ...]],
         folder_label: str,
     ) -> list[TrackFileWarning]:
         talent_tokens = {
@@ -640,6 +676,34 @@ class TrackFileService:
         for path in files:
             if path in matched:
                 continue
+
+            parsed = parse_track_filename(path.name)
+            historical = False
+            if parsed is not None:
+                for item in expectations:
+                    current_revision = int(item["revision_number"])
+                    if parsed.revision_number >= current_revision:
+                        continue
+                    key = (
+                        int(item["episode_id"]),
+                        int(item["character_id"]),
+                        int(item["talent_id"]),
+                    )
+                    if track_filename_matches(
+                        path.name,
+                        episode_number=int(item["episode_number"]),
+                        canonical_character=str(item["character_name"]),
+                        aliases=aliases.get(key, ()),
+                        talent_name=str(item["talent_name"]),
+                        revision_number=None,
+                    ):
+                        historical = True
+                        break
+            if historical:
+                # Older normal/REV files are legitimate history for the same
+                # track and must not inflate Output Health warnings.
+                continue
+
             warnings.append(
                 TrackFileWarning(
                     code="UNEXPECTED_TRACK_FILE",
@@ -656,7 +720,7 @@ class TrackFileService:
             for row in rows:
                 existing = connection.execute(
                     """
-                    SELECT status, note
+                    SELECT status, COALESCE(note, '') AS note
                     FROM stem_status
                     WHERE episode_id = ?
                       AND talent_id = ?
@@ -668,8 +732,22 @@ class TrackFileService:
                         row.character_id,
                     ),
                 ).fetchone()
+                existing_status = (
+                    str(existing["status"] or "").strip().upper()
+                    if existing is not None
+                    else ""
+                )
+                existing_note = (
+                    str(existing["note"] or "")
+                    if existing is not None
+                    else ""
+                )
 
-                if existing is not None and str(existing["status"]) == REVISION:
+                # Revision is a pending work state only until the expected
+                # revision-generation file appears. At that point filesystem
+                # truth is authoritative again and promotes it to Stemmed or
+                # Delivered.
+                if existing_status == REVISION and row.file_status is None:
                     continue
 
                 if row.file_status in {STEMMED, DELIVERED}:
@@ -691,31 +769,60 @@ class TrackFileService:
                             row.talent_id,
                             row.character_id,
                             row.file_status,
-                            AUTO_FILE_STATUS_NOTE,
+                            revision_status_note(
+                                row.revision_number,
+                                auto_file=True,
+                            ),
                             now,
                         ),
                     )
                     continue
 
-                connection.execute(
-                    """
-                    DELETE FROM stem_status
-                    WHERE episode_id = ?
-                      AND talent_id = ?
-                      AND character_id = ?
-                      AND (
-                          status = ?
-                          OR note = ?
-                      )
-                    """,
-                    (
-                        row.episode_id,
-                        row.talent_id,
-                        row.character_id,
-                        READY_TO_STEM,
-                        AUTO_FILE_STATUS_NOTE,
-                    ),
-                )
+                if row.revision_number > 0:
+                    # Preserve the active revision generation even if its file
+                    # is temporarily removed. Display falls back to Recorded,
+                    # but the expected filename remains REV/REVn.
+                    connection.execute(
+                        """
+                        INSERT INTO stem_status(
+                            episode_id, talent_id, character_id,
+                            status, note, updated_at
+                        )
+                        VALUES(?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(episode_id, talent_id, character_id)
+                        DO UPDATE SET
+                            status = excluded.status,
+                            note = excluded.note,
+                            updated_at = excluded.updated_at
+                        """,
+                        (
+                            row.episode_id,
+                            row.talent_id,
+                            row.character_id,
+                            NOT_READY,
+                            revision_status_note(row.revision_number),
+                            now,
+                        ),
+                    )
+                    continue
+
+                if existing is not None and (
+                    existing_status == READY_TO_STEM
+                    or is_auto_file_status_note(existing_note)
+                ):
+                    connection.execute(
+                        """
+                        DELETE FROM stem_status
+                        WHERE episode_id = ?
+                          AND talent_id = ?
+                          AND character_id = ?
+                        """,
+                        (
+                            row.episode_id,
+                            row.talent_id,
+                            row.character_id,
+                        ),
+                    )
 
 
 def sanitize_filename_component(value: str, *, uppercase: bool = False) -> str:
@@ -749,13 +856,32 @@ def build_track_suggestion(
     return f"{int(episode_number)}_{character_part}_{talent_part}"
 
 
+def build_revision_track_name(base_name: str, revision_number: int) -> str:
+    revision = max(0, int(revision_number))
+    if revision < 1:
+        return str(base_name)
+    if revision == 1:
+        return f"{base_name}_REV"
+    return f"{base_name}_REV{revision}"
+
+
+def split_revision_suffix(stem: str) -> tuple[str, int]:
+    text = str(stem or "")
+    match = _REVISION_SUFFIX.search(text)
+    if match is None:
+        return text, 0
+    raw_number = str(match.group("number") or "").strip()
+    revision = int(raw_number) if raw_number.isdigit() else 1
+    revision = max(1, revision)
+    return text[:match.start()], revision
+
 
 def parse_track_filename(filename: str) -> ParsedTrackFilename | None:
     path = Path(str(filename))
     if path.suffix.casefold() != ".wav":
         return None
 
-    stem = path.stem
+    stem, revision_number = split_revision_suffix(path.stem)
     first = stem.find("_")
     last = stem.rfind("_")
     if first <= 0 or last <= first:
@@ -777,6 +903,7 @@ def parse_track_filename(filename: str) -> ParsedTrackFilename | None:
         episode_number=int(episode_text),
         character_block=character_block,
         talent_name=talent_name,
+        revision_number=revision_number,
     )
 
 
@@ -787,9 +914,16 @@ def track_filename_matches(
     canonical_character: str,
     aliases: tuple[str, ...] | list[str],
     talent_name: str,
+    revision_number: int | None = None,
 ) -> bool:
     parsed = parse_track_filename(filename)
     if parsed is None or parsed.episode_number != int(episode_number):
+        return False
+
+    if (
+        revision_number is not None
+        and parsed.revision_number != int(revision_number)
+    ):
         return False
 
     expected_talent = sanitize_filename_component(talent_name).casefold()
@@ -855,6 +989,7 @@ def _character_components_match(
 
     return solve(actual, components)
 
+
 def inspect_wav(path: str | Path) -> AudioFileInfo:
     wav_path = Path(path)
     with wav_path.open("rb") as handle:
@@ -901,7 +1036,10 @@ def _infer_talent_id(
     stem: str,
     talent_tokens: dict[str, int],
 ) -> int | None:
-    if "_" not in stem:
+    base_stem, _revision_number = split_revision_suffix(stem)
+    if "_" not in base_stem:
         return None
-    talent_part = sanitize_filename_component(stem.rsplit("_", 1)[-1]).casefold()
+    talent_part = sanitize_filename_component(
+        base_stem.rsplit("_", 1)[-1]
+    ).casefold()
     return talent_tokens.get(talent_part)
