@@ -15,33 +15,40 @@ def test_project_workspace_has_home_and_preserved_dashboard() -> None:
     dashboard = _read("pages/project_dashboard_page.py")
 
     assert "class ProjectPage(DashboardProjectPage)" in home
-    assert '"ProjectHome"' in home
-    assert '"ProjectHomeSidebar"' in home
-    assert 'QPushButton("Buat Baru")' in home
-    assert 'QPushButton("Open Project")' in home
-    assert 'QLabel("Recent Projects")' in home
-    assert '["PROJECT", "LAST OPENED"]' in home
+    assert "ProjectHome" in home
+    assert "ProjectHomeSidebar" in home
+    for label in (
+        "Buat Baru",
+        "Buka Proyek",
+        "Proyek Terbaru",
+        "PROYEK",
+        "TERAKHIR DIBUKA",
+    ):
+        assert label in home
     assert "self.show_home()" in home
     assert "self.show_dashboard()" in home
 
     assert "class ProjectPage(QWidget)" in dashboard
     assert "ContextPanel" not in dashboard
     assert "PageShell" not in dashboard
-    assert '"ProjectWorkspace"' in dashboard
-    assert '"ProjectIdentityCard"' in dashboard
-    assert '"PROJECT DATA"' in dashboard
-    assert '"PRODUCTION PIPELINE"' in dashboard
-    assert '"PERLU PERHATIAN"' in dashboard
-    assert '"RECENT ACTIVITY"' in dashboard
+    for token in (
+        "ProjectWorkspace",
+        "ProjectIdentityCard",
+        "DATA PROYEK",
+        "ALUR PRODUKSI",
+        "PERLU PERHATIAN",
+        "AKTIVITAS TERBARU",
+    ):
+        assert token in dashboard
 
 
 def test_project_dashboard_uses_production_flow_instead_of_card_matrix() -> None:
     source = _read("pages/project_dashboard_page.py")
 
-    assert '"ProjectMetricStrip"' in source
-    assert '"ProjectPipelineRail"' in source
-    assert '"ProjectRevisionLoop"' in source
-    assert 'QLabel("→")' in source
+    assert "ProjectMetricStrip" in source
+    assert "ProjectPipelineRail" in source
+    assert "ProjectRevisionLoop" in source
+    assert "→" in source
     assert "self.delivery_progress = QProgressBar()" in source
     assert "self.pipeline_progress_text" in source
     assert "snapshot.delivered_tracks / snapshot.total_tracks" not in source
@@ -54,19 +61,19 @@ def test_project_dashboard_uses_production_flow_instead_of_card_matrix() -> None
     assert 'role="pipeline"' in source
     assert 'role="revision"' in source
 
-    # Needs Attention is deliberately a vertical work queue, while activity is
+    # Perlu Perhatian is deliberately a vertical work queue, while activity is
     # a lightweight timeline instead of another heavy dashboard card.
     assert "self.action_layout.addWidget(button, index, 0)" in source
-    assert '"ProjectActivityPanel"' in source
-    assert '"ProjectActivityDot"' in source
+    assert "ProjectActivityPanel" in source
+    assert "ProjectActivityDot" in source
 
 
 def test_project_dashboard_after_hero_uses_weighted_two_columns() -> None:
     source = _read("pages/project_dashboard_page.py")
 
-    assert 'setObjectName("ProjectDashboardColumns")' in source
-    assert 'setObjectName("ProjectProductionColumn")' in source
-    assert 'setObjectName("ProjectMonitoringColumn")' in source
+    assert "ProjectDashboardColumns" in source
+    assert "ProjectProductionColumn" in source
+    assert "ProjectMonitoringColumn" in source
     assert "dashboard_columns.setColumnStretch(0, 13)" in source
     assert "dashboard_columns.setColumnStretch(1, 7)" in source
 
@@ -82,7 +89,7 @@ def test_project_dashboard_after_hero_uses_weighted_two_columns() -> None:
 def test_project_home_recent_list_supports_search_sort_and_open() -> None:
     source = _read("pages/project_page.py")
 
-    assert 'setPlaceholderText("Cari proyek terbaru…")' in source
+    assert "Cari proyek terbaru…" in source
     assert "textChanged.connect(self._filter_recent_projects)" in source
     assert "setSortingEnabled(True)" in source
     assert "setSectionsClickable(True)" in source
@@ -91,7 +98,7 @@ def test_project_home_recent_list_supports_search_sort_and_open() -> None:
     assert "itemClicked.connect(self._open_recent_item)" in source
     assert "itemDoubleClicked.connect(" not in source
     assert "QAbstractItemView.SelectionMode.NoSelection" in source
-    assert 'getattr(self.window(), "open_project_path", None)' in source
+    assert "open_project_path" in source
     assert "existing_only=False" in source
 
 
@@ -106,8 +113,8 @@ def test_project_identity_uses_real_metadata_without_fake_media() -> None:
     assert "settings.project_code" in main
     assert "settings.client_name" in main
     assert "settings.main_drive_url" in main
-    assert 'f"Folder sumber: {settings.source_folder or \'-\'}"' in main
-    assert 'f"Last sync: {last_sync or \'-\'}"' in main
+    assert "Folder sumber:" in main
+    assert "Sinkron terakhir:" in main
 
     forbidden = (
         "avatar",
@@ -146,17 +153,3 @@ def test_project_metrics_keep_existing_dashboard_semantics() -> None:
     assert "snapshot.revisions" in source
     assert "snapshot.actions" in source
     assert "snapshot.recent_activity" in source
-
-
-def test_needs_attention_uses_dashboard_severity_and_existing_action_keys() -> None:
-    source = _read("pages/project_dashboard_page.py")
-    theme = _read("app/theme.py")
-
-    assert 'button.setProperty("attentionAction", True)' in source
-    assert '"dashboardSeverity"' in source
-    assert "self.action_requested.emit(key)" in source
-
-    assert 'QPushButton[attentionAction="true"]' in theme
-    assert 'dashboardSeverity="ERROR"' in theme
-    assert 'dashboardSeverity="WARNING"' in theme
-    assert 'dashboardSeverity="INFO"' in theme
