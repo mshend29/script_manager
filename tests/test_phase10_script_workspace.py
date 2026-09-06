@@ -44,6 +44,16 @@ def test_script_sidebar_groups_cast_by_talent_for_current_scope() -> None:
     assert 'f"{self._format_count(len(unique_talents))} talent • "' in source
 
 
+def test_script_sidebar_visually_separates_each_talent_group() -> None:
+    source = _read("pages/script_page.py")
+
+    assert "from PySide6.QtGui import QColor" in source
+    assert "from app.theme import COLORS" in source
+    assert "role == Qt.ItemDataRole.BackgroundRole" in source
+    assert 'color_key = "surface" if index.row() % 2 == 0 else "neutral_soft"' in source
+    assert "return QColor(COLORS[color_key])" in source
+
+
 def test_script_dialogue_rows_match_dialog_workspace_single_line_normalization() -> None:
     source = _read("pages/script_page.py")
     dialog_source = _read("pages/dialog_page.py")
