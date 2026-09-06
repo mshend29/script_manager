@@ -15,12 +15,13 @@ class WorkspaceNavigation(QFrame):
 
     page_requested = Signal(str)
 
+    # Workspace keys are stable internal IDs; only their visible labels are localized.
     WORKSPACES = (
-        ("PROJECT", 'Proyek'),
-        ("SCRIPT", 'Naskah'),
+        ("PROJECT", "Proyek"),
+        ("SCRIPT", "Naskah"),
         ("DIALOG", "Dialog"),
         ("TRACKING", "Tracking"),
-        ("DELIVERY", 'Setoran'),
+        ("DELIVERY", "Setoran"),
     )
 
     def __init__(self, parent=None) -> None:
