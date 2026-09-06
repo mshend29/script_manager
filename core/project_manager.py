@@ -4,6 +4,7 @@ import shutil
 import sqlite3
 import uuid
 from pathlib import Path
+from typing import Callable
 
 from core.app_paths import project_runtime_root
 from core.database import DatabaseCompatibilityError
@@ -80,28 +81,86 @@ class ProjectManager:
         try:
             project.save()
         except Exception:
-            for candidate in (
+            self._cleanup_created_project_artifacts(
                 project_file,
-                Path(str(project_file) + "-journal"),
-                Path(str(project_file) + "-wal"),
-                Path(str(project_file) + "-shm"),
-            ):
-                try:
-                    if candidate.exists():
-                        candidate.unlink()
-                except OSError:
-                    pass
-
-            try:
-                runtime = project_runtime_root(project_id)
-                if runtime.exists():
-                    shutil.rmtree(runtime)
-            except OSError:
-                pass
+                project_id,
+            )
             raise
 
         self.current = project
         return project
+
+    def create_transactional(
+        self,
+        settings: ProjectSettings,
+        parent_folder: str | Path,
+        *,
+        after_create: Callable[[Project], None] | None = None,
+    ) -> Project:
+        """Create a project and rollback if a later creation stage fails.
+
+        ``after_create`` is intentionally generic. Phase 11 initial source
+        sync plugs into this transaction in a later step; keeping the wrapper
+        here avoids a second project-creation path and makes cleanup semantics
+        available to any post-create validation/sync stage.
+        """
+        previous = self.current
+        project = self.create(settings, parent_folder)
+
+        try:
+            if after_create is not None:
+                after_create(project)
+        except Exception:
+            self.rollback_created_project(
+                project,
+                restore_current=previous,
+            )
+            raise
+
+        return project
+
+    def rollback_created_project(
+        self,
+        project: Project,
+        *,
+        restore_current: Project | None = None,
+    ) -> None:
+        """Remove a not-yet-finalized project and its runtime artifacts."""
+        if self.current is project:
+            self.current = restore_current
+
+        self._cleanup_created_project_artifacts(
+            project.project_file,
+            project.project_id,
+        )
+
+    @staticmethod
+    def _cleanup_created_project_artifacts(
+        project_file: str | Path,
+        project_id: str,
+    ) -> None:
+        path = Path(project_file).expanduser()
+
+        # Delete SQLite sidecars as well as the database itself. Sidecars can
+        # be left by WAL/journal mode even when the primary operation failed.
+        for candidate in (
+            Path(str(path) + "-journal"),
+            Path(str(path) + "-wal"),
+            Path(str(path) + "-shm"),
+            path,
+        ):
+            try:
+                if candidate.exists():
+                    candidate.unlink()
+            except OSError:
+                pass
+
+        try:
+            runtime = project_runtime_root(project_id)
+            if runtime.exists():
+                shutil.rmtree(runtime)
+        except OSError:
+            pass
 
     def open(self, path: str | Path) -> Project:
         try:
