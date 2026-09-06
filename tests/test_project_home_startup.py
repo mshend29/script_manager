@@ -73,4 +73,4 @@ def test_recent_project_rows_follow_excel_like_file_list_reference() -> None:
 
 def test_recent_history_supports_longer_project_home_list() -> None:
     source = _read("core/recent_projects.py")
-    assert "RECENT_PROJECTS_LIMIT = 30"
+    assert "RECENT_PROJECTS_LIMIT = 30" in source
