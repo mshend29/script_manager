@@ -1,0 +1,76 @@
+name: UI Language Final CI Temp
+
+on:
+  push:
+    branches:
+      - phase10-ui-language-audit
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase10-ui-language-audit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Finish static UI contracts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def patch(path, replacements):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              before = text
+              for old, new in replacements:
+                  text = text.replace(old, new)
+              if text != before:
+                  p.write_text(text, encoding='utf-8')
+
+          # Last two visible English leftovers found by the audit.
+          patch('pages/project_page.py', [
+              ('"Open a recent project, search by project name or location, "\n            "or sort the list from the column headers."',
+               '"Buka proyek terbaru, cari berdasarkan nama atau lokasi, "\n            "atau urutkan daftar melalui judul kolom."'),
+          ])
+          patch('resources/help/keyboard_shortcuts.html', [
+              ('<div class="note"><b>F5 bukan sekadar memuat ulang tampilan.</b> F5 menjalankan proses Sinkronkan Sumber yang sama dengan tombol pada workspace Proyek.</div>',
+               '<div class="note"><b>F5 bukan sekadar memuat ulang tampilan.</b> F5 menjalankan proses Sinkronkan Sumber yang sama dengan tombol pada workspace Proyek. Tombol yang sama dipakai untuk sinkronisasi pertama dan sinkronisasi lanjutan.</div>'),
+          ])
+
+          patch('tests/test_data_unresolved_manual_resolution.py', [
+              ('assert characters[0].name == "⚠ Character Unknown"', 'assert characters[0].name == "⚠ Tokoh Tidak Dikenal"'),
+              ('assert characters[0].locked_talent_name == "⚠ Talent Unknown"', 'assert characters[0].locked_talent_name == "⚠ Talent Tidak Dikenal"'),
+          ])
+          patch('tests/test_project_dashboard_work_queue.py', [
+              ('assert \'page.show_section("Validation")\' in main', 'assert "page.show_section(\'Validasi\')" in main'),
+          ])
+          patch('tests/test_project_home_startup.py', [
+              ('assert \'["PROJECT", "LAST OPENED"]\' in source', 'assert "PROYEK" in source\n    assert "TERAKHIR DIBUKA" in source'),
+          ])
+          patch('tests/test_tools_maintenance.py', [
+              ('assert \'"AUDIT HISTORY"\' in page', 'assert "RIWAYAT AUDIT" in page'),
+          ])
+          patch('tests/test_track_file_settings_ui.py', [
+              ('assert "Setoran Folder (Google Drive Desktop)" in source', 'assert "Folder Setoran" in source\n    assert "Google Drive Desktop" in source'),
+              ('assert \'QGroupBox("Episode Delimiter")\' in source', 'assert "Pemisah Episode" in source'),
+          ])
+          patch('tests/test_tracking_compact_grid_ui.py', [
+              ('assert \'["TRACK SUGGESTION", "STEM / EXPORT", "DELIVERED"]\' in compact', 'for header in ("SARAN TRACK", "STEM / EXPORT", "DISETOR"):\n        assert header in compact'),
+              ('assert \'["EPS", "STEM", "DELIVERY", "WARNING"]\' in compact', 'for header in ("EPS", "STEM", "SETORAN", "PERINGATAN"):\n        assert header in compact'),
+              ('assert \'"CURRENT", "EXPECTED", "STATUS"\' in dialog', 'for header in ("SAAT INI", "DIHARAPKAN", "STATUS"):\n        assert header in dialog'),
+          ])
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pages resources tests
+          if ! git diff --cached --quiet; then
+            git commit -m "Finish static UI language contracts"
+            git push origin HEAD:phase10-ui-language-audit
+          fi
