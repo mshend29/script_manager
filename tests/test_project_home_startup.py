@@ -46,20 +46,24 @@ def test_recent_project_rows_follow_excel_like_file_list_reference() -> None:
     assert 'return " › ".join(folders)' in source
     assert "verticalHeader().setDefaultSectionSize(62)" in source
 
-    # Native table text must be completely absent, not merely transparent.
-    # Selection palettes can override foreground brushes on Windows and make
-    # hidden backing text overlap the custom icon/name renderer again.
+    # Native table text must stay completely absent so it cannot overlap the
+    # custom icon/name renderer under any selection or hover palette.
     assert "class RecentProjectItem(QTableWidgetItem)" in source
     assert 'super().__init__("")' in source
     assert "project_item = RecentProjectItem(raw_project_name)" in source
-    assert "QColor" not in source
 
-    # The Recent list behaves like a launcher: no selection highlight and a
-    # single click opens the project.
+    # The Recent list behaves like a launcher: no persistent selection
+    # highlight, one click opens, but hover feedback remains visible.
     assert "QAbstractItemView.SelectionMode.NoSelection" in source
     assert "self.recent_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)" in source
     assert "self.recent_table.itemClicked.connect(self._open_recent_item)" in source
     assert "itemDoubleClicked.connect" not in source
+    assert "class RecentProjectTable(QTableWidget)" in source
+    assert "self.setMouseTracking(True)" in source
+    assert "hover_row_changed = Signal(int)" in source
+    assert "self.recent_table.hover_row_changed.connect(" in source
+    assert 'COLORS["accent_soft"] if hovered else COLORS["surface"]' in source
+    assert "cell.set_hovered(hovered)" in source
 
     # Last Opened remains sortable but gets a deliberately wider readable
     # column instead of shrinking to its minimum contents width.
