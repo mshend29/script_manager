@@ -35,18 +35,27 @@ def test_script_sidebar_groups_cast_by_talent_for_current_scope() -> None:
     assert 'search=""' in source
     assert "talent_cast: dict[str, set[str]] = {}" in source
     assert "talent_cast.setdefault(talent_text, set()).add(character_text)" in source
-    assert '" / ".join(' in source
+    assert '"\\n".join(' in source
+    assert "self.cast_table.setWordWrap(True)" in source
+    assert "self.cast_table.setTextElideMode(Qt.TextElideMode.ElideNone)" in source
+    assert "self.cast_table.resizeRowsToContents()" in source
     assert '"Semua episode"' in source
     assert 'f"Episode {episode_number}"' in source
     assert 'f"{self._format_count(len(unique_talents))} talent • "' in source
 
 
-def test_script_dialogue_rows_are_single_line_like_dialog_workspace() -> None:
+def test_script_dialogue_rows_match_dialog_workspace_single_line_normalization() -> None:
     source = _read("pages/script_page.py")
+    dialog_source = _read("pages/dialog_page.py")
 
+    single_line_rule = 'return " ".join(str(value or "").splitlines()).strip()'
+    assert single_line_rule in dialog_source
+    assert single_line_rule in source
+    assert "return self._single_line_dialogue(row.dialogue)" in source
     assert "self.table.setWordWrap(False)" in source
     assert "self.table.setTextElideMode(Qt.TextElideMode.ElideRight)" in source
     assert "self.table.verticalHeader().setDefaultSectionSize(38)" in source
+    assert "QHeaderView.ResizeMode.Fixed" in source
     assert "tooltip = row.dialogue" in source
     assert 'tooltip += f"\\n\\nSumber: {row.source_file_name}"' in source
 
