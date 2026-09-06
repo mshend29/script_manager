@@ -140,7 +140,8 @@ def test_project_ui_uses_smproj_file_picker_and_no_drsp_conversion():
     assert "tools.convert_drsp" not in main_window
     assert "Convert to .drsp" not in tools_page
     assert "tools.convert_drsp" not in header
-    assert "(.smproj)" in new_dialog
+    assert ".smproj" in new_dialog
+    assert "Proyek Baru" in new_dialog
 
     assert "project_args = [" in main_py
     assert "if project_args:" in main_py
