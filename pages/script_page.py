@@ -11,8 +11,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QTableView,
-    QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -104,6 +102,50 @@ class ScriptTableModel(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
 
+class ScriptCastTableModel(QAbstractTableModel):
+    HEADERS = ("TOKOH", "TALENT")
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._rows: list[tuple[str, str]] = []
+
+    def set_rows(self, rows: list[tuple[str, str]]) -> None:
+        self.beginResetModel()
+        self._rows = list(rows)
+        self.endResetModel()
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self._rows)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self.HEADERS)
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
+            return None
+        if role == Qt.ItemDataRole.DisplayRole:
+            return self._rows[index.row()][index.column()]
+        return None
+
+    def headerData(
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ):
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+            and 0 <= section < len(self.HEADERS)
+        ):
+            return self.HEADERS[section]
+        return super().headerData(section, orientation, role)
+
+
 class ScriptTableView(QTableView):
     """QTableView with a small compatibility helper for QA/UI callers."""
 
@@ -124,9 +166,10 @@ class ScriptPage(PageShell):
         self.cast_scope_label.setWordWrap(True)
         context.add_widget(self.cast_scope_label)
 
-        self.cast_table = QTableWidget(0, 2)
+        self.cast_table = ScriptTableView()
         self.cast_table.setObjectName("ScriptCastTable")
-        self.cast_table.setHorizontalHeaderLabels(["TOKOH", "TALENT"])
+        self.cast_model = ScriptCastTableModel(self.cast_table)
+        self.cast_table.setModel(self.cast_model)
         self.cast_table.setAlternatingRowColors(False)
         self.cast_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
@@ -269,6 +312,8 @@ class ScriptPage(PageShell):
             self.clear_data()
             return
 
+        # Full refresh must reload filters so newly added episodes become
+        # selectable immediately after source refresh.
         self.reload()
 
     def clear_data(self) -> None:
@@ -287,7 +332,7 @@ class ScriptPage(PageShell):
 
         self._update_episode_navigation()
         self.table_model.set_rows([])
-        self.cast_table.setRowCount(0)
+        self.cast_model.set_rows([])
         self.cast_scope_label.setText("Belum ada proyek terbuka")
         self.result_label.setText("Belum ada proyek terbuka")
 
@@ -302,7 +347,7 @@ class ScriptPage(PageShell):
             options = self._service.get_script_filter_options()
         except Exception as exc:
             self.table_model.set_rows([])
-            self.cast_table.setRowCount(0)
+            self.cast_model.set_rows([])
             self.result_label.setText(f"Gagal membaca filter naskah: {exc}")
             return
 
@@ -372,7 +417,7 @@ class ScriptPage(PageShell):
     # ------------------------------------------------------------------
 
     def _refresh_cast_sidebar(self) -> None:
-        self.cast_table.setRowCount(0)
+        self.cast_model.set_rows([])
         if self._service is None:
             self.cast_scope_label.setText("Belum ada proyek terbuka")
             return
@@ -410,18 +455,7 @@ class ScriptPage(PageShell):
             pairs,
             key=lambda item: (item[0].casefold(), item[1].casefold()),
         )
-        self.cast_table.setRowCount(len(ordered_pairs))
-        for row_index, (character_name, talent_name) in enumerate(ordered_pairs):
-            self.cast_table.setItem(
-                row_index,
-                0,
-                QTableWidgetItem(character_name),
-            )
-            self.cast_table.setItem(
-                row_index,
-                1,
-                QTableWidgetItem(talent_name),
-            )
+        self.cast_model.set_rows(ordered_pairs)
 
         unique_characters = {
             character_name
@@ -450,7 +484,7 @@ class ScriptPage(PageShell):
         episode_number = self.episode_combo.currentData()
         try:
             rows = self._service.get_script_rows(
-                episode_number=episode_number,
+                episode_number=self.episode_combo.currentData(),
                 search=self.search_edit.text(),
             )
         except Exception as exc:
