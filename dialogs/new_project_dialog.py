@@ -45,6 +45,10 @@ from widgets.project_configuration import (
     ProjectIdentitySection,
     SourceConfigurationSection,
 )
+from widgets.project_review_panel import (
+    ProjectReviewPanel,
+    ProjectReviewSection,
+)
 from widgets.source_preflight_panel import (
     SourcePreflightPanel,
     SourcePreflightWorker,
@@ -137,6 +141,7 @@ class NewProjectDialog(QDialog):
         self.audio_setup_panel = AudioSetupPanel()
         self.links_section = DriveLinksSection(self._settings)
         self.folder_links_summary_panel = FolderLinksSummaryPanel()
+        self.review_panel = ProjectReviewPanel()
         self.sections = ProjectConfigurationSections(
             identity=self.identity_section,
             source=self.source_section,
@@ -242,18 +247,12 @@ class NewProjectDialog(QDialog):
                 self.links_section,
             )
         )
-
-        self.review_placeholder = QLabel(
-            "Ringkasan final akan menampilkan kesiapan seluruh konfigurasi "
-            "sebelum project dibuat."
-        )
-        self.review_placeholder.setWordWrap(True)
-        self.review_placeholder.setObjectName("PageSubtitle")
         self.page_stack.addWidget(
             self._make_page(
                 "5. Review & Buat Proyek",
-                "Periksa kembali setup sebelum membuat file project.",
-                self.review_placeholder,
+                "Periksa seluruh konfigurasi blocking dan opsional sebelum membuat "
+                "file project. Gunakan Ubah untuk kembali ke bagian yang diperlukan.",
+                self.review_panel,
             )
         )
 
@@ -281,6 +280,8 @@ class NewProjectDialog(QDialog):
         footer.addWidget(self.next_button)
 
         self.create_button = QPushButton("Buat Proyek")
+        self.create_button.setAutoDefault(False)
+        self.create_button.setDefault(False)
         self.create_button.clicked.connect(self._accept)
         footer.addWidget(self.create_button)
 
@@ -330,6 +331,7 @@ class NewProjectDialog(QDialog):
         self.main_drive_url.textChanged.connect(self._links_configuration_changed)
         self.material_drive_url.textChanged.connect(self._links_configuration_changed)
         self.delivery_drive_url.textChanged.connect(self._links_configuration_changed)
+        self.review_panel.step_requested.connect(self._show_step)
 
         self._refresh_identity_validation()
         self._show_step(0)
@@ -426,6 +428,8 @@ class NewProjectDialog(QDialog):
             self._refresh_audio_validation()
         elif index == 3:
             self._refresh_folder_links_validation()
+        elif index == 4:
+            self._refresh_review()
 
     def _go_back(self) -> None:
         if self._preflight_running:
@@ -482,6 +486,12 @@ class NewProjectDialog(QDialog):
         )
         self.cancel_button.setEnabled(not self._preflight_running)
 
+    def _invalidate_review_step(self) -> None:
+        if self._current_step == 4:
+            self._refresh_review()
+        else:
+            self.set_step_state(4, WizardMilestoneState.PENDING, "")
+
     def _mark_project_code_manual(self, _value: str = "") -> None:
         self._project_code_manually_edited = True
         self._refresh_identity_validation()
@@ -502,6 +512,7 @@ class NewProjectDialog(QDialog):
         *,
         verify_writable: bool = False,
     ) -> None:
+        self._invalidate_review_step()
         settings = self.sections.to_settings()
         validation = validate_project_identity_destination(
             settings,
@@ -552,6 +563,7 @@ class NewProjectDialog(QDialog):
     ) -> None:
         self._source_preflight_report = None
         self._invalidate_folder_links_step()
+        self._invalidate_review_step()
         self.source_preflight_panel.set_filename_validation(result)
 
         if result is None:
@@ -601,6 +613,7 @@ class NewProjectDialog(QDialog):
             return
 
         self._source_preflight_report = None
+        self._invalidate_review_step()
         self._preflight_running = True
         self.source_section.setEnabled(False)
         self.source_preflight_panel.set_running(True)
@@ -642,6 +655,7 @@ class NewProjectDialog(QDialog):
 
     def _source_preflight_finished(self, report: SourcePreflightReport) -> None:
         self._source_preflight_report = report
+        self._invalidate_review_step()
         self.source_preflight_panel.set_report(report)
 
         if report.cancelled:
@@ -692,6 +706,7 @@ class NewProjectDialog(QDialog):
             problems=[f"Source Preflight gagal: {message}"]
         )
         self._source_preflight_report = report
+        self._invalidate_review_step()
         self.source_preflight_panel.set_report(report)
         self.set_step_state(
             1,
@@ -709,6 +724,7 @@ class NewProjectDialog(QDialog):
     def _audio_configuration_changed(self, _value: object = None) -> None:
         self._audio_validation = None
         self._invalidate_folder_links_step()
+        self._invalidate_review_step()
         if self._current_step == 2:
             self._refresh_audio_validation()
         else:
@@ -765,6 +781,7 @@ class NewProjectDialog(QDialog):
 
     def _links_configuration_changed(self, _value: object = None) -> None:
         self._folder_links_validation = None
+        self._invalidate_review_step()
         if self._current_step == 3:
             self._refresh_folder_links_validation()
         else:
@@ -804,6 +821,163 @@ class NewProjectDialog(QDialog):
             )
         return result
 
+    def _refresh_review(self) -> None:
+        settings = self.sections.to_settings()
+        identity = validate_project_identity_destination(
+            settings,
+            self.location_edit.text(),
+            verify_writable=True,
+        )
+        audio = validate_audio_setup(settings, verify_writable=True)
+        links = validate_folder_links_setup(settings)
+        source = self.source_section.validation
+        preflight = self._source_preflight_report
+
+        identity_status = "ready" if identity.is_valid else "error"
+        identity_message = (
+            ""
+            if identity.is_valid
+            else identity.issues[0].message
+        )
+        destination = str(identity.destination_file) if identity.destination_file else "-"
+
+        source_errors: list[str] = []
+        source_warnings: list[str] = []
+        if source is None:
+            source_errors.append("Validasi nama file sumber belum siap.")
+        else:
+            source_errors.extend(issue.message for issue in source.errors)
+            source_warnings.extend(issue.message for issue in source.warnings)
+        if preflight is None:
+            source_errors.append("Source Preflight belum dijalankan.")
+        elif not preflight.is_valid:
+            source_errors.extend(preflight.problems or ["Source Preflight belum siap."])
+        else:
+            source_warnings.extend(preflight.warnings)
+
+        if source_errors:
+            source_status = "error"
+            source_message = source_errors[0]
+        elif source_warnings:
+            source_status = "warning"
+            source_message = source_warnings[0]
+        else:
+            source_status = "ready"
+            source_message = ""
+
+        episodes = source.episode_numbers if source is not None else []
+        episode_range = (
+            f"{episodes[0]}–{episodes[-1]}"
+            if episodes
+            else "-"
+        )
+        file_count = source.file_count if source is not None else 0
+        preflight_text = (
+            f"{preflight.parsed_files} workbook / {preflight.parsed_dialogues} dialog"
+            if preflight is not None and preflight.is_valid
+            else "belum siap"
+        )
+
+        audio_status = "ready" if audio.is_valid else "error"
+        audio_message = "" if audio.is_valid else audio.errors[0].message
+        channel_label = "Mono" if settings.audio_channels == 1 else "Stereo"
+
+        link_values = (
+            settings.main_drive_url,
+            settings.material_drive_url,
+            settings.delivery_drive_url,
+        )
+        if not links.is_valid:
+            links_status = "error"
+            links_message = links.errors[0].message
+        elif not any(value.strip() for value in link_values):
+            links_status = "warning"
+            links_message = "Tautan Drive bersifat opsional dan dapat dilengkapi nanti."
+        else:
+            links_status = "ready"
+            links_message = ""
+
+        review_sections = (
+            ProjectReviewSection(
+                title="Inisialisasi",
+                step_index=0,
+                status=identity_status,
+                message=identity_message,
+                details=(
+                    f"Nama Proyek: {settings.project_name or '-'}",
+                    f"Kode Proyek: {settings.project_code or '-'}",
+                    f"Klien: {settings.client_name or '-'}",
+                    f"Tanggal Mulai: {settings.start_date or '-'}",
+                    f"File .smproj: {destination}",
+                ),
+            ),
+            ProjectReviewSection(
+                title="Sumber Naskah",
+                step_index=1,
+                status=source_status,
+                message=source_message,
+                details=(
+                    f"Folder Sumber: {settings.source_folder or '-'}",
+                    f"Workbook: {file_count}",
+                    f"Episode: {episode_range}",
+                    (
+                        "Delimiter: sebelum="
+                        f"{settings.episode_before!r}, setelah={settings.episode_after!r}"
+                    ),
+                    f"Preflight: {preflight_text}",
+                ),
+            ),
+            ProjectReviewSection(
+                title="Audio & Setoran",
+                step_index=2,
+                status=audio_status,
+                message=audio_message,
+                details=(
+                    (
+                        "Audio: WAV · "
+                        f"{settings.audio_sample_rate // 1000 if settings.audio_sample_rate % 1000 == 0 else settings.audio_sample_rate / 1000:g} kHz · "
+                        f"{settings.audio_bit_depth}-bit · {channel_label}"
+                    ),
+                    f"Folder Stem: {settings.stem_output_folder or '-'}",
+                    f"Folder Setoran: {settings.delivery_folder or '-'}",
+                ),
+            ),
+            ProjectReviewSection(
+                title="Folder & Tautan",
+                step_index=3,
+                status=links_status,
+                message=links_message,
+                details=(
+                    f"Drive Utama: {settings.main_drive_url or '-'}",
+                    f"Material: {settings.material_drive_url or '-'}",
+                    f"Setoran: {settings.delivery_drive_url or '-'}",
+                ),
+            ),
+        )
+        self.review_panel.set_sections(review_sections)
+
+        if any(section.status == "error" for section in review_sections):
+            first_error = next(
+                section for section in review_sections if section.status == "error"
+            )
+            self.set_step_state(
+                4,
+                WizardMilestoneState.ERROR,
+                f"✕ {first_error.title}: {first_error.message}",
+            )
+        elif any(section.status == "warning" for section in review_sections):
+            self.set_step_state(
+                4,
+                WizardMilestoneState.WARNING,
+                "⚠ Konfigurasi blocking siap; periksa warning/field opsional sebelum membuat proyek.",
+            )
+        else:
+            self.set_step_state(
+                4,
+                WizardMilestoneState.VALID,
+                "✓ Seluruh konfigurasi siap. Klik Buat Proyek untuk melanjutkan.",
+            )
+
     def _create_destination_folder(self) -> None:
         try:
             create_project_destination_folder(
@@ -822,6 +996,15 @@ class NewProjectDialog(QDialog):
 
     def _show_setup_help(self) -> None:
         show_folder_drive_help(self)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if (
+            self._current_step == len(self.STEP_TITLES) - 1
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def reject(self) -> None:
         if self._preflight_running:
