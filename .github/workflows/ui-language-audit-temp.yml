@@ -24,7 +24,7 @@ jobs:
           import ast
           from pathlib import Path
 
-          roots = [Path('app'), Path('pages'), Path('dialogs'), Path('widgets')]
+          roots = [Path('app'), Path('pages'), Path('dialogs'), Path('widgets'), Path('services')]
           skip_parts = {'__pycache__'}
           for root in roots:
               for path in sorted(root.rglob('*.py')):
