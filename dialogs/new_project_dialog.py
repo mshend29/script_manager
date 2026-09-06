@@ -19,12 +19,18 @@ from PySide6.QtWidgets import (
 
 from core.project_filename import new_project_destination
 from core.project_settings import ProjectSettings
+from services.audio_setup_validation import (
+    AudioSetupValidation,
+    create_audio_output_folder,
+    validate_audio_setup,
+)
 from services.project_setup_validation import (
     create_project_destination_folder,
     validate_project_identity_destination,
 )
 from services.source_preflight_service import SourcePreflightReport
 from services.source_setup_validation import SourceFilenameValidation
+from widgets.audio_setup_panel import AudioSetupPanel
 from widgets.project_configuration import (
     AudioOutputSection,
     DriveLinksSection,
@@ -73,6 +79,7 @@ class NewProjectDialog(QDialog):
         self._source_preflight_thread: QThread | None = None
         self._source_preflight_worker: SourcePreflightWorker | None = None
         self._preflight_running = False
+        self._audio_validation: AudioSetupValidation | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 16, 18, 16)
@@ -120,6 +127,7 @@ class NewProjectDialog(QDialog):
         )
         self.source_preflight_panel = SourcePreflightPanel()
         self.audio_section = AudioOutputSection(self._settings)
+        self.audio_setup_panel = AudioSetupPanel()
         self.links_section = DriveLinksSection(self._settings)
         self.sections = ProjectConfigurationSections(
             identity=self.identity_section,
@@ -211,8 +219,10 @@ class NewProjectDialog(QDialog):
         self.page_stack.addWidget(
             self._make_page(
                 "3. Sumber Audio",
-                "Tentukan folder output produksi dan spesifikasi WAV.",
+                "Tentukan folder output produksi dan spesifikasi WAV. Folder harus "
+                "tersedia serta dapat dibaca/ditulis sebelum melanjutkan.",
                 self.audio_section,
+                self.audio_setup_panel,
             )
         )
         self.page_stack.addWidget(
@@ -286,6 +296,27 @@ class NewProjectDialog(QDialog):
         self.source_preflight_panel.cancel_requested.connect(
             self._cancel_source_preflight
         )
+        self.stem_output_folder.edit.textChanged.connect(
+            self._audio_configuration_changed
+        )
+        self.delivery_folder.edit.textChanged.connect(
+            self._audio_configuration_changed
+        )
+        self.audio_sample_rate.currentIndexChanged.connect(
+            self._audio_configuration_changed
+        )
+        self.audio_bit_depth.currentIndexChanged.connect(
+            self._audio_configuration_changed
+        )
+        self.audio_channels.currentIndexChanged.connect(
+            self._audio_configuration_changed
+        )
+        self.audio_setup_panel.create_stem_requested.connect(
+            lambda: self._create_audio_folder("stem")
+        )
+        self.audio_setup_panel.create_delivery_requested.connect(
+            lambda: self._create_audio_folder("delivery")
+        )
 
         self._refresh_identity_validation()
         self._show_step(0)
@@ -305,6 +336,10 @@ class NewProjectDialog(QDialog):
     @property
     def source_preflight_report(self) -> SourcePreflightReport | None:
         return self._source_preflight_report
+
+    @property
+    def audio_validation(self) -> AudioSetupValidation | None:
+        return self._audio_validation
 
     def _make_page(
         self,
@@ -370,6 +405,8 @@ class NewProjectDialog(QDialog):
 
         if index == 1 and self.source_section.validation is None:
             self.source_section.validate_source_filenames()
+        elif index == 2:
+            self._refresh_audio_validation()
 
     def _go_back(self) -> None:
         if self._preflight_running:
@@ -395,6 +432,8 @@ class NewProjectDialog(QDialog):
                     WizardMilestoneState.ERROR,
                     "Jalankan Source Preflight dan selesaikan semua blocker sebelum lanjut.",
                 )
+        elif self._current_step == 2:
+            self._refresh_audio_validation(verify_writable=True)
 
         if not self._can_advance_current_step():
             return
@@ -645,6 +684,55 @@ class NewProjectDialog(QDialog):
         self._source_preflight_worker = None
         self._update_navigation_buttons()
 
+    def _audio_configuration_changed(self, _value: object = None) -> None:
+        self._audio_validation = None
+        if self._current_step == 2:
+            self._refresh_audio_validation()
+        else:
+            self.set_step_state(2, WizardMilestoneState.PENDING, "")
+
+    def _refresh_audio_validation(
+        self,
+        *,
+        verify_writable: bool = False,
+    ) -> AudioSetupValidation:
+        settings = self.sections.to_settings()
+        result = validate_audio_setup(
+            settings,
+            verify_writable=verify_writable,
+        )
+        self._audio_validation = result
+        self.audio_setup_panel.set_validation(result)
+
+        if result.errors:
+            self.set_step_state(
+                2,
+                WizardMilestoneState.ERROR,
+                result.errors[0].message,
+            )
+        else:
+            self.set_step_state(
+                2,
+                WizardMilestoneState.VALID,
+                "✓ Folder Stem, Setoran, dan konfigurasi WAV siap.",
+            )
+        return result
+
+    def _create_audio_folder(self, kind: str) -> None:
+        field = (
+            self.stem_output_folder
+            if kind == "stem"
+            else self.delivery_folder
+        )
+        label = "Folder Stem" if kind == "stem" else "Folder Setoran"
+        try:
+            create_audio_output_folder(field.text())
+        except Exception as exc:
+            QMessageBox.warning(self, label, str(exc))
+            self._refresh_audio_validation()
+            return
+        self._refresh_audio_validation(verify_writable=True)
+
     def _create_destination_folder(self) -> None:
         try:
             create_project_destination_folder(
@@ -719,6 +807,20 @@ class NewProjectDialog(QDialog):
                 "Source Preflight harus selesai tanpa blocker sebelum project dibuat.",
             )
             self._show_step(1)
+            return
+
+        audio_validation = validate_audio_setup(
+            settings,
+            verify_writable=True,
+        )
+        if not audio_validation.is_valid:
+            QMessageBox.warning(
+                self,
+                "Proyek Baru",
+                audio_validation.errors[0].message,
+            )
+            self._show_step(2)
+            self._refresh_audio_validation(verify_writable=True)
             return
 
         issues = self.sections.validate_basic(strict_new_project=False)
