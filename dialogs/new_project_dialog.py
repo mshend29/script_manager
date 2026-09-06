@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QPushButton,
     QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -24,43 +27,76 @@ from widgets.project_configuration import (
     ProjectIdentitySection,
     SourceConfigurationSection,
 )
+from widgets.wizard_milestone_rail import (
+    WizardMilestoneRail,
+    WizardMilestoneState,
+)
 
 
 class NewProjectDialog(QDialog):
+    STEP_TITLES = (
+        "Inisialisasi Proyek",
+        "Sumber Naskah",
+        "Sumber Audio",
+        "Folder & Tautan",
+        "Buat Proyek",
+    )
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.setWindowTitle("Proyek Baru")
-        self.resize(780, 720)
-        self.setMinimumSize(680, 620)
+        self.resize(1040, 720)
+        self.setMinimumSize(760, 560)
 
         self._settings = ProjectSettings()
         self._parent_folder = ""
+        self._current_step = 0
+        self._step_states = [
+            WizardMilestoneState.PENDING
+            for _ in self.STEP_TITLES
+        ]
+        self._step_messages = ["" for _ in self.STEP_TITLES]
+        self._destination_collision = False
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
+        root.setContentsMargins(18, 16, 18, 16)
         root.setSpacing(12)
+
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(12)
+
+        header_text = QVBoxLayout()
+        header_text.setContentsMargins(0, 0, 0, 0)
+        header_text.setSpacing(2)
 
         title = QLabel("Proyek Baru")
         title.setObjectName("PageTitle")
-        root.addWidget(title)
+        header_text.addWidget(title)
 
         subtitle = QLabel(
-            "Project akan dibuat sebagai satu file Script Management Project "
-            "(.smproj). Source Excel, stem, dan file setoran tetap berada "
-            "di lokasi eksternal dan hanya direferensikan oleh project."
+            "Lengkapi lima langkah setup. Project belum dibuat sampai "
+            "Buat Proyek dipilih pada langkah terakhir."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
-        root.addWidget(subtitle)
+        header_text.addWidget(subtitle)
+        header.addLayout(header_text, 1)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        content = QWidget()
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(2, 2, 8, 2)
-        content_layout.setSpacing(12)
+        self.help_button = QPushButton("?")
+        self.help_button.setObjectName("WizardHelpButton")
+        self.help_button.setToolTip("Bantuan setup proyek")
+        self.help_button.setAccessibleName("Bantuan setup proyek")
+        self.help_button.setFixedSize(32, 32)
+        self.help_button.setProperty("secondary", True)
+        self.help_button.clicked.connect(self._show_setup_help)
+        header.addWidget(
+            self.help_button,
+            0,
+            Qt.AlignmentFlag.AlignTop,
+        )
+        root.addLayout(header)
 
         self.identity_section = ProjectIdentitySection(self._settings)
         self.source_section = SourceConfigurationSection(self._settings)
@@ -74,7 +110,7 @@ class NewProjectDialog(QDialog):
         )
 
         # Compatibility aliases for callers/tests that already use the dialog
-        # fields directly. The reusable sections are the single source of data.
+        # fields directly. The reusable sections remain the single data source.
         self.project_name = self.identity_section.project_name
         self.project_code = self.identity_section.project_code
         self.client_name = self.identity_section.client_name
@@ -91,53 +127,123 @@ class NewProjectDialog(QDialog):
         self.material_drive_url = self.links_section.material_drive_url
         self.delivery_drive_url = self.links_section.delivery_drive_url
 
-        content_layout.addWidget(self.identity_section)
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(14)
 
-        destination_group = QWidget()
-        destination_layout = QVBoxLayout(destination_group)
-        destination_layout.setContentsMargins(0, 0, 0, 0)
-        destination_layout.setSpacing(6)
+        self.milestone_rail = WizardMilestoneRail(self.STEP_TITLES)
+        body.addWidget(self.milestone_rail)
 
-        location_row = QHBoxLayout()
-        location_row.setContentsMargins(0, 0, 0, 0)
-        location_row.setSpacing(8)
-        location_label = QLabel("Simpan Proyek Di")
-        location_label.setMinimumWidth(130)
+        self.page_stack = QStackedWidget()
+        self.page_stack.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+        body.addWidget(self.page_stack, 1)
+        root.addLayout(body, 1)
+
         self.location_field = FolderField(
             browse_caption="Pilih Lokasi Proyek"
         )
         self.location_edit = self.location_field.edit
-        location_row.addWidget(location_label)
-        location_row.addWidget(self.location_field, 1)
-        destination_layout.addLayout(location_row)
-
         self.destination_preview = QLabel("File proyek: -")
         self.destination_preview.setObjectName("PageSubtitle")
         self.destination_preview.setWordWrap(True)
+
+        destination_panel = QWidget()
+        destination_layout = QVBoxLayout(destination_panel)
+        destination_layout.setContentsMargins(0, 0, 0, 0)
+        destination_layout.setSpacing(6)
+        destination_label = QLabel("Penyimpanan Proyek")
+        destination_label.setStyleSheet("font-weight: 600;")
+        destination_layout.addWidget(destination_label)
+        destination_layout.addWidget(self.location_field)
         destination_layout.addWidget(self.destination_preview)
-        content_layout.addWidget(destination_group)
 
-        content_layout.addWidget(self.source_section)
-        content_layout.addWidget(self.audio_section)
-        content_layout.addWidget(self.links_section)
-        content_layout.addStretch(1)
-        scroll.setWidget(content)
-        root.addWidget(scroll, 1)
-
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Save | QDialogButtonBox.Cancel
+        self.page_stack.addWidget(
+            self._make_page(
+                "1. Inisialisasi Proyek",
+                "Tentukan identitas project dan lokasi file .smproj baru.",
+                self.identity_section,
+                destination_panel,
+            )
         )
-        self.create_button = buttons.button(QDialogButtonBox.Save)
-        self.create_button.setText("Buat Proyek")
-        buttons.accepted.connect(self._accept)
-        buttons.rejected.connect(self.reject)
-        root.addWidget(buttons)
+        self.page_stack.addWidget(
+            self._make_page(
+                "2. Sumber Naskah",
+                "Pilih sumber naskah dan aturan pembacaan nomor episode.",
+                self.source_section,
+            )
+        )
+        self.page_stack.addWidget(
+            self._make_page(
+                "3. Sumber Audio",
+                "Tentukan folder output produksi dan spesifikasi WAV.",
+                self.audio_section,
+            )
+        )
+        self.page_stack.addWidget(
+            self._make_page(
+                "4. Folder & Tautan",
+                "Tautan browser bersifat opsional dan terpisah dari filesystem path.",
+                self.links_section,
+            )
+        )
+
+        self.review_placeholder = QLabel(
+            "Ringkasan final akan menampilkan kesiapan seluruh konfigurasi "
+            "sebelum project dibuat."
+        )
+        self.review_placeholder.setWordWrap(True)
+        self.review_placeholder.setObjectName("PageSubtitle")
+        self.page_stack.addWidget(
+            self._make_page(
+                "5. Review & Buat Proyek",
+                "Periksa kembali setup sebelum membuat file project.",
+                self.review_placeholder,
+            )
+        )
+
+        footer_line = QFrame()
+        footer_line.setFrameShape(QFrame.Shape.HLine)
+        footer_line.setFrameShadow(QFrame.Shadow.Sunken)
+        root.addWidget(footer_line)
+
+        footer = QHBoxLayout()
+        footer.setContentsMargins(0, 0, 0, 0)
+        footer.setSpacing(8)
+
+        self.validation_status = QLabel("")
+        self.validation_status.setObjectName("PageSubtitle")
+        self.validation_status.setWordWrap(True)
+        footer.addWidget(self.validation_status, 1)
+
+        self.back_button = QPushButton("< Kembali")
+        self.back_button.setProperty("secondary", True)
+        self.back_button.clicked.connect(self._go_back)
+        footer.addWidget(self.back_button)
+
+        self.next_button = QPushButton("Berikutnya >")
+        self.next_button.clicked.connect(self._go_next)
+        footer.addWidget(self.next_button)
+
+        self.create_button = QPushButton("Buat Proyek")
+        self.create_button.clicked.connect(self._accept)
+        footer.addWidget(self.create_button)
+
+        self.cancel_button = QPushButton("Batal")
+        self.cancel_button.setProperty("secondary", True)
+        self.cancel_button.clicked.connect(self.reject)
+        footer.addWidget(self.cancel_button)
+        root.addLayout(footer)
 
         self.project_name.textChanged.connect(self._sync_project_code)
         self.project_name.textChanged.connect(self._update_destination_preview)
         self.project_code.textChanged.connect(self._update_destination_preview)
         self.location_edit.textChanged.connect(self._update_destination_preview)
+
         self._update_destination_preview()
+        self._show_step(0)
 
     @property
     def settings(self) -> ProjectSettings:
@@ -146,6 +252,91 @@ class NewProjectDialog(QDialog):
     @property
     def parent_folder(self) -> str:
         return self._parent_folder
+
+    @property
+    def current_step(self) -> int:
+        return self._current_step
+
+    def _make_page(
+        self,
+        title: str,
+        description: str,
+        *widgets: QWidget,
+    ) -> QScrollArea:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(8, 4, 12, 8)
+        layout.setSpacing(12)
+
+        title_label = QLabel(title)
+        title_label.setObjectName("SectionTitle")
+        title_label.setStyleSheet("font-size: 18px; font-weight: 700;")
+        layout.addWidget(title_label)
+
+        description_label = QLabel(description)
+        description_label.setObjectName("PageSubtitle")
+        description_label.setWordWrap(True)
+        layout.addWidget(description_label)
+
+        for widget in widgets:
+            layout.addWidget(widget)
+        layout.addStretch(1)
+
+        scroll.setWidget(content)
+        return scroll
+
+    def set_step_state(
+        self,
+        index: int,
+        state: WizardMilestoneState | str,
+        message: str = "",
+    ) -> None:
+        if not 0 <= index < len(self.STEP_TITLES):
+            return
+        resolved = WizardMilestoneState(state)
+        self._step_states[index] = resolved
+        self._step_messages[index] = str(message or "")
+        self.milestone_rail.set_state(index, resolved)
+        if index == self._current_step:
+            self.validation_status.setText(self._step_messages[index])
+        self._update_navigation_buttons()
+
+    def _can_advance_current_step(self) -> bool:
+        return self._step_states[self._current_step] != WizardMilestoneState.ERROR
+
+    def _show_step(self, index: int) -> None:
+        index = max(0, min(index, len(self.STEP_TITLES) - 1))
+        self._current_step = index
+        self.page_stack.setCurrentIndex(index)
+        self.milestone_rail.set_active(index)
+        self.validation_status.setText(self._step_messages[index])
+        self._update_navigation_buttons()
+
+    def _go_back(self) -> None:
+        if self._current_step > 0:
+            self._show_step(self._current_step - 1)
+
+    def _go_next(self) -> None:
+        if not self._can_advance_current_step():
+            return
+        if self._current_step < len(self.STEP_TITLES) - 1:
+            self._show_step(self._current_step + 1)
+
+    def _update_navigation_buttons(self) -> None:
+        is_final = self._current_step == len(self.STEP_TITLES) - 1
+        can_advance = self._can_advance_current_step()
+
+        self.back_button.setEnabled(self._current_step > 0)
+        self.next_button.setVisible(not is_final)
+        self.next_button.setEnabled(can_advance)
+        self.create_button.setVisible(is_final)
+        self.create_button.setEnabled(
+            can_advance and not self._destination_collision
+        )
 
     def _sync_project_code(self, value: str) -> None:
         if not self.project_code.text().strip():
@@ -157,19 +348,41 @@ class NewProjectDialog(QDialog):
         code = self.project_code.text().strip() or name
 
         if not parent or not name:
+            self._destination_collision = False
             self.destination_preview.setText("File proyek: -")
-            self.create_button.setEnabled(True)
+            if self._step_states[0] == WizardMilestoneState.ERROR:
+                self.set_step_state(0, WizardMilestoneState.PENDING)
+            self._update_navigation_buttons()
             return
 
         destination = new_project_destination(parent, code, name)
-        if destination.exists():
+        self._destination_collision = destination.exists()
+        if self._destination_collision:
             self.destination_preview.setText(
                 f"✕ File proyek sudah ada: {destination}"
             )
-            self.create_button.setEnabled(False)
+            self.set_step_state(
+                0,
+                WizardMilestoneState.ERROR,
+                "Pilih nama, kode, atau lokasi lain karena file project sudah ada.",
+            )
         else:
             self.destination_preview.setText(f"File proyek: {destination}")
-            self.create_button.setEnabled(True)
+            if self._step_states[0] == WizardMilestoneState.ERROR:
+                self.set_step_state(0, WizardMilestoneState.PENDING)
+            self._update_navigation_buttons()
+
+    def _show_setup_help(self) -> None:
+        QMessageBox.information(
+            self,
+            "Bantuan Proyek Baru",
+            (
+                "Gunakan Kembali/Berikutnya untuk berpindah langkah. "
+                "Project belum ditulis ke disk selama navigasi wizard.\n\n"
+                "Bantuan folder filesystem dan Google Drive akan tersedia "
+                "secara kontekstual pada langkah Folder & Tautan."
+            ),
+        )
 
     def _accept(self) -> None:
         location = self.location_edit.text().strip()
@@ -179,6 +392,7 @@ class NewProjectDialog(QDialog):
                 "Proyek Baru",
                 "Lokasi penyimpanan proyek wajib dipilih.",
             )
+            self._show_step(0)
             return
 
         settings = self.sections.to_settings()
@@ -189,6 +403,7 @@ class NewProjectDialog(QDialog):
                 "Proyek Baru",
                 issues[0].message,
             )
+            self._show_step(0)
             return
 
         destination = new_project_destination(
@@ -203,6 +418,7 @@ class NewProjectDialog(QDialog):
                 f"File proyek sudah ada:\n{destination}",
             )
             self._update_destination_preview()
+            self._show_step(0)
             return
 
         parent = Path(location).expanduser()
@@ -212,6 +428,7 @@ class NewProjectDialog(QDialog):
                 "Proyek Baru",
                 "Lokasi penyimpanan proyek bukan folder.",
             )
+            self._show_step(0)
             return
 
         self._settings = settings
