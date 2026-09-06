@@ -1,0 +1,92 @@
+name: UI Language Backend Restore Temp
+
+on:
+  push:
+    branches:
+      - phase10-ui-language-audit
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase10-ui-language-audit
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Restore backend contracts from main
+        run: |
+          git fetch origin main
+          git checkout origin/main -- \
+            app/source_sync_controller.py \
+            services/character_alias_service.py \
+            services/data_service.py \
+            services/problem_report_service.py \
+            services/project_dashboard_service.py \
+            services/project_diagnostics_service.py \
+            services/review_service.py \
+            services/source_change_service.py \
+            services/track_rename_service.py \
+            services/tracking_service.py \
+            services/validation_service.py
+
+      - name: Reapply tracking display labels only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('services/tracking_service.py')
+          text = path.read_text(encoding='utf-8')
+          pairs = [
+              ('NOT_STARTED: "Not Started"', 'NOT_STARTED: "Belum Mulai"'),
+              ('IN_PROGRESS: "In Progress"', 'IN_PROGRESS: "Berjalan"'),
+              ('RECORDED: "Recorded"', 'RECORDED: "Terekam"'),
+              ('READY_TO_STEM: "Recorded"', 'READY_TO_STEM: "Terekam"'),
+              ('STEMMED: "Stemmed"', 'STEMMED: "Selesai Stem"'),
+              ('DELIVERED: "Delivered"', 'DELIVERED: "Disetor"'),
+              ('REVISION: "Revision"', 'REVISION: "Revisi"'),
+          ]
+          for old, new in pairs:
+              if old not in text:
+                  raise SystemExit(f'Expected tracking label not found: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Restore product and format proper names
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          roots = [Path('app'), Path('pages'), Path('dialogs'), Path('widgets'), Path('resources/help')]
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*'):
+                  if path.suffix.lower() not in {'.py', '.html'}:
+                      continue
+                  text = path.read_text(encoding='utf-8')
+                  fixed = text.replace('Naskah Management Project', 'Script Management Project')
+                  fixed = fixed.replace('Naskah Manager', 'Script Manager')
+                  if fixed != text:
+                      path.write_text(fixed, encoding='utf-8')
+          PY
+
+      - name: Compile Python
+        run: python -m compileall -q app core dialogs import_engine pages services tests widgets
+
+      - name: Remove temporary workflow
+        run: rm -f .github/workflows/ui-language-backend-restore-temp.yml
+
+      - name: Commit restore
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Restore backend contracts after UI language audit"
+          git push origin HEAD:phase10-ui-language-audit
