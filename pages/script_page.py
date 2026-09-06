@@ -58,7 +58,7 @@ class ScriptTableModel(QAbstractTableModel):
             if column == 2:
                 return row.time_out
             if column == 3:
-                return row.dialogue
+                return self._single_line_dialogue(row.dialogue)
             if column == 4:
                 return (
                     " / ".join(row.characters)
@@ -103,6 +103,11 @@ class ScriptTableModel(QAbstractTableModel):
         ):
             return self.HEADERS[section]
         return super().headerData(section, orientation, role)
+
+    @staticmethod
+    def _single_line_dialogue(value: str) -> str:
+        """Match Dialog workspace: one visible line even if source contains line breaks."""
+        return " ".join(str(value or "").splitlines()).strip()
 
 
 class ScriptCastTableModel(QAbstractTableModel):
@@ -178,8 +183,8 @@ class ScriptPage(PageShell):
         self.cast_model = ScriptCastTableModel(self.cast_table)
         self.cast_table.setModel(self.cast_model)
         self.cast_table.setAlternatingRowColors(False)
-        self.cast_table.setWordWrap(False)
-        self.cast_table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.cast_table.setWordWrap(True)
+        self.cast_table.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.cast_table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
         )
@@ -188,6 +193,9 @@ class ScriptPage(PageShell):
         )
         self.cast_table.verticalHeader().setVisible(False)
         self.cast_table.verticalHeader().setDefaultSectionSize(30)
+        self.cast_table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
         self.cast_table.setShowGrid(False)
         cast_header = self.cast_table.horizontalHeader()
         cast_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -263,6 +271,9 @@ class ScriptPage(PageShell):
         )
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -470,7 +481,7 @@ class ScriptPage(PageShell):
         grouped_rows = [
             (
                 talent_name,
-                " / ".join(
+                "\n".join(
                     sorted(
                         characters,
                         key=str.casefold,
@@ -481,6 +492,7 @@ class ScriptPage(PageShell):
         ]
         grouped_rows.sort(key=lambda item: item[0].casefold())
         self.cast_model.set_rows(grouped_rows)
+        self.cast_table.resizeRowsToContents()
 
         unique_talents = {
             talent_name
