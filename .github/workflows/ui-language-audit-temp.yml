@@ -1,0 +1,53 @@
+name: UI Language Audit Temp
+
+on:
+  push:
+    branches:
+      - phase10-ui-language-audit
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Extract visible string candidates
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import ast
+          from pathlib import Path
+
+          roots = [Path('app'), Path('pages'), Path('dialogs'), Path('widgets')]
+          skip_parts = {'__pycache__'}
+          for root in roots:
+              for path in sorted(root.rglob('*.py')):
+                  if any(part in skip_parts for part in path.parts):
+                      continue
+                  try:
+                      source = path.read_text(encoding='utf-8')
+                      tree = ast.parse(source, filename=str(path))
+                  except Exception:
+                      continue
+                  rows = []
+                  for node in ast.walk(tree):
+                      if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                          text = node.value.strip()
+                          if not text or not any(ch.isalpha() for ch in text):
+                              continue
+                          if len(text) > 400:
+                              continue
+                          if '\n' in text:
+                              text = text.replace('\n', r'\n')
+                          rows.append((getattr(node, 'lineno', 0), text))
+                  if rows:
+                      print(f'### {path}')
+                      for lineno, text in sorted(rows):
+                          print(f'{lineno}: {text}')
+          PY
