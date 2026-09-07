@@ -61,6 +61,11 @@ class TransactionalNewProjectDialog(NewProjectDialog):
             return
         super().reject()
 
+    def _show_step(self, index: int) -> None:
+        super()._show_step(index)
+        if self._step_states[self.current_step] == WizardMilestoneState.ERROR:
+            self._focus_current_blocker()
+
     def _go_next(self) -> None:
         """Keep keyboard users at the first blocker when navigation is denied."""
         previous_step = self.current_step
