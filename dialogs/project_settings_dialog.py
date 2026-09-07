@@ -26,6 +26,13 @@ from widgets.project_configuration import (
 
 
 class ProjectSettingsDialog(QDialog):
+    TAB_TITLES = (
+        "Proyek",
+        "Sumber Naskah",
+        "Audio & Setoran",
+        "Tautan Drive",
+    )
+
     def __init__(
         self,
         settings: ProjectSettings,
@@ -34,8 +41,8 @@ class ProjectSettingsDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Pengaturan Proyek")
-        self.resize(840, 720)
-        self.setMinimumSize(720, 620)
+        self.resize(900, 720)
+        self.setMinimumSize(760, 620)
 
         self._result_settings = settings
 
@@ -66,9 +73,9 @@ class ProjectSettingsDialog(QDialog):
         root.addLayout(header)
 
         subtitle = QLabel(
-            "Kolom folder menggunakan filesystem path. Folder Google Drive Desktop "
-            "diperlakukan seperti folder filesystem biasa (mis. D:\\My Drive\\...). "
-            "Tautan Drive Klien adalah URL browser dan tidak digunakan untuk membaca file."
+            "Pengaturan ini memakai konfigurasi yang sama dengan wizard Proyek Baru. "
+            "Folder adalah filesystem path; tautan Google Drive adalah URL browser "
+            "dan tidak digunakan aplikasi untuk membaca file."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
@@ -89,7 +96,7 @@ class ProjectSettingsDialog(QDialog):
         )
 
         # Compatibility aliases keep existing integrations stable while all
-        # collection/loading logic now lives in the reusable sections.
+        # collection/loading logic remains owned by the reusable sections.
         self.project_name = self.identity_section.project_name
         self.project_code = self.identity_section.project_code
         self.client_name = self.identity_section.client_name
@@ -118,8 +125,35 @@ class ProjectSettingsDialog(QDialog):
         self.delivery_drive_url = self.links_section.delivery_drive_url
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_project_tab(), "Proyek")
-        self.tabs.addTab(self._build_track_output_tab(), "Output Track & Setoran")
+        self.tabs.setObjectName("ProjectSettingsTabs")
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.identity_section,
+                "Identitas proyek dan lokasi file .smproj yang sedang dibuka.",
+            ),
+            self.TAB_TITLES[0],
+        )
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.source_section,
+                "Folder sumber, pola filename, delimiter, dan pratinjau episode.",
+            ),
+            self.TAB_TITLES[1],
+        )
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.audio_section,
+                "Folder Stem/Export, Folder Setoran, dan spesifikasi WAV produksi.",
+            ),
+            self.TAB_TITLES[2],
+        )
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.links_section,
+                "Tautan browser bersifat opsional dan terpisah dari filesystem path.",
+            ),
+            self.TAB_TITLES[3],
+        )
         root.addWidget(self.tabs, 1)
 
         buttons = QDialogButtonBox(
@@ -133,19 +167,20 @@ class ProjectSettingsDialog(QDialog):
     def result_settings(self) -> ProjectSettings:
         return self._result_settings
 
-    def _build_project_tab(self) -> QScrollArea:
+    def _build_section_tab(
+        self,
+        section: QWidget,
+        description: str,
+    ) -> QScrollArea:
         scroll, content, layout = self._scroll_tab()
-        layout.addWidget(self.identity_section)
-        layout.addWidget(self.source_section)
-        layout.addWidget(self.links_section)
-        layout.addStretch(1)
-        scroll.setWidget(content)
-        return scroll
 
-    def _build_track_output_tab(self) -> QScrollArea:
-        scroll, content, layout = self._scroll_tab()
-        layout.addWidget(self.audio_section)
+        note = QLabel(description)
+        note.setObjectName("PageSubtitle")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        layout.addWidget(section)
         layout.addStretch(1)
+
         scroll.setWidget(content)
         return scroll
 
