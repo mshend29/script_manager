@@ -7,15 +7,22 @@ from core.project import Project
 from core.project_manager import ProjectManager
 from core.project_settings import ProjectSettings
 from import_engine.source_sync import (
+    PreparedSourceSyncInput,
     ProgressCallback,
     SourceSyncEngine,
+    SourceSyncError,
     SourceSyncProgress,
     SourceSyncReport,
 )
+from services.source_preflight_service import SourcePreflightReport
 
 
 class InitialProjectCreationError(RuntimeError):
     pass
+
+
+class InitialProjectSourceChangedError(InitialProjectCreationError):
+    """Preflight snapshot is stale and must be rebuilt before Create retries."""
 
 
 @dataclass(frozen=True)
@@ -27,11 +34,10 @@ class InitialProjectCreationResult:
 class InitialProjectCreationService:
     """Create a project, run production source sync, then verify the database.
 
-    The service deliberately calls ``SourceSyncEngine.synchronize`` instead of
-    implementing scan/inspect/parse/apply itself. ProjectManager owns rollback
-    semantics through ``create_transactional`` so every failure before final
-    verification removes the newly-created project and restores the previous
-    current project.
+    When a valid Source Preflight report is supplied, its fingerprint snapshot
+    is verified before the .smproj is created. The already parsed workbook data
+    is then fed back into SourceSyncEngine; the engine's normal Apply freshness
+    check still re-scans source immediately before database mutation.
     """
 
     def __init__(
@@ -48,8 +54,17 @@ class InitialProjectCreationService:
         parent_folder: str | Path,
         *,
         progress_callback: ProgressCallback | None = None,
+        preflight_report: SourcePreflightReport | None = None,
     ) -> InitialProjectCreationResult:
         report_holder: dict[str, SourceSyncReport] = {}
+        prepared_input: PreparedSourceSyncInput | None = None
+
+        if preflight_report is not None:
+            prepared_input = self._prepare_verified_preflight(
+                settings,
+                preflight_report,
+                progress_callback=progress_callback,
+            )
 
         self._emit_progress(
             progress_callback,
@@ -58,10 +73,17 @@ class InitialProjectCreationService:
         )
 
         def after_create(project: Project) -> None:
-            report = self.source_sync_engine.synchronize(
-                project,
-                progress_callback=progress_callback,
-            )
+            if prepared_input is None:
+                report = self.source_sync_engine.synchronize(
+                    project,
+                    progress_callback=progress_callback,
+                )
+            else:
+                report = self.source_sync_engine.synchronize(
+                    project,
+                    progress_callback=progress_callback,
+                    prepared_input=prepared_input,
+                )
             report_holder["report"] = report
 
             if report.has_errors:
@@ -99,6 +121,41 @@ class InitialProjectCreationService:
             message="Project siap digunakan.",
         )
         return InitialProjectCreationResult(project=project, report=report)
+
+    def _prepare_verified_preflight(
+        self,
+        settings: ProjectSettings,
+        preflight_report: SourcePreflightReport,
+        *,
+        progress_callback: ProgressCallback | None,
+    ) -> PreparedSourceSyncInput:
+        if (
+            not preflight_report.is_valid
+            or preflight_report.scan is None
+            or not preflight_report.source_snapshot
+        ):
+            raise InitialProjectSourceChangedError(
+                "Source Preflight belum memiliki snapshot fingerprint yang valid. "
+                "Jalankan Source Preflight ulang sebelum membuat project."
+            )
+
+        try:
+            fresh_scan = self.source_sync_engine.verify_source_snapshot(
+                source_folder=settings.source_folder.strip(),
+                episode_before=settings.episode_before,
+                episode_after=settings.episode_after,
+                expected_snapshot=preflight_report.source_snapshot,
+                progress_callback=progress_callback,
+            )
+        except SourceSyncError as exc:
+            raise InitialProjectSourceChangedError(str(exc)) from exc
+
+        return PreparedSourceSyncInput(
+            source_snapshot=preflight_report.source_snapshot,
+            scan=fresh_scan,
+            inspections=dict(preflight_report.inspections),
+            parse_results=dict(preflight_report.parse_results),
+        )
 
     @staticmethod
     def _verify_database(project: Project, report: SourceSyncReport) -> None:
