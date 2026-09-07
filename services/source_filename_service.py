@@ -74,7 +74,16 @@ def analyze_source_filenames(
         parts = tuple(_DIGIT_RUN.split(name))
         non_numbers = tuple(parts[::2])
         numbers = tuple(parts[1::2])
-        signature = (*non_numbers, f"#runs={len(numbers)}")
+
+        # Filename convention comparison is intentionally case-insensitive.
+        # Operators should not need to rename otherwise-identical source files
+        # merely because writers used "Episode", "episode", or "EPISODE".
+        # Keep the original filename in entries so previews/errors preserve the
+        # exact on-disk spelling.
+        signature = (
+            *(part.casefold() for part in non_numbers),
+            f"#runs={len(numbers)}",
+        )
         grouped.setdefault(signature, []).append((name, numbers))
 
     patterns: list[SourceFilenamePattern] = []
