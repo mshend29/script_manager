@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from import_engine.inspector import (
     WorkbookInspection,
@@ -13,6 +14,8 @@ from import_engine.parser import (
     ScriptParseResult,
     ScriptParser,
 )
+from import_engine.scanner import SourceScanner, SourceScanError, SourceScanResult
+from import_engine.source_change_plan import SourceChangePlanBuilder
 from services.source_setup_validation import SourceFilenameValidation
 
 
@@ -50,6 +53,8 @@ class SourcePreflightReport:
     problems: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     cancelled: bool = False
+    scan: SourceScanResult | None = None
+    source_snapshot: tuple[tuple[str, str, int], ...] = ()
 
     @property
     def inspected_files(self) -> int:
@@ -70,23 +75,27 @@ class SourcePreflightReport:
             and not self.problems
             and bool(self.files)
             and self.parsed_files == len(self.files)
+            and self.scan is not None
+            and bool(self.source_snapshot)
         )
 
 
 class SourcePreflightService:
-    """Read-only workbook preflight using the production inspector and parser.
+    """Read-only workbook preflight using the production source pipeline pieces.
 
-    This service deliberately has no Project/Database dependency. It consumes a
-    successful filename validation from Milestone 2, then reuses exactly the
+    The service keeps no Project/Database dependency. It uses SourceScanner for
+    the same fingerprint snapshot used by Source Sync, then reuses the exact
     WorkbookInspector and ScriptParser classes used by SourceSyncEngine.prepare().
     """
 
     def __init__(
         self,
         *,
+        scanner: SourceScanner | None = None,
         inspector: WorkbookInspector | None = None,
         parser: ScriptParser | None = None,
     ) -> None:
+        self.scanner = scanner or SourceScanner()
         self.inspector = inspector or WorkbookInspector()
         self.parser = parser or ScriptParser()
 
@@ -113,6 +122,22 @@ class SourcePreflightService:
         if not mappings:
             report.problems.append("Tidak ada workbook yang siap untuk preflight.")
             return report
+
+        if self._cancelled(cancel_callback):
+            report.cancelled = True
+            self._emit_cancelled(progress_callback, 0, len(mappings))
+            return report
+
+        scan = self._capture_source_snapshot(
+            filename_validation,
+            report,
+            progress_callback,
+        )
+        if scan is None or report.problems:
+            return report
+
+        report.scan = scan
+        report.source_snapshot = SourceChangePlanBuilder.scan_snapshot(scan)
 
         total = len(mappings)
         file_results: dict[str, SourcePreflightFileResult] = {
@@ -268,6 +293,65 @@ class SourcePreflightService:
             ),
         )
         return report
+
+    def _capture_source_snapshot(
+        self,
+        validation: SourceFilenameValidation,
+        report: SourcePreflightReport,
+        progress_callback: ProgressCallback | None,
+    ) -> SourceScanResult | None:
+        self._emit(
+            progress_callback,
+            stage="snapshotting",
+            current=0,
+            total=len(validation.mappings),
+            message="Menyimpan fingerprint source untuk safety check...",
+        )
+        try:
+            scan = self.scanner.scan(
+                validation.source_folder,
+                episode_before=validation.episode_before,
+                episode_after=validation.episode_after,
+            )
+        except SourceScanError as exc:
+            report.problems.append(str(exc))
+            return None
+
+        report.problems.extend(
+            f"{Path(problem.file_path).name}: {problem.message}"
+            for problem in scan.problems
+        )
+        for episode, paths in sorted(scan.duplicate_episodes.items()):
+            names = ", ".join(Path(path).name for path in paths)
+            report.problems.append(
+                f"Episode {episode} terbaca dari lebih dari satu file: {names}"
+            )
+        if report.problems:
+            return scan
+
+        expected = {
+            (item.file_path, int(item.episode_number))
+            for item in validation.mappings
+        }
+        actual = {
+            (item.file_path, int(item.episode_number))
+            for item in scan.files
+        }
+        if actual != expected:
+            report.problems.append(
+                "Source berubah sejak validasi filename dimulai. "
+                "Validasi ulang Folder Sumber lalu jalankan Source Preflight lagi."
+            )
+            return scan
+
+        self._emit(
+            progress_callback,
+            stage="snapshot_ready",
+            current=len(scan.files),
+            total=len(scan.files),
+            message=f"Fingerprint {len(scan.files)} workbook tersimpan.",
+        )
+        return scan
 
     @staticmethod
     def _cancelled(callback: CancelCallback | None) -> bool:
