@@ -33,6 +33,8 @@ class SourceFilenameValidation:
     analysis: SourceFilenameAnalysis | None
     mappings: tuple[SourceEpisodeMapping, ...]
     issues: tuple[SetupValidationIssue, ...]
+    episode_before: str = ""
+    episode_after: str = ""
 
     @property
     def errors(self) -> tuple[SetupValidationIssue, ...]:
@@ -101,6 +103,8 @@ def validate_source_filenames(
                     "Folder Sumber wajib dipilih.",
                 ),
             ),
+            episode_before=episode_before,
+            episode_after=episode_after,
         )
 
     if looks_like_browser_url(raw_folder):
@@ -115,6 +119,8 @@ def validate_source_filenames(
                     "Folder Sumber harus berupa filesystem path, bukan URL browser.",
                 ),
             ),
+            episode_before=episode_before,
+            episode_after=episode_after,
         )
 
     root = Path(raw_folder).expanduser()
@@ -130,6 +136,8 @@ def validate_source_filenames(
                     f"Folder Sumber tidak ditemukan: {root}",
                 ),
             ),
+            episode_before=episode_before,
+            episode_after=episode_after,
         )
     if not root.is_dir():
         return SourceFilenameValidation(
@@ -143,6 +151,8 @@ def validate_source_filenames(
                     f"Folder Sumber bukan folder: {root}",
                 ),
             ),
+            episode_before=episode_before,
+            episode_after=episode_after,
         )
 
     candidates = tuple(
@@ -177,6 +187,8 @@ def validate_source_filenames(
                     "Tidak ada file .xlsx/.xlsm pada Folder Sumber.",
                 ),
             ),
+            episode_before=episode_before,
+            episode_after=episode_after,
         )
 
     if len(analysis.patterns) > 1:
@@ -250,6 +262,8 @@ def validate_source_filenames(
         analysis=analysis,
         mappings=tuple(mappings),
         issues=tuple(issues),
+        episode_before=episode_before,
+        episode_after=episode_after,
     )
     if (
         len(mappings) == len(candidates)
@@ -270,6 +284,8 @@ def validate_source_filenames(
             analysis=analysis,
             mappings=tuple(mappings),
             issues=tuple(issues),
+            episode_before=episode_before,
+            episode_after=episode_after,
         )
 
     return result
