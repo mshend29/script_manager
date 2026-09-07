@@ -16,9 +16,9 @@ def _operational_settings(tmp_path) -> ProjectSettings:
     source = tmp_path / "Sumber Naskah 中文"
     stem = tmp_path / "Stem Export Audio"
     delivery = tmp_path / "Setoran Final 東京"
-    source.mkdir()
-    stem.mkdir()
-    delivery.mkdir()
+    source.mkdir(parents=True)
+    stem.mkdir(parents=True)
+    delivery.mkdir(parents=True)
     return ProjectSettings(
         project_name="Filesystem Regression",
         project_code="FS01",
@@ -45,9 +45,9 @@ def test_local_paths_with_spaces_and_unicode_are_valid_operational_folders(tmp_p
 
 def test_google_drive_desktop_mapped_and_unc_shapes_are_filesystem_not_browser_urls():
     filesystem_paths = (
-        r"G:\My Drive\Client\AA23\Scripts",
-        r"Z:\Produksi\Client\AA23\Stem",
-        r"\\server\share\Client\AA23\Setoran",
+        "G:/My Drive/Client/AA23/Scripts",
+        "Z:/Produksi/Client/AA23/Stem",
+        "//server/share/Client/AA23/Setoran",
     )
 
     for value in filesystem_paths:
@@ -80,7 +80,7 @@ def test_changed_browser_url_in_folder_is_blocking_and_filesystem_value_in_url_i
     )
 
     url_candidate = ProjectSettings.from_dict(baseline.to_dict())
-    url_candidate.main_drive_url = r"G:\My Drive\Client\AA23"
+    url_candidate.main_drive_url = "G:/My Drive/Client/AA23"
     url_result = validate_existing_project_settings_change(
         baseline,
         url_candidate,
