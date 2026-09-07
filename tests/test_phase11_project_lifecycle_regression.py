@@ -213,8 +213,13 @@ def test_smproj_file_association_entrypoint_contract_remains_available():
     root = Path(__file__).resolve().parents[1]
     main_py = (root / "main.py").read_text(encoding="utf-8")
     main_window = (root / "app" / "main_window.py").read_text(encoding="utf-8")
+    project_py = (root / "core" / "project.py").read_text(encoding="utf-8")
 
+    # The entrypoint accepts a filesystem argument and delegates format
+    # validation to the normal open-project path. Keeping suffix validation in
+    # Project/ProjectManager avoids a second file-format policy in main.py.
     assert "project_args = [" in main_py
-    assert "candidate.suffix.casefold() == PROJECT_FILE_EXTENSION" in main_py
+    assert "candidate = Path(project_args[0]).expanduser()" in main_py
     assert "window.open_project_path(candidate)" in main_py
     assert "Proyek Script Manager (*.smproj)" in main_window
+    assert 'PROJECT_FILE_EXTENSION = ".smproj"' in project_py
