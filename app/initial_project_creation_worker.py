@@ -8,6 +8,7 @@ from core.project_manager import ProjectManager
 from core.project_settings import ProjectSettings
 from import_engine.source_sync import SourceSyncEngine
 from services.initial_project_creation_service import InitialProjectCreationService
+from services.source_preflight_service import SourcePreflightReport
 
 
 class InitialProjectCreationWorker(QObject):
@@ -24,6 +25,7 @@ class InitialProjectCreationWorker(QObject):
         source_sync_engine: SourceSyncEngine,
         settings: ProjectSettings,
         parent_folder: str | Path,
+        preflight_report: SourcePreflightReport | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -33,6 +35,7 @@ class InitialProjectCreationWorker(QObject):
         )
         self._settings = settings
         self._parent_folder = parent_folder
+        self._preflight_report = preflight_report
 
     @Slot()
     def run(self) -> None:
@@ -41,6 +44,7 @@ class InitialProjectCreationWorker(QObject):
                 self._settings,
                 self._parent_folder,
                 progress_callback=self.progress.emit,
+                preflight_report=self._preflight_report,
             )
         except Exception as exc:  # noqa: BLE001 - worker boundary
             self.failed.emit(exc)
