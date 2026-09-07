@@ -20,11 +20,24 @@ if PYSIDE_AVAILABLE:
     import app.application_window as application_window_module
     from app.application_window import ApplicationWindow
     from core.project_settings import ProjectSettings
+    from import_engine.source_sync import SourceSyncReport
+
+
+class _FakeSignal:
+    def __init__(self):
+        self._callbacks = []
+
+    def connect(self, callback) -> None:
+        self._callbacks.append(callback)
+
+    def emit(self) -> None:
+        for callback in list(self._callbacks):
+            callback()
 
 
 class _FakeDialog:
     instances: list["_FakeDialog"] = []
-    exec_results: list[int] = []
+    submit_count = 1
 
     def __init__(self, parent=None):
         self.parent = parent
@@ -32,19 +45,30 @@ class _FakeDialog:
             project_name="Project Retry",
             project_code="PR01",
             client_name="Client",
-            start_date="2026-09-06",
+            start_date="2026-09-07",
         )
         self.parent_folder = "/project-target"
+        self.create_requested = _FakeSignal()
         self.exec_count = 0
-        self.review_refresh_count = 0
+        self.accepted = False
+        self.failure_messages: list[str] = []
+        self.success_reports: list[object] = []
         self.__class__.instances.append(self)
 
     def exec(self) -> int:
         self.exec_count += 1
-        return self.__class__.exec_results.pop(0)
+        for _ in range(self.__class__.submit_count):
+            self.create_requested.emit()
+            if self.accepted:
+                break
+        return int(self.accepted)
 
-    def _refresh_review(self) -> None:
-        self.review_refresh_count += 1
+    def creation_failed(self, error: object) -> None:
+        self.failure_messages.append(str(error))
+
+    def creation_succeeded(self, report: object) -> None:
+        self.success_reports.append(report)
+        self.accepted = True
 
 
 class _FakeStatusBar:
@@ -55,22 +79,11 @@ class _FakeStatusBar:
         self.messages.append(tuple(args))
 
 
-class _FakeProjectManager:
+class _FakeWindow:
     def __init__(self, outcomes):
         self.outcomes = list(outcomes)
-        self.calls: list[tuple[ProjectSettings, str]] = []
-
-    def create_transactional(self, settings, parent_folder):
-        self.calls.append((settings, parent_folder))
-        outcome = self.outcomes.pop(0)
-        if isinstance(outcome, BaseException):
-            raise outcome
-        return outcome
-
-
-class _FakeWindow:
-    def __init__(self, manager):
-        self.project_manager = manager
+        self.project_manager = SimpleNamespace()
+        self.source_sync_engine = SimpleNamespace()
         self._project_data_state = SimpleNamespace(
             reset=lambda **kwargs: self.reset_calls.append(kwargs)
         )
@@ -79,10 +92,25 @@ class _FakeWindow:
         self.refresh_calls = 0
         self.recent_projects: list[object] = []
         self.window_titles: list[str] = []
+        self.pages_shown: list[str] = []
+        self.creation_calls = 0
         self._status_bar = _FakeStatusBar()
 
     def _block_project_change_during_sync(self, _title: str) -> bool:
         return False
+
+    def _start_initial_project_creation(self, dialog) -> None:
+        self.creation_calls += 1
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            self._initial_project_result = None
+            dialog.creation_failed(outcome)
+            return
+
+        self._initial_project_result = outcome
+        dialog.creation_succeeded(
+            SourceSyncReport(scanned=1, parsed_dialogues=7)
+        )
 
     def _clear_data_pages(self) -> None:
         self.clear_calls += 1
@@ -96,6 +124,9 @@ class _FakeWindow:
     def _record_recent_project(self, project) -> None:
         self.recent_projects.append(project)
 
+    def set_page(self, page_name: str) -> None:
+        self.pages_shown.append(page_name)
+
     def statusBar(self):  # noqa: N802
         return self._status_bar
 
@@ -108,60 +139,80 @@ def _project() -> SimpleNamespace:
             project_name="Project Retry",
             project_code="PR01",
             client_name="Client",
-            start_date="2026-09-06",
+            start_date="2026-09-07",
         ),
     )
 
 
-def test_create_failure_reopens_same_wizard_and_does_not_record_recent(monkeypatch):
+def test_failure_retries_inside_same_wizard_and_records_recent_only_after_success(
+    monkeypatch,
+):
     _FakeDialog.instances.clear()
-    _FakeDialog.exec_results = [1, 0]
-    manager = _FakeProjectManager([RuntimeError("disk failure")])
-    window = _FakeWindow(manager)
-    errors: list[str] = []
+    _FakeDialog.submit_count = 2
+    project = _project()
+    window = _FakeWindow([RuntimeError("disk failure"), project])
 
-    monkeypatch.setattr(application_window_module, "NewProjectDialog", _FakeDialog)
     monkeypatch.setattr(
-        application_window_module.QMessageBox,
-        "critical",
-        lambda _parent, _title, message: errors.append(str(message)),
+        application_window_module,
+        "TransactionalNewProjectDialog",
+        _FakeDialog,
     )
 
     ApplicationWindow.new_project(window)
 
     assert len(_FakeDialog.instances) == 1
     dialog = _FakeDialog.instances[0]
-    assert dialog.exec_count == 2
-    assert dialog.review_refresh_count == 1
-    assert len(manager.calls) == 1
-    assert manager.calls[0][0] is dialog.settings
-    assert manager.calls[0][1] == dialog.parent_folder
-    assert errors and "disk failure" in errors[0]
+    assert dialog.exec_count == 1
+    assert window.creation_calls == 2
+    assert dialog.failure_messages == ["disk failure"]
+    assert dialog.success_reports
+    assert window.recent_projects == [project]
+    assert window.clear_calls == 1
+    assert window.refresh_calls == 1
+    assert window.pages_shown == ["PROJECT"]
+
+
+def test_cancel_after_failure_keeps_failed_project_out_of_recent(monkeypatch):
+    _FakeDialog.instances.clear()
+    _FakeDialog.submit_count = 1
+    window = _FakeWindow([RuntimeError("sync failure")])
+
+    monkeypatch.setattr(
+        application_window_module,
+        "TransactionalNewProjectDialog",
+        _FakeDialog,
+    )
+
+    ApplicationWindow.new_project(window)
+
+    dialog = _FakeDialog.instances[0]
+    assert dialog.exec_count == 1
+    assert dialog.failure_messages == ["sync failure"]
     assert window.recent_projects == []
     assert window.clear_calls == 0
     assert window.refresh_calls == 0
     assert window.window_titles == []
 
 
-def test_success_records_recent_only_after_transaction(monkeypatch):
+def test_success_refreshes_state_records_recent_and_opens_project_dashboard(monkeypatch):
     _FakeDialog.instances.clear()
-    _FakeDialog.exec_results = [1]
+    _FakeDialog.submit_count = 1
     project = _project()
-    manager = _FakeProjectManager([project])
-    window = _FakeWindow(manager)
+    window = _FakeWindow([project])
 
-    monkeypatch.setattr(application_window_module, "NewProjectDialog", _FakeDialog)
+    monkeypatch.setattr(
+        application_window_module,
+        "TransactionalNewProjectDialog",
+        _FakeDialog,
+    )
 
     ApplicationWindow.new_project(window)
 
-    assert len(_FakeDialog.instances) == 1
-    assert _FakeDialog.instances[0].exec_count == 1
-    assert window.clear_calls == 1
     assert window.reset_calls == [{"mark_dirty": True}]
-    assert window.refresh_calls == 1
     assert window.window_titles == ["Project Retry - Script Manager"]
     assert window.recent_projects == [project]
+    assert window.pages_shown == ["PROJECT"]
     assert window._status_bar.messages[-1] == (
-        f"Proyek dibuat: {project.project_file}",
+        f"Proyek dibuat dan sumber tersinkron: {project.project_file}",
         5000,
     )
