@@ -55,6 +55,21 @@ class SourceSyncProgress:
 ProgressCallback = Callable[[SourceSyncProgress], None]
 
 
+@dataclass(frozen=True)
+class PreparedSourceSyncInput:
+    """Read-only source data prepared earlier by the production parser.
+
+    The source snapshot is fingerprint-based. Reuse is only permitted when the
+    supplied scan still represents that snapshot; ``apply`` performs the normal
+    production re-scan again before any database write.
+    """
+
+    source_snapshot: tuple[tuple[str, str, int], ...]
+    scan: SourceScanResult
+    inspections: dict[str, WorkbookInspection]
+    parse_results: dict[str, ScriptParseResult]
+
+
 @dataclass
 class SourceSyncReport:
     scanned: int = 0
@@ -148,11 +163,13 @@ class SourceSyncEngine:
         project: Project,
         *,
         progress_callback: ProgressCallback | None = None,
+        prepared_input: PreparedSourceSyncInput | None = None,
     ) -> SourceSyncReport:
-        """Backward-compatible one-shot sync used by engine/tests."""
+        """One-shot production sync, optionally reusing safe preflight parsing."""
         report = self.prepare(
             project,
             progress_callback=progress_callback,
+            prepared_input=prepared_input,
         )
         if report.has_errors:
             return report
@@ -167,6 +184,7 @@ class SourceSyncEngine:
         project: Project,
         *,
         progress_callback: ProgressCallback | None = None,
+        prepared_input: PreparedSourceSyncInput | None = None,
     ) -> SourceSyncReport:
         """Scan/inspect/parse and build a diff without changing the database."""
         settings = project.settings
@@ -175,17 +193,35 @@ class SourceSyncEngine:
         if not source_folder:
             raise SourceSyncError("Source Folder belum diisi di Project Settings.")
 
-        self._emit_progress(
-            progress_callback,
-            stage="scanning",
-            message="Scanning source files...",
-        )
-
-        scan = self.scanner.scan(
-            source_folder,
-            episode_before=settings.episode_before,
-            episode_after=settings.episode_after,
-        )
+        if prepared_input is None:
+            self._emit_progress(
+                progress_callback,
+                stage="scanning",
+                message="Scanning source files...",
+            )
+            scan = self.scanner.scan(
+                source_folder,
+                episode_before=settings.episode_before,
+                episode_after=settings.episode_after,
+            )
+        else:
+            scan = prepared_input.scan
+            actual_snapshot = SourceChangePlanBuilder.scan_snapshot(scan)
+            if actual_snapshot != prepared_input.source_snapshot:
+                raise SourceSyncError(
+                    "Prepared source snapshot tidak konsisten. "
+                    "Jalankan Source Preflight ulang."
+                )
+            self._emit_progress(
+                progress_callback,
+                stage="preflight_reuse",
+                current=len(scan.files),
+                total=len(scan.files),
+                message=(
+                    "Menggunakan hasil parse Source Preflight yang sudah "
+                    "diverifikasi fingerprint-nya"
+                ),
+            )
 
         report = SourceSyncReport(
             scanned=len(scan.files),
@@ -219,13 +255,16 @@ class SourceSyncEngine:
             report=report,
         )
 
-        self._inspect_files(report, progress_callback)
-        if report.has_errors:
-            return report
+        if prepared_input is None:
+            self._inspect_files(report, progress_callback)
+            if report.has_errors:
+                return report
 
-        self._parse_files(report, progress_callback)
-        if report.has_errors:
-            return report
+            self._parse_files(report, progress_callback)
+            if report.has_errors:
+                return report
+        else:
+            self._reuse_prepared_results(report, prepared_input)
 
         for parse_result in report.parse_results.values():
             report.warnings.extend(
@@ -258,6 +297,62 @@ class SourceSyncEngine:
             message="Source refresh preview ready",
         )
         return report
+
+    def verify_source_snapshot(
+        self,
+        *,
+        source_folder: str,
+        episode_before: str = "",
+        episode_after: str = "",
+        expected_snapshot: tuple[tuple[str, str, int], ...],
+        progress_callback: ProgressCallback | None = None,
+    ) -> SourceScanResult:
+        """Re-scan source and reject stale preflight data before project create."""
+        self._emit_progress(
+            progress_callback,
+            stage="preflight_verifying",
+            message="Memverifikasi source belum berubah sejak Source Preflight...",
+        )
+        current_scan = self.scanner.scan(
+            source_folder,
+            episode_before=episode_before,
+            episode_after=episode_after,
+        )
+
+        if current_scan.problems:
+            details = "; ".join(
+                f"{Path(problem.file_path).name}: {problem.message}"
+                for problem in current_scan.problems
+            )
+            raise SourceSyncError(
+                "Source berubah atau tidak dapat dibaca sejak Source Preflight. "
+                f"Jalankan Source Preflight ulang. {details}"
+            )
+        if current_scan.duplicate_episodes:
+            raise SourceSyncError(
+                "Source berubah sejak Source Preflight dan sekarang memiliki "
+                "duplicate episode. Jalankan Source Preflight ulang."
+            )
+        if not current_scan.files:
+            raise SourceSyncError(
+                "Source kosong sejak Source Preflight. Jalankan Source Preflight ulang."
+            )
+
+        current_snapshot = SourceChangePlanBuilder.scan_snapshot(current_scan)
+        if current_snapshot != expected_snapshot:
+            raise SourceSyncError(
+                "Source berubah sejak Source Preflight. "
+                "Jalankan Source Preflight ulang sebelum membuat project."
+            )
+
+        self._emit_progress(
+            progress_callback,
+            stage="preflight_verified",
+            current=len(current_scan.files),
+            total=len(current_scan.files),
+            message="Fingerprint source masih sama dengan Source Preflight.",
+        )
+        return current_scan
 
     def apply(
         self,
@@ -372,6 +467,39 @@ class SourceSyncEngine:
         )
 
         return report
+
+    def _reuse_prepared_results(
+        self,
+        report: SourceSyncReport,
+        prepared_input: PreparedSourceSyncInput,
+    ) -> None:
+        required_paths = {item.file_path for item in report.files_to_process}
+        inspection_paths = set(prepared_input.inspections)
+        parse_paths = set(prepared_input.parse_results)
+
+        missing_inspections = required_paths.difference(inspection_paths)
+        missing_parses = required_paths.difference(parse_paths)
+        if missing_inspections or missing_parses:
+            missing = sorted(missing_inspections | missing_parses)
+            names = ", ".join(Path(path).name for path in missing)
+            raise SourceSyncError(
+                "Hasil Source Preflight tidak lengkap untuk source yang perlu "
+                f"diproses: {names}. Jalankan Source Preflight ulang."
+            )
+
+        report.inspections = {
+            path: prepared_input.inspections[path]
+            for path in required_paths
+        }
+        report.parse_results = {
+            path: prepared_input.parse_results[path]
+            for path in required_paths
+        }
+        report.inspected = len(report.inspections)
+        report.parsed_files = len(report.parse_results)
+        report.parsed_dialogues = sum(
+            result.dialogue_count for result in report.parse_results.values()
+        )
 
     def _validate_plan_is_fresh(
         self,

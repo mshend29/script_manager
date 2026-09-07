@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
+from app.application_window import ApplicationWindow
 from app.main_window import MainWindow
 from app.light_runtime import (
     apply_light_theme,
@@ -91,7 +92,10 @@ def main():
         splash.show()
         app.processEvents()
 
-    window = MainWindow()
+    # MainWindow remains the stable production workspace base. Phase 11 adds
+    # only New Project orchestration in ApplicationWindow.
+    _workspace_base = MainWindow
+    window = ApplicationWindow()
 
     if smoke_test:
         # Packaging CI uses this path to prove that the frozen executable can

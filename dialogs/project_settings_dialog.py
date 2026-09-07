@@ -1,20 +1,12 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QApplication,
-    QComboBox,
-    QDateEdit,
     QDialog,
     QDialogButtonBox,
-    QFileDialog,
-    QFormLayout,
     QFrame,
-    QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QPushButton,
     QScrollArea,
     QTabWidget,
@@ -23,67 +15,30 @@ from PySide6.QtWidgets import (
 )
 
 from core.project_settings import ProjectSettings
-from services.source_filename_service import (
-    SourceFilenameAnalysis,
-    read_source_filenames,
+from services.project_settings_change_validation import (
+    IDENTITY_FIELDS,
+    LINK_FIELDS,
+    SOURCE_FIELDS,
+    TRACKING_FIELDS,
+    ProjectSettingsChangeValidation,
+    validate_existing_project_settings_change,
+)
+from widgets.folder_drive_help import show_folder_drive_help
+from widgets.project_configuration import (
+    AudioOutputSection,
+    DriveLinksSection,
+    ProjectConfigurationSections,
+    ProjectIdentitySection,
+    SourceConfigurationSection,
 )
 
 
-class FolderField(QWidget):
-    def __init__(
-        self,
-        value: str = "",
-        *,
-        browse_caption: str = 'Pilih Folder',
-        read_only: bool = False,
-        parent: QWidget | None = None,
-    ):
-        super().__init__(parent)
-
-        self.browse_caption = browse_caption
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-
-        self.edit = QLineEdit(value)
-        self.edit.setReadOnly(read_only)
-        layout.addWidget(self.edit, 1)
-
-        self.browse_button = QPushButton('Telusuri…')
-        self.browse_button.setProperty("secondary", True)
-        self.browse_button.setEnabled(not read_only)
-        self.browse_button.clicked.connect(self.browse)
-        layout.addWidget(self.browse_button)
-
-    def browse(self) -> None:
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            self.browse_caption,
-            self.edit.text().strip(),
-        )
-        if folder:
-            self.edit.setText(folder)
-
-    def text(self) -> str:
-        return self.edit.text().strip()
-
-
 class ProjectSettingsDialog(QDialog):
-    SAMPLE_RATE_OPTIONS = (
-        ("44.100 Hz", 44100),
-        ("48.000 Hz", 48000),
-        ("96.000 Hz", 96000),
-        ("192.000 Hz", 192000),
-    )
-    BIT_DEPTH_OPTIONS = (
-        ("16-bit", 16),
-        ("24-bit", 24),
-        ("32-bit", 32),
-    )
-    CHANNEL_OPTIONS = (
-        ("Mono", 1),
-        ("Stereo", 2),
+    TAB_TITLES = (
+        "Proyek",
+        "Sumber Naskah",
+        "Audio & Setoran",
+        "Tautan Drive",
     )
 
     def __init__(
@@ -93,290 +48,171 @@ class ProjectSettingsDialog(QDialog):
     ):
         super().__init__(parent)
 
-        self.setWindowTitle('Pengaturan Proyek')
-        self.resize(840, 720)
-        self.setMinimumSize(720, 620)
+        self.setWindowTitle("Pengaturan Proyek")
+        self.resize(900, 720)
+        self.setMinimumSize(760, 620)
 
+        self._baseline_settings = settings.normalized()
         self._result_settings = settings
-        self._source_filename_analysis: SourceFilenameAnalysis | None = None
-        self._source_filename_examples: list[str] = []
+        self._last_validation: ProjectSettingsChangeValidation | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(10)
 
-        title = QLabel('Pengaturan Proyek')
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(10)
+
+        title = QLabel("Pengaturan Proyek")
         title.setObjectName("PageTitle")
-        root.addWidget(title)
+        header.addWidget(title, 1)
+
+        self.help_button = QPushButton("?")
+        self.help_button.setObjectName("ProjectSettingsHelpButton")
+        self.help_button.setToolTip("Bantuan folder dan Google Drive")
+        self.help_button.setAccessibleName("Bantuan folder dan Google Drive")
+        self.help_button.setFixedSize(32, 32)
+        self.help_button.setProperty("secondary", True)
+        self.help_button.clicked.connect(self._show_folder_drive_help)
+        header.addWidget(
+            self.help_button,
+            0,
+            Qt.AlignmentFlag.AlignTop,
+        )
+        root.addLayout(header)
 
         subtitle = QLabel(
-            "Kolom folder menggunakan path filesystem. Folder Google Drive Desktop "
-            "diperlakukan seperti folder filesystem biasa (mis. D:\\My Drive\\...). "
-            "Tautan Drive Klien adalah URL browser dan tidak digunakan untuk membaca file."
+            "Pengaturan ini memakai konfigurasi yang sama dengan wizard Proyek Baru. "
+            "Folder adalah filesystem path; tautan Google Drive adalah URL browser "
+            "dan tidak digunakan aplikasi untuk membaca file."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
         root.addWidget(subtitle)
 
+        self.identity_section = ProjectIdentitySection(
+            settings,
+            show_project_file=True,
+        )
+        self.source_section = SourceConfigurationSection(settings)
+        self.audio_section = AudioOutputSection(settings)
+        self.links_section = DriveLinksSection(settings)
+        self.sections = ProjectConfigurationSections(
+            identity=self.identity_section,
+            source=self.source_section,
+            audio=self.audio_section,
+            links=self.links_section,
+        )
+
+        # Compatibility aliases keep existing integrations stable while all
+        # collection/loading logic remains owned by the reusable sections.
+        self.project_name = self.identity_section.project_name
+        self.project_code = self.identity_section.project_code
+        self.client_name = self.identity_section.client_name
+        self.start_date = self.identity_section.start_date
+        self.project_file = self.identity_section.project_file
+        self.source_folder = self.source_section.source_folder
+        self.read_source_filenames_button = (
+            self.source_section.read_source_filenames_button
+        )
+        self.source_pattern_status = self.source_section.source_pattern_status
+        self.source_filename_example = self.source_section.source_filename_example
+        self.copy_source_filename_button = (
+            self.source_section.copy_source_filename_button
+        )
+        self.source_pattern_details = self.source_section.source_pattern_details
+        self.filename_preview = self.source_section.filename_preview
+        self.episode_before = self.source_section.episode_before
+        self.episode_after = self.source_section.episode_after
+        self.stem_output_folder = self.audio_section.stem_output_folder
+        self.delivery_folder = self.audio_section.delivery_folder
+        self.audio_sample_rate = self.audio_section.audio_sample_rate
+        self.audio_bit_depth = self.audio_section.audio_bit_depth
+        self.audio_channels = self.audio_section.audio_channels
+        self.main_drive_url = self.links_section.main_drive_url
+        self.material_drive_url = self.links_section.material_drive_url
+        self.delivery_drive_url = self.links_section.delivery_drive_url
+
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_project_tab(settings), 'Proyek')
+        self.tabs.setObjectName("ProjectSettingsTabs")
         self.tabs.addTab(
-            self._build_track_output_tab(settings),
-            'Output Track & Setoran',
+            self._build_section_tab(
+                self.identity_section,
+                "Identitas proyek dan lokasi file .smproj yang sedang dibuka.",
+            ),
+            self.TAB_TITLES[0],
+        )
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.source_section,
+                "Folder sumber, pola filename, delimiter, dan pratinjau episode.",
+            ),
+            self.TAB_TITLES[1],
+        )
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.audio_section,
+                "Folder Stem/Export, Folder Setoran, dan spesifikasi WAV produksi.",
+            ),
+            self.TAB_TITLES[2],
+        )
+        self.tabs.addTab(
+            self._build_section_tab(
+                self.links_section,
+                "Tautan browser bersifat opsional dan terpisah dari filesystem path.",
+            ),
+            self.TAB_TITLES[3],
         )
         root.addWidget(self.tabs, 1)
 
-        buttons = QDialogButtonBox(
+        self.validation_status = QLabel()
+        self.validation_status.setObjectName("ProjectSettingsValidationStatus")
+        self.validation_status.setWordWrap(True)
+        self.validation_status.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        root.addWidget(self.validation_status)
+
+        self.buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel
         )
-        buttons.accepted.connect(self._accept_settings)
-        buttons.rejected.connect(self.reject)
-        root.addWidget(buttons)
+        self.buttons.accepted.connect(self._accept_settings)
+        self.buttons.rejected.connect(self.reject)
+        root.addWidget(self.buttons)
+
+        # Existing external drives may be offline when Settings opens. Surface
+        # that state immediately as a warning, never as an open-time blocker.
+        self._render_validation(
+            validate_existing_project_settings_change(
+                self._baseline_settings,
+                self._baseline_settings,
+                verify_writable=False,
+            )
+        )
 
     @property
     def result_settings(self) -> ProjectSettings:
         return self._result_settings
 
-    # ------------------------------------------------------------------
-    # PROJECT TAB
-    # ------------------------------------------------------------------
+    @property
+    def last_validation(self) -> ProjectSettingsChangeValidation | None:
+        return self._last_validation
 
-    def _build_project_tab(self, settings: ProjectSettings) -> QScrollArea:
-        scroll, content, layout = self._scroll_tab()
-
-        project_group = QGroupBox('Proyek')
-        project_form = QFormLayout(project_group)
-        project_form.setLabelAlignment(Qt.AlignLeft)
-
-        self.project_name = QLineEdit(settings.project_name)
-        self.project_code = QLineEdit(settings.project_code)
-        self.client_name = QLineEdit(settings.client_name)
-
-        self.start_date = QDateEdit()
-        self.start_date.setCalendarPopup(True)
-        self.start_date.setDisplayFormat("dd MMMM yyyy")
-        parsed_date = QDate.fromString(settings.start_date, "yyyy-MM-dd")
-        self.start_date.setDate(
-            parsed_date if parsed_date.isValid() else QDate.currentDate()
-        )
-
-        self.project_file = FolderField(
-            settings.project_folder,
-            read_only=True,
-        )
-
-        project_form.addRow('Nama Proyek', self.project_name)
-        project_form.addRow('Kode Proyek', self.project_code)
-        project_form.addRow('Klien', self.client_name)
-        project_form.addRow('Tanggal Mulai', self.start_date)
-        project_form.addRow('File Proyek', self.project_file)
-
-        location_note = QLabel(
-            "File Proyek hanya menunjukkan lokasi file .smproj yang sedang dibuka. "
-            "File dapat dipindahkan saat proyek tidak sedang digunakan."
-        )
-        location_note.setWordWrap(True)
-        location_note.setObjectName("PageSubtitle")
-        project_form.addRow("", location_note)
-        layout.addWidget(project_group)
-
-        layout.addWidget(self._build_source_group(settings))
-
-        drive_group = QGroupBox('Tautan Drive Klien')
-        drive_form = QFormLayout(drive_group)
-        drive_form.setLabelAlignment(Qt.AlignLeft)
-
-        self.main_drive_url = QLineEdit(settings.main_drive_url)
-        self.material_drive_url = QLineEdit(settings.material_drive_url)
-        self.delivery_drive_url = QLineEdit(settings.delivery_drive_url)
-
-        self.main_drive_url.setPlaceholderText("https://drive.google.com/...")
-        self.material_drive_url.setPlaceholderText("opsional")
-        self.delivery_drive_url.setPlaceholderText("opsional")
-
-        drive_form.addRow('Drive Utama', self.main_drive_url)
-        drive_form.addRow('Folder Material', self.material_drive_url)
-        drive_form.addRow('Setoran', self.delivery_drive_url)
-        layout.addWidget(drive_group)
-        layout.addStretch(1)
-
-        scroll.setWidget(content)
-        return scroll
-
-    def _build_source_group(self, settings: ProjectSettings) -> QGroupBox:
-        source_group = QGroupBox('Naskah Sumber')
-        root = QVBoxLayout(source_group)
-        root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(10)
-
-        source_form = QFormLayout()
-        source_form.setLabelAlignment(Qt.AlignLeft)
-        self.source_folder = FolderField(
-            settings.source_folder,
-            browse_caption='Pilih Folder Naskah Sumber (Filesystem)',
-        )
-        source_form.addRow('Folder Sumber', self.source_folder)
-        root.addLayout(source_form)
-
-        helper_grid = QGridLayout()
-        helper_grid.setContentsMargins(0, 0, 0, 0)
-        helper_grid.setHorizontalSpacing(12)
-        helper_grid.setColumnStretch(0, 1)
-        helper_grid.setColumnStretch(1, 1)
-
-        filename_box = QGroupBox('Nama File Sumber')
-        filename_layout = QVBoxLayout(filename_box)
-        filename_layout.setContentsMargins(10, 10, 10, 10)
-        filename_layout.setSpacing(7)
-
-        self.read_source_filenames_button = QPushButton('Baca Nama File Sumber')
-        self.read_source_filenames_button.setProperty("secondary", True)
-        self.read_source_filenames_button.clicked.connect(
-            self._read_source_filenames
-        )
-        filename_layout.addWidget(self.read_source_filenames_button)
-
-        self.source_pattern_status = QLabel(
-            "Belum membaca nama file. Proses ini hanya membaca nama file, "
-            "bukan isi workbook."
-        )
-        self.source_pattern_status.setWordWrap(True)
-        self.source_pattern_status.setObjectName("PageSubtitle")
-        filename_layout.addWidget(self.source_pattern_status)
-
-        example_row = QHBoxLayout()
-        example_row.setContentsMargins(0, 0, 0, 0)
-        example_row.setSpacing(6)
-
-        self.source_filename_example = QLineEdit()
-        self.source_filename_example.setReadOnly(True)
-        self.source_filename_example.setPlaceholderText(
-            'Nama file sumber contoh'
-        )
-        example_row.addWidget(self.source_filename_example, 1)
-
-        self.copy_source_filename_button = QPushButton('Salin')
-        self.copy_source_filename_button.setProperty("secondary", True)
-        self.copy_source_filename_button.setEnabled(False)
-        self.copy_source_filename_button.clicked.connect(
-            self._copy_source_filename
-        )
-        example_row.addWidget(self.copy_source_filename_button)
-        filename_layout.addLayout(example_row)
-
-        self.source_pattern_details = QLabel("")
-        self.source_pattern_details.setWordWrap(True)
-        self.source_pattern_details.setObjectName("PageSubtitle")
-        filename_layout.addWidget(self.source_pattern_details)
-
-        self.filename_preview = QLabel(
-            'Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu.'
-        )
-        self.filename_preview.setWordWrap(True)
-        self.filename_preview.setObjectName("PageSubtitle")
-        filename_layout.addWidget(self.filename_preview)
-
-        delimiter_box = QGroupBox('Pemisah Episode')
-        delimiter_form = QFormLayout(delimiter_box)
-        delimiter_form.setLabelAlignment(Qt.AlignLeft)
-
-        self.episode_before = QLineEdit(settings.episode_before)
-        self.episode_after = QLineEdit(settings.episode_after)
-        self.episode_before.setPlaceholderText("contoh: 第")
-        self.episode_after.setPlaceholderText("contoh: 集")
-
-        delimiter_form.addRow('Sebelum Nomor Episode', self.episode_before)
-        delimiter_form.addRow('Setelah Nomor Episode', self.episode_after)
-
-        delimiter_help = QLabel(
-            "Pemisah diterapkan ke nama file yang dibaca dari Folder Sumber. "
-            "Sinkronkan Sumber tetap diperlukan untuk membaca isi naskah."
-        )
-        delimiter_help.setWordWrap(True)
-        delimiter_help.setObjectName("PageSubtitle")
-        delimiter_form.addRow("", delimiter_help)
-
-        helper_grid.addWidget(filename_box, 0, 0)
-        helper_grid.addWidget(delimiter_box, 0, 1)
-        root.addLayout(helper_grid)
-
-        self.episode_before.textChanged.connect(self._update_episode_preview)
-        self.episode_after.textChanged.connect(self._update_episode_preview)
-        self.source_folder.edit.textChanged.connect(self._source_folder_changed)
-
-        return source_group
-
-    # ------------------------------------------------------------------
-    # TRACK OUTPUT & DELIVERY TAB
-    # ------------------------------------------------------------------
-
-    def _build_track_output_tab(
+    def _build_section_tab(
         self,
-        settings: ProjectSettings,
+        section: QWidget,
+        description: str,
     ) -> QScrollArea:
         scroll, content, layout = self._scroll_tab()
 
-        track_group = QGroupBox('Output Track & Setoran')
-        track_form = QFormLayout(track_group)
-        track_form.setLabelAlignment(Qt.AlignLeft)
-
-        self.stem_output_folder = FolderField(
-            settings.stem_output_folder,
-            browse_caption='Pilih Folder Stem / Mixdown / Export (Filesystem)',
-        )
-        self.delivery_folder = FolderField(
-            settings.delivery_folder,
-            browse_caption='Pilih Folder Setoran (Google Drive Desktop)',
-        )
-
-        format_value = QLabel("WAV")
-        format_value.setStyleSheet("font-weight: 700;")
-
-        self.audio_sample_rate = QComboBox()
-        for label, value in self.SAMPLE_RATE_OPTIONS:
-            self.audio_sample_rate.addItem(label, value)
-        self._select_combo_data(
-            self.audio_sample_rate,
-            int(settings.audio_sample_rate or 48000),
-            48000,
-        )
-
-        self.audio_bit_depth = QComboBox()
-        for label, value in self.BIT_DEPTH_OPTIONS:
-            self.audio_bit_depth.addItem(label, value)
-        self._select_combo_data(
-            self.audio_bit_depth,
-            int(settings.audio_bit_depth or 24),
-            24,
-        )
-
-        self.audio_channels = QComboBox()
-        for label, value in self.CHANNEL_OPTIONS:
-            self.audio_channels.addItem(label, value)
-        self._select_combo_data(
-            self.audio_channels,
-            int(settings.audio_channels or 1),
-            1,
-        )
-
-        track_form.addRow("Stem / Mixdown / Export", self.stem_output_folder)
-        track_form.addRow('Folder Setoran', self.delivery_folder)
-        track_form.addRow('Format Audio', format_value)
-        track_form.addRow('Laju Sampel', self.audio_sample_rate)
-        track_form.addRow('Kedalaman Bit', self.audio_bit_depth)
-        track_form.addRow('Kanal', self.audio_channels)
-
-        track_help = QLabel(
-            "Kedua folder adalah filesystem path; Setoran dapat langsung menunjuk "
-            "folder Google Drive Desktop. WAV 32-bit menerima PCM integer maupun "
-            "32-bit float dari DAW."
-        )
-        track_help.setWordWrap(True)
-        track_help.setObjectName("PageSubtitle")
-        track_form.addRow("", track_help)
-
-        layout.addWidget(track_group)
+        note = QLabel(description)
+        note.setObjectName("PageSubtitle")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        layout.addWidget(section)
         layout.addStretch(1)
+
         scroll.setWidget(content)
         return scroll
 
@@ -392,186 +228,110 @@ class ProjectSettingsDialog(QDialog):
         layout.setSpacing(12)
         return scroll, content, layout
 
-    @staticmethod
-    def _select_combo_data(
-        combo: QComboBox,
-        value: int,
-        fallback: int,
-    ) -> None:
-        index = combo.findData(int(value))
-        if index < 0:
-            index = combo.findData(int(fallback))
-        combo.setCurrentIndex(max(index, 0))
-
-    # ------------------------------------------------------------------
-    # SOURCE FILENAME HELPER
-    # ------------------------------------------------------------------
-
-    def _source_folder_changed(self) -> None:
-        self._source_filename_analysis = None
-        self._source_filename_examples = []
-        self.source_filename_example.clear()
-        self.copy_source_filename_button.setEnabled(False)
-        self.source_pattern_status.setText(
-            'Folder Sumber berubah. Klik Baca Nama File Sumber untuk membaca ulang.'
-        )
-        self.source_pattern_details.clear()
-        self.filename_preview.setText(
-            'Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu.'
-        )
-
     def _read_source_filenames(self) -> None:
-        try:
-            analysis = read_source_filenames(self.source_folder.text())
-        except Exception as exc:
-            self._source_filename_analysis = None
-            self._source_filename_examples = []
-            self.source_filename_example.clear()
-            self.copy_source_filename_button.setEnabled(False)
-            self.source_pattern_status.setText(f"⚠ {exc}")
-            self.source_pattern_details.clear()
-            self._update_episode_preview()
-            return
+        self.source_section.read_source_filenames()
 
-        self._source_filename_analysis = analysis
-        self._source_filename_examples = self._preview_examples(
-            list(analysis.filenames)
+    def _show_folder_drive_help(self) -> None:
+        show_folder_drive_help(self)
+
+    def _collect_candidate(self) -> ProjectSettings:
+        project_folder = (
+            self.project_file.text()
+            if self.project_file is not None
+            else ""
         )
-
-        if not analysis.filenames:
-            self.source_filename_example.clear()
-            self.copy_source_filename_button.setEnabled(False)
-            self.source_pattern_status.setText(
-                '⚠ Tidak ada file .xlsx/.xlsm pada Folder Sumber.'
-            )
-            self.source_pattern_details.clear()
-            self._update_episode_preview()
-            return
-
-        representative = analysis.representative_filename
-        self.source_filename_example.setText(representative)
-        self.copy_source_filename_button.setEnabled(bool(representative))
-
-        if analysis.is_consistent:
-            pattern = analysis.patterns[0]
-            self.source_pattern_status.setText(
-                f"✓ {pattern.count} filename mengikuti satu pola."
-            )
-            self.source_pattern_details.setText(
-                f"Pattern: {pattern.pattern}"
-            )
-        else:
-            self.source_pattern_status.setText(
-                "⚠ Ditemukan lebih dari satu pola filename atau lebih dari satu "
-                "bagian angka yang berubah."
-            )
-            details = []
-            for pattern in analysis.patterns[:8]:
-                marker = "✓" if pattern.is_episode_candidate else "⚠"
-                details.append(
-                    f"{marker} {pattern.count} × {pattern.pattern}"
-                )
-            if len(analysis.patterns) > 8:
-                details.append(
-                    f"… {len(analysis.patterns) - 8} pola lainnya"
-                )
-            self.source_pattern_details.setText("\n".join(details))
-
-        self._update_episode_preview()
-
-    def _copy_source_filename(self) -> None:
-        filename = self.source_filename_example.text().strip()
-        if filename:
-            QApplication.clipboard().setText(filename)
-
-    @staticmethod
-    def _preview_examples(filenames: list[str]) -> list[str]:
-        if not filenames:
-            return []
-        indexes = {0, len(filenames) // 2, len(filenames) - 1}
-        return [filenames[index] for index in sorted(indexes)]
-
-    def _update_episode_preview(self) -> None:
-        if not self._source_filename_examples:
-            self.filename_preview.setText(
-                'Pratinjau Episode: klik Baca Nama File Sumber terlebih dahulu.'
-            )
-            return
-
-        before = self.episode_before.text()
-        after = self.episode_after.text()
-        lines = ["Pratinjau Episode:"]
-        for filename in self._source_filename_examples:
-            episode = self._extract_episode_preview(
-                filename,
-                before,
-                after,
-            )
-            lines.append(
-                f"{filename}  →  {episode if episode else '⚠ tidak terbaca'}"
-            )
-        self.filename_preview.setText("\n".join(lines))
-
-    @staticmethod
-    def _extract_episode_preview(
-        filename: str,
-        before: str,
-        after: str,
-    ) -> str | None:
-        text = filename.strip()
-        if not text:
-            return None
-
-        start = 0
-        if before:
-            index = text.find(before)
-            if index < 0:
-                return None
-            start = index + len(before)
-
-        if after:
-            end = text.find(after, start)
-            if end < 0:
-                return None
-            result = text[start:end]
-        else:
-            remainder = text[start:]
-            digits = []
-            started = False
-            for char in remainder:
-                if char.isdigit():
-                    digits.append(char)
-                    started = True
-                elif started:
-                    break
-            result = "".join(digits)
-
-        result = result.strip()
-        return result if result and result.isdigit() else None
-
-    # ------------------------------------------------------------------
-    # SAVE
-    # ------------------------------------------------------------------
+        return self.sections.to_settings(
+            project_folder=project_folder,
+        )
 
     def _accept_settings(self) -> None:
-        self._result_settings = ProjectSettings(
-            project_name=self.project_name.text(),
-            project_code=self.project_code.text(),
-            client_name=self.client_name.text(),
-            start_date=self.start_date.date().toString("yyyy-MM-dd"),
-            project_folder=self.project_file.text(),
-            source_folder=self.source_folder.text(),
-            stem_output_folder=self.stem_output_folder.text(),
-            delivery_folder=self.delivery_folder.text(),
-            audio_format="WAV",
-            audio_sample_rate=int(self.audio_sample_rate.currentData() or 48000),
-            audio_bit_depth=int(self.audio_bit_depth.currentData() or 24),
-            audio_channels=int(self.audio_channels.currentData() or 1),
-            episode_before=self.episode_before.text(),
-            episode_after=self.episode_after.text(),
-            main_drive_url=self.main_drive_url.text(),
-            material_drive_url=self.material_drive_url.text(),
-            delivery_drive_url=self.delivery_drive_url.text(),
-        ).normalized()
+        candidate = self._collect_candidate()
+        validation = validate_existing_project_settings_change(
+            self._baseline_settings,
+            candidate,
+            verify_writable=True,
+        )
+        self._render_validation(validation)
 
+        if not validation.is_valid:
+            if validation.errors:
+                self._focus_issue(validation.errors[0].field)
+            return
+
+        self._result_settings = candidate
         self.accept()
+
+    def _render_validation(
+        self,
+        validation: ProjectSettingsChangeValidation,
+    ) -> None:
+        self._last_validation = validation
+
+        if validation.errors:
+            lines = [
+                f"✕ {issue.message}"
+                for issue in validation.errors[:4]
+            ]
+            remaining = len(validation.errors) - len(lines)
+            if remaining > 0:
+                lines.append(f"… {remaining} masalah blocking lainnya.")
+            self.validation_status.setText(
+                "Pengaturan belum dapat disimpan:\n" + "\n".join(lines)
+            )
+            self.validation_status.setProperty("status", "error")
+        elif validation.warnings:
+            lines = [
+                f"⚠ {issue.message}"
+                for issue in validation.warnings[:3]
+            ]
+            remaining = len(validation.warnings) - len(lines)
+            if remaining > 0:
+                lines.append(f"… {remaining} warning lainnya.")
+            self.validation_status.setText(
+                "Project tetap dapat digunakan; periksa bila drive tersedia kembali:\n"
+                + "\n".join(lines)
+            )
+            self.validation_status.setProperty("status", "warning")
+        else:
+            self.validation_status.setText("✓ Konfigurasi siap disimpan.")
+            self.validation_status.setProperty("status", "valid")
+
+        self.validation_status.style().unpolish(self.validation_status)
+        self.validation_status.style().polish(self.validation_status)
+
+    def _focus_issue(self, field: str) -> None:
+        if field in IDENTITY_FIELDS:
+            tab_index = 0
+        elif field in SOURCE_FIELDS:
+            tab_index = 1
+        elif field in TRACKING_FIELDS:
+            tab_index = 2
+        elif field in LINK_FIELDS:
+            tab_index = 3
+        else:
+            return
+
+        self.tabs.setCurrentIndex(tab_index)
+        widget = self._field_widget(field)
+        if widget is not None:
+            widget.setFocus()
+
+    def _field_widget(self, field: str) -> QWidget | None:
+        widgets: dict[str, QWidget] = {
+            "project_name": self.project_name,
+            "project_code": self.project_code,
+            "client_name": self.client_name,
+            "start_date": self.start_date,
+            "source_folder": self.source_folder.edit,
+            "episode_before": self.episode_before,
+            "episode_after": self.episode_after,
+            "stem_output_folder": self.stem_output_folder.edit,
+            "delivery_folder": self.delivery_folder.edit,
+            "audio_sample_rate": self.audio_sample_rate,
+            "audio_bit_depth": self.audio_bit_depth,
+            "audio_channels": self.audio_channels,
+            "main_drive_url": self.main_drive_url,
+            "material_drive_url": self.material_drive_url,
+            "delivery_drive_url": self.delivery_drive_url,
+        }
+        return widgets.get(field)

@@ -4,6 +4,7 @@ import shutil
 import sqlite3
 import uuid
 from pathlib import Path
+from typing import Callable
 
 from core.app_paths import project_runtime_root
 from core.database import DatabaseCompatibilityError
@@ -12,6 +13,7 @@ from core.project import (
     Project,
     ProjectFormatError,
 )
+from core.project_filename import new_project_destination
 from core.project_settings import ProjectSettings
 
 
@@ -27,6 +29,25 @@ class ProjectManager:
     def is_open(self) -> bool:
         return self.current is not None
 
+    def preview_new_project_file(
+        self,
+        settings: ProjectSettings,
+        parent_folder: str | Path,
+    ) -> Path:
+        normalized = settings.normalized()
+        project_name = normalized.project_name.strip()
+        if not project_name:
+            raise ProjectError("Project Name wajib diisi.")
+
+        # New Project UI requires an explicit code, while the manager keeps a
+        # safe fallback for backward-compatible programmatic/test callers.
+        project_code = normalized.project_code.strip() or project_name
+        return new_project_destination(
+            Path(parent_folder).expanduser(),
+            project_code,
+            project_name,
+        )
+
     def create(
         self,
         settings: ProjectSettings,
@@ -41,14 +62,7 @@ class ProjectManager:
         parent = Path(parent_folder).expanduser()
         parent.mkdir(parents=True, exist_ok=True)
 
-        raw_name = normalized.project_code or project_name
-        if raw_name.casefold().endswith(
-            PROJECT_FILE_EXTENSION.casefold()
-        ):
-            raw_name = raw_name[:-len(PROJECT_FILE_EXTENSION)]
-
-        file_stem = self._safe_file_stem(raw_name)
-        project_file = parent / f"{file_stem}{PROJECT_FILE_EXTENSION}"
+        project_file = self.preview_new_project_file(normalized, parent)
 
         if project_file.exists():
             raise ProjectError(
@@ -67,28 +81,86 @@ class ProjectManager:
         try:
             project.save()
         except Exception:
-            for candidate in (
+            self._cleanup_created_project_artifacts(
                 project_file,
-                Path(str(project_file) + "-journal"),
-                Path(str(project_file) + "-wal"),
-                Path(str(project_file) + "-shm"),
-            ):
-                try:
-                    if candidate.exists():
-                        candidate.unlink()
-                except OSError:
-                    pass
-
-            try:
-                runtime = project_runtime_root(project_id)
-                if runtime.exists():
-                    shutil.rmtree(runtime)
-            except OSError:
-                pass
+                project_id,
+            )
             raise
 
         self.current = project
         return project
+
+    def create_transactional(
+        self,
+        settings: ProjectSettings,
+        parent_folder: str | Path,
+        *,
+        after_create: Callable[[Project], None] | None = None,
+    ) -> Project:
+        """Create a project and rollback if a later creation stage fails.
+
+        ``after_create`` is intentionally generic. Phase 11 initial source
+        sync plugs into this transaction in a later step; keeping the wrapper
+        here avoids a second project-creation path and makes cleanup semantics
+        available to any post-create validation/sync stage.
+        """
+        previous = self.current
+        project = self.create(settings, parent_folder)
+
+        try:
+            if after_create is not None:
+                after_create(project)
+        except Exception:
+            self.rollback_created_project(
+                project,
+                restore_current=previous,
+            )
+            raise
+
+        return project
+
+    def rollback_created_project(
+        self,
+        project: Project,
+        *,
+        restore_current: Project | None = None,
+    ) -> None:
+        """Remove a not-yet-finalized project and its runtime artifacts."""
+        if self.current is project:
+            self.current = restore_current
+
+        self._cleanup_created_project_artifacts(
+            project.project_file,
+            project.project_id,
+        )
+
+    @staticmethod
+    def _cleanup_created_project_artifacts(
+        project_file: str | Path,
+        project_id: str,
+    ) -> None:
+        path = Path(project_file).expanduser()
+
+        # Delete SQLite sidecars as well as the database itself. Sidecars can
+        # be left by WAL/journal mode even when the primary operation failed.
+        for candidate in (
+            Path(str(path) + "-journal"),
+            Path(str(path) + "-wal"),
+            Path(str(path) + "-shm"),
+            path,
+        ):
+            try:
+                if candidate.exists():
+                    candidate.unlink()
+            except OSError:
+                pass
+
+        try:
+            runtime = project_runtime_root(project_id)
+            if runtime.exists():
+                shutil.rmtree(runtime)
+        except OSError:
+            pass
 
     def open(self, path: str | Path) -> Project:
         try:
@@ -309,6 +381,7 @@ class ProjectManager:
 
     @staticmethod
     def _safe_file_stem(value: str) -> str:
+        """Legacy helper kept for compatibility with older external callers."""
         cleaned = "".join(
             char if char.isalnum() or char in (" ", "-", "_") else "_"
             for char in value.strip()

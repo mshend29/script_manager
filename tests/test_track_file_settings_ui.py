@@ -31,43 +31,68 @@ def test_project_settings_roundtrip_track_file_configuration(tmp_path):
     assert restored.audio_channels == 1
 
 
-def test_project_settings_dialog_uses_two_tabs_and_constrained_wav_spec():
-    source = _read("dialogs/project_settings_dialog.py")
+def test_project_settings_dialog_uses_four_aligned_reusable_tabs():
+    dialog = _read("dialogs/project_settings_dialog.py")
+    widgets = _read("widgets/project_configuration.py")
 
-    assert "QTabWidget" in source
-    assert "self._build_project_tab(settings)" in source
-    assert "Proyek" in source
-    assert "Output Track & Setoran" in source
-    assert "filesystem path" in source
-    assert "Google Drive Desktop" in source
+    assert "QTabWidget" in dialog
+    assert "ProjectIdentitySection" in dialog
+    assert "SourceConfigurationSection" in dialog
+    assert "AudioOutputSection" in dialog
+    assert "DriveLinksSection" in dialog
+    assert "ProjectConfigurationSections" in dialog
+    assert '"Proyek"' in dialog
+    assert '"Sumber Naskah"' in dialog
+    assert '"Audio & Setoran"' in dialog
+    assert '"Tautan Drive"' in dialog
+    assert "show_project_file=True" in dialog
+    assert "filesystem path" in dialog
+    assert "Google Drive" in dialog
 
-    assert "Stem / Mixdown / Export" in source
-    assert "Folder Setoran" in source
-    assert "Google Drive Desktop" in source
-    assert 'format_value = QLabel("WAV")' in source
-    assert "QSpinBox" not in source
-    assert '("44.100 Hz", 44100)' in source
-    assert '("48.000 Hz", 48000)' in source
-    assert '("96.000 Hz", 96000)' in source
-    assert '("192.000 Hz", 192000)' in source
-    assert '("16-bit", 16)' in source
-    assert '("24-bit", 24)' in source
-    assert '("32-bit", 32)' in source
-    assert '("Mono", 1)' in source
-    assert '("Stereo", 2)' in source
+    assert "Stem / Mixdown / Export" in widgets
+    assert "Folder Setoran" in widgets
+    assert "Google Drive Desktop" in widgets
+    assert 'self.format_value = QLabel("WAV")' in widgets
+    assert "QSpinBox" not in widgets
+    assert '44100: "44.100 Hz"' in widgets
+    assert '48000: "48.000 Hz"' in widgets
+    assert '96000: "96.000 Hz"' in widgets
+    assert '192000: "192.000 Hz"' in widgets
+    assert '16: "16-bit"' in widgets
+    assert '24: "24-bit"' in widgets
+    assert '32: "32-bit"' in widgets
+    assert '1: "Mono"' in widgets
+    assert '2: "Stereo"' in widgets
 
 
-def test_project_settings_source_filename_helper_replaces_manual_test_filename():
-    source = _read("dialogs/project_settings_dialog.py")
+def test_project_settings_source_filename_helper_is_reusable():
+    widgets = _read("widgets/project_configuration.py")
 
-    assert "Baca Nama File Sumber" in source
-    assert "read_source_filenames(self.source_folder.text())" in source
-    assert "self.source_filename_example" in source
-    assert "Salin" in source
-    assert "Pratinjau Episode:" in source
-    assert "Pemisah Episode" in source
-    assert "filename_sample" not in source
-    assert '"Test Filename"' not in source
+    assert "Baca Nama File Sumber" in widgets
+    assert "validate_source_filename_setup(" in widgets
+    assert "self.source_filename_example" in widgets
+    assert "Salin" in widgets
+    assert "Pratinjau Episode" in widgets
+    assert "Pemisah Episode" in widgets
+    assert "validation_changed = Signal(object)" in widgets
+    assert "auto_validate" in widgets
+    assert "filename_sample" not in widgets
+    assert '"Test Filename"' not in widgets
+
+
+def test_new_project_and_settings_share_the_same_configuration_sections():
+    new_dialog = _read("dialogs/new_project_dialog.py")
+    settings_dialog = _read("dialogs/project_settings_dialog.py")
+
+    for section in (
+        "ProjectIdentitySection",
+        "SourceConfigurationSection",
+        "AudioOutputSection",
+        "DriveLinksSection",
+        "ProjectConfigurationSections",
+    ):
+        assert section in new_dialog
+        assert section in settings_dialog
 
 
 def test_project_settings_normalizes_only_supported_wav_options():
