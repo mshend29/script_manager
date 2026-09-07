@@ -75,8 +75,16 @@ class SourcePreflightReport:
             and not self.problems
             and bool(self.files)
             and self.parsed_files == len(self.files)
+        )
+
+    @property
+    def is_reusable(self) -> bool:
+        return (
+            self.is_valid
             and self.scan is not None
             and bool(self.source_snapshot)
+            and set(self.parse_results)
+            == {item.file_path for item in self.files}
         )
 
 
