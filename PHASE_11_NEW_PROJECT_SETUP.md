@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.15 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.17 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -801,7 +801,7 @@ Checkpoint test setelah 11.15:
 
 ## 11.16 — Redesign Pengaturan Proyek agar sejajar dengan wizard
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.03, 11.06–11.11
 
 Pengaturan Proyek tetap **tab**, bukan milestone.
@@ -817,58 +817,80 @@ Tab target:
 
 ### Tab Proyek
 
-- [ ] Nama Proyek
-- [ ] Kode Proyek
-- [ ] Klien
-- [ ] Tanggal Mulai
-- [ ] File `.smproj` read-only
+- [x] Nama Proyek
+- [x] Kode Proyek
+- [x] Klien
+- [x] Tanggal Mulai
+- [x] File `.smproj` read-only
 
 ### Tab Sumber Naskah
 
-- [ ] Folder Sumber
-- [ ] filename analysis
-- [ ] delimiter
-- [ ] preview episode
-- [ ] re-validation source
+- [x] Folder Sumber
+- [x] filename analysis
+- [x] delimiter
+- [x] preview episode
+- [x] re-validation source
 
 ### Tab Audio & Setoran
 
-- [ ] Folder Stem
-- [ ] Folder Setoran
-- [ ] WAV specification
+- [x] Folder Stem
+- [x] Folder Setoran
+- [x] WAV specification
 
 ### Tab Tautan Drive
 
-- [ ] Drive Utama
-- [ ] Material
-- [ ] Setoran
-- [ ] tombol `?`
+- [x] Drive Utama
+- [x] Material
+- [x] Setoran
+- [x] tombol `?`
 
 Exit criteria:
 
 - nilai dari wizard dapat dibuka kembali secara identik di Settings.
 
+Checkpoint test setelah 11.16:
+
+- full suite: `398 passed, 43 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk 4-tab Project Settings contract: `40 passed`;
+- Phase 11 wizard scale smoke 100% / 125% / 150%: masing-masing `3 passed`;
+- Settings memiliki tepat empat tab target dan tetap memakai reusable configuration sections yang sama dengan wizard;
+- file `.smproj` tetap read-only;
+- source filename re-validation dan settings roundtrip tetap berfungsi.
+
 ---
 
 ## 11.17 — Validasi perubahan Settings untuk existing project
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.16
 
 Tujuan: strict New Project tidak membuat existing project rapuh saat drive eksternal offline.
 
 Rules:
 
-- [ ] konfigurasi baru yang invalid → block Save;
-- [ ] existing external folder sementara unavailable → warning yang jelas;
-- [ ] existing project tetap dapat dibuka;
-- [ ] URL optional tidak memblokir Save;
-- [ ] changing source setting invalidates source-dependent workspace;
-- [ ] changing audio/output path invalidates Tracking/Delivery filesystem state.
+- [x] konfigurasi baru yang invalid → block Save;
+- [x] existing external folder sementara unavailable → warning yang jelas;
+- [x] existing project tetap dapat dibuka;
+- [x] URL optional tidak memblokir Save;
+- [x] changing source setting invalidates source-dependent workspace;
+- [x] changing audio/output path invalidates Tracking/Delivery filesystem state.
 
 Exit criteria:
 
 - existing workflows tetap usable ketika external drive sementara unavailable.
+
+Checkpoint test setelah 11.17:
+
+- full suite: `404 passed, 49 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk Settings warning/blocker/focus dan workspace invalidation: `46 passed`;
+- Phase 11 wizard scale smoke 100% / 125% / 150%: masing-masing `3 passed`;
+- unchanged existing path yang sedang offline hanya menghasilkan warning dan Save tetap diizinkan;
+- path/source/URL yang baru diubah tetapi invalid menjadi blocker dan fokus diarahkan ke tab/field terkait;
+- perubahan source menandai Script/Dialog/Tracking/Delivery/Data dirty dan memberi instruksi F5 tanpa mengubah database;
+- perubahan Stem/Setoran/audio memakai refresh filesystem Tracking/Delivery existing;
+- link-only change tidak menginvalidasi source maupun filesystem inventory.
 
 ---
 
@@ -1339,6 +1361,18 @@ Status: LOCKED
 
 `SourcePreflightReport.is_valid` tetap berarti workbook lolos inspector/parser. `is_reusable` berarti preflight valid, memiliki production fingerprint snapshot, serta hasil inspector/parser lengkap untuk seluruh source. Preflight memverifikasi fingerprint sebelum dan sesudah parsing; Create memverifikasinya lagi sebelum membuat `.smproj`; dan `SourceSyncEngine.apply()` tetap melakukan freshness scan terakhir sebelum database write. Hashing/re-scan boleh berulang sebagai safety cost, tetapi workbook inspection/parsing tidak diulang bila snapshot fresh. Source yang berubah pada gate mana pun menginvalidasi readiness Milestone 2 dan meminta Source Preflight ulang.
 
+## D-021 — Project Settings memakai empat tab dengan reusable sections yang sama
+
+Status: LOCKED
+
+Pengaturan Proyek terdiri dari tepat empat tab: **Proyek**, **Sumber Naskah**, **Audio & Setoran**, dan **Tautan Drive**. Setiap tab memakai reusable section yang sama dengan wizard sehingga load/collection/normalization tidak dibuat ulang. File `.smproj` tetap runtime/read-only dan tidak dapat dipindahkan dari Settings.
+
+## D-022 — Validation existing project bersifat baseline-aware
+
+Status: LOCKED
+
+Strict validation untuk nilai yang baru diubah tidak boleh membuat project existing rapuh saat drive eksternal/Drive Desktop sedang offline. Nilai filesystem lama yang tidak berubah tetapi sementara unavailable menghasilkan warning dan tidak memblokir Save. Nilai source/output/URL/identity yang diubah menjadi invalid menjadi blocker. Source setting change menandai workspace source-dependent dirty dan meminta F5; perubahan Stem/Setoran/audio memakai refresh filesystem Tracking/Delivery existing; link-only change tidak menginvalidasi source/filesystem.
+
 ---
 
 # Progress Log
@@ -1460,6 +1494,20 @@ YYYY-MM-DD — 11.xx
 - keputusan: `is_valid` tetap kontrak keberhasilan parsing, sedangkan `is_reusable` menambah snapshot + completeness; repeated hashing diterima sebagai safety cost, sementara duplicate workbook inspect/parse dihilangkan.
 - commit/PR: `1405048a7a73d25538cb8472abf9be5619f4d4f1`, `5a05ce39c2b3e47812083e5140320749604b6aff`, `14b82d237950e9a810a308ae84fb86be9920e291`, `e98e0605a472ff7e3427428cc36db34a39c84a66`, `b161f073eda09df012f4f31251e949f18e680cbf`, `e522643f7383dea35e9462b39b19dfec7efd3b8b`, `ed05a6c5ec26d761341674ad158084c84505f534`, `e3013fbc6035b0ea87ac2474e5da55eaa4576894`, `5529ff96cba3a7677a7ebd84045cb3c07eaaaede`, `54d680213e53e45bad0e02d45a7a6880b7de0749`, `b2493d6c4b4778669a3a6115694a9f1629836c9c`, `c16044ab8147b294afde5bfeb81d6d22b1902930`, `8d64a9a6b00ebda0ba3c8f1afb5db47578b205e8`, `3d3e49df2172cca18b904a63f21c82fbcf9954c9` / PR #75.
 - next: 11.16 Redesign Pengaturan Proyek agar sejajar dengan wizard.
+
+2026-09-07 — 11.16
+- perubahan: `ProjectSettingsDialog` dipecah menjadi empat tab target dengan satu reusable section utama per tab; `.smproj` tetap read-only; source analysis/re-validation dan form roundtrip dipertahankan.
+- test: full suite `398 passed, 43 skipped`; compile success; Qt runtime `40 passed`; scale smoke 100/125/150 masing-masing `3 passed`.
+- keputusan: Settings tetap tab dan tidak menyalin ulang field/normalization wizard; compatibility aliases existing dipertahankan.
+- commit/PR: `f7fa67b2ca72f4af7e3652f604adabc4040cd2a9`, `4690cc9fa77e039a29f2b89381dee8d94d26c4ae`, `4142cf4cb4bc6dab00a2274033fc873158a5f6e2`, `56dbb961c4199bb66eca17c39393c8db29c44096` / PR #75.
+- next: 11.17 Existing project validation rules.
+
+2026-09-07 — 11.17
+- perubahan: baseline-aware existing settings validator; inline warning/error + focus tab; production `ApplicationWindow.open_project_settings()` membedakan source/tracking/link changes; source dirty-state dan Tracking/Delivery filesystem refresh dipertahankan tanpa memodifikasi database saat source setting berubah.
+- test: full suite `404 passed, 49 skipped`; compile success; Qt runtime `46 passed`; scale smoke 100/125/150 masing-masing `3 passed`; coverage mencakup offline existing warning, changed-invalid blocker, URL optional/legacy, source validation, focus, dan invalidation orchestration.
+- keputusan: strictness berlaku pada perubahan baru; baseline existing yang offline/legacy invalid tetap dapat dibuka dan disimpan ulang dengan warning. Source change meminta F5; output/audio change mereuse existing filesystem refresh.
+- commit/PR: `09d25621d6c2b85fd311916aa8c0902d3faedfb0`, `10c1118d936cb0ee453cf4ec563dcddcabee3d63`, `db0876f8d5553d4155110aa48c4887eaec00434b`, `e6047b2b6f924ada8ca57e1f538a143a7fe57b7d`, `f2a69bbbc6b27e6667e4b6864234ffbebdb0b2b9`, `8baa768123f6f8427351093647c5719b74b4f7f5`, `7055581f32158288a26d7dec55bf05a650ee2fc7` / PR #75.
+- next: 11.18 Regression Project Lifecycle.
 
 ---
 
