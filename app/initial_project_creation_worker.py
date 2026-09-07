@@ -25,8 +25,9 @@ class InitialProjectCreationWorker(QObject):
         source_sync_engine: SourceSyncEngine,
         settings: ProjectSettings,
         parent_folder: str | Path,
-        preflight_report: SourcePreflightReport | None = None,
         parent: QObject | None = None,
+        *,
+        preflight_report: SourcePreflightReport | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = InitialProjectCreationService(
