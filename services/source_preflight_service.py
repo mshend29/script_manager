@@ -79,12 +79,13 @@ class SourcePreflightReport:
 
     @property
     def is_reusable(self) -> bool:
+        expected_paths = {item.file_path for item in self.files}
         return (
             self.is_valid
             and self.scan is not None
             and bool(self.source_snapshot)
-            and set(self.parse_results)
-            == {item.file_path for item in self.files}
+            and set(self.inspections) == expected_paths
+            and set(self.parse_results) == expected_paths
         )
 
 
@@ -290,6 +291,13 @@ class SourcePreflightService:
         if report.problems:
             return report
 
+        if not self._verify_source_unchanged_after_parse(
+            filename_validation,
+            report,
+            progress_callback,
+        ):
+            return report
+
         self._emit(
             progress_callback,
             stage="complete",
@@ -360,6 +368,60 @@ class SourcePreflightService:
             message=f"Fingerprint {len(scan.files)} workbook tersimpan.",
         )
         return scan
+
+    def _verify_source_unchanged_after_parse(
+        self,
+        validation: SourceFilenameValidation,
+        report: SourcePreflightReport,
+        progress_callback: ProgressCallback | None,
+    ) -> bool:
+        self._emit(
+            progress_callback,
+            stage="snapshot_verifying",
+            current=0,
+            total=len(validation.mappings),
+            message="Memastikan source tidak berubah selama Source Preflight...",
+        )
+        try:
+            scan = self.scanner.scan(
+                validation.source_folder,
+                episode_before=validation.episode_before,
+                episode_after=validation.episode_after,
+            )
+        except SourceScanError as exc:
+            report.problems.append(str(exc))
+            return False
+
+        if scan.problems:
+            report.problems.extend(
+                f"{Path(problem.file_path).name}: {problem.message}"
+                for problem in scan.problems
+            )
+            return False
+        if scan.duplicate_episodes:
+            report.problems.append(
+                "Source berubah selama Source Preflight dan sekarang memiliki "
+                "duplicate episode. Jalankan Source Preflight ulang."
+            )
+            return False
+
+        current_snapshot = SourceChangePlanBuilder.scan_snapshot(scan)
+        if current_snapshot != report.source_snapshot:
+            report.problems.append(
+                "Source berubah selama Source Preflight. "
+                "Jalankan Source Preflight ulang sebelum membuat project."
+            )
+            return False
+
+        report.scan = scan
+        self._emit(
+            progress_callback,
+            stage="snapshot_verified",
+            current=len(scan.files),
+            total=len(scan.files),
+            message="Fingerprint source tetap sama selama Source Preflight.",
+        )
+        return True
 
     @staticmethod
     def _cancelled(callback: CancelCallback | None) -> bool:
