@@ -76,7 +76,7 @@ class ApplicationWindow(MainWindow):
             self.source_sync_engine,
             dialog.settings,
             dialog.parent_folder,
-            dialog.source_preflight_report,
+            preflight_report=dialog.source_preflight_report,
         )
         worker.moveToThread(thread)
 
