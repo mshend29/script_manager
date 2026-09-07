@@ -3,15 +3,25 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook
 
 from core.project import Project
 from core.project_manager import ProjectManager
 from core.project_settings import ProjectSettings
-from import_engine.source_sync import SourceSyncProgress, SourceSyncReport
+from import_engine.inspector import WorkbookInspector
+from import_engine.parser import ScriptParser
+from import_engine.source_sync import (
+    SourceSyncEngine,
+    SourceSyncProgress,
+    SourceSyncReport,
+)
 from services.initial_project_creation_service import (
     InitialProjectCreationError,
     InitialProjectCreationService,
+    InitialProjectSourceChangedError,
 )
+from services.source_preflight_service import SourcePreflightService
+from services.source_setup_validation import validate_source_filenames
 
 
 def _settings(source_folder: Path) -> ProjectSettings:
@@ -24,6 +34,36 @@ def _settings(source_folder: Path) -> ProjectSettings:
         episode_before="EP",
         episode_after="",
     )
+
+
+def _write_script(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["IN", "OUT", "DIALOG", "TOKOH", "TALENT"])
+    sheet.append(["00:00:01", "00:00:02", "Halo", "INDAH", "Talent A"])
+    workbook.save(path)
+    workbook.close()
+
+
+class _CountingInspector:
+    def __init__(self) -> None:
+        self.delegate = WorkbookInspector()
+        self.calls = 0
+
+    def inspect(self, file_path):
+        self.calls += 1
+        return self.delegate.inspect(file_path)
+
+
+class _CountingParser:
+    def __init__(self) -> None:
+        self.delegate = ScriptParser()
+        self.calls = 0
+
+    def parse(self, file_path, *, episode_number):
+        self.calls += 1
+        return self.delegate.parse(file_path, episode_number=episode_number)
 
 
 class _SuccessfulEngine:
@@ -94,6 +134,31 @@ class _VerificationMismatchEngine:
         )
 
 
+class _MutatingEngine(SourceSyncEngine):
+    def __init__(self, source_file: Path, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.source_file = source_file
+        self.mutated = False
+
+    def synchronize(
+        self,
+        project,
+        *,
+        progress_callback=None,
+        prepared_input=None,
+    ):
+        if prepared_input is not None and not self.mutated:
+            self.source_file.write_bytes(
+                self.source_file.read_bytes() + b"changed-after-create-check"
+            )
+            self.mutated = True
+        return super().synchronize(
+            project,
+            progress_callback=progress_callback,
+            prepared_input=prepared_input,
+        )
+
+
 def test_initial_creation_runs_sync_verifies_and_keeps_project(tmp_path):
     source = tmp_path / "source"
     source.mkdir()
@@ -124,6 +189,110 @@ def test_initial_creation_runs_sync_verifies_and_keeps_project(tmp_path):
         assert connection.execute(
             "SELECT COUNT(*) FROM dialogues WHERE is_active = 1"
         ).fetchone()[0] == 1
+
+
+def test_initial_creation_reuses_preflight_parse_without_double_parsing(tmp_path):
+    source = tmp_path / "source"
+    source_file = source / "EP1.xlsx"
+    _write_script(source_file)
+    settings = _settings(source)
+    validation = validate_source_filenames(
+        source,
+        episode_before=settings.episode_before,
+        episode_after=settings.episode_after,
+    )
+
+    inspector = _CountingInspector()
+    parser = _CountingParser()
+    preflight = SourcePreflightService(
+        inspector=inspector,
+        parser=parser,
+    ).run(validation)
+    assert preflight.is_reusable
+    assert inspector.calls == 1
+    assert parser.calls == 1
+
+    engine = SourceSyncEngine(inspector=inspector, parser=parser)
+    manager = ProjectManager()
+    progress: list[SourceSyncProgress] = []
+    result = InitialProjectCreationService(manager, engine).run(
+        settings,
+        tmp_path,
+        progress_callback=progress.append,
+        preflight_report=preflight,
+    )
+
+    assert result.project.project_file.is_file()
+    assert result.report.parsed_dialogues == 1
+    assert inspector.calls == 1
+    assert parser.calls == 1
+    assert any(item.stage == "preflight_verified" for item in progress)
+    assert any(item.stage == "preflight_reuse" for item in progress)
+
+
+def test_changed_source_blocks_before_smproj_is_created(tmp_path):
+    source = tmp_path / "source"
+    source_file = source / "EP1.xlsx"
+    _write_script(source_file)
+    settings = _settings(source)
+    validation = validate_source_filenames(
+        source,
+        episode_before=settings.episode_before,
+        episode_after=settings.episode_after,
+    )
+    preflight = SourcePreflightService().run(validation)
+    assert preflight.is_reusable
+
+    source_file.write_bytes(source_file.read_bytes() + b"changed-before-create")
+
+    manager = ProjectManager()
+    destination = manager.preview_new_project_file(settings, tmp_path)
+    service = InitialProjectCreationService(manager, SourceSyncEngine())
+
+    with pytest.raises(
+        InitialProjectSourceChangedError,
+        match="Source berubah sejak Source Preflight",
+    ):
+        service.run(
+            settings,
+            tmp_path,
+            preflight_report=preflight,
+        )
+
+    assert destination.exists() is False
+    assert manager.current is None
+
+
+def test_source_changed_after_precreate_check_is_caught_before_database_write(
+    tmp_path,
+):
+    source = tmp_path / "source"
+    source_file = source / "EP1.xlsx"
+    _write_script(source_file)
+    settings = _settings(source)
+    validation = validate_source_filenames(
+        source,
+        episode_before=settings.episode_before,
+        episode_after=settings.episode_after,
+    )
+    preflight = SourcePreflightService().run(validation)
+    assert preflight.is_reusable
+
+    manager = ProjectManager()
+    destination = manager.preview_new_project_file(settings, tmp_path)
+    engine = _MutatingEngine(source_file)
+    service = InitialProjectCreationService(manager, engine)
+
+    with pytest.raises(RuntimeError, match="Source berubah setelah preview"):
+        service.run(
+            settings,
+            tmp_path,
+            preflight_report=preflight,
+        )
+
+    assert engine.mutated is True
+    assert destination.exists() is False
+    assert manager.current is None
 
 
 def test_initial_sync_error_report_rolls_back_and_restores_previous(tmp_path):
