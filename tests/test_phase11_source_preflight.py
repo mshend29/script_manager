@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from openpyxl import Workbook
 
+from import_engine.parser import ScriptParser
 from import_engine.source_sync import SourceSyncEngine, SourceSyncError
 from services.source_preflight_service import SourcePreflightService
 from services.source_setup_validation import validate_source_filenames
@@ -29,6 +30,23 @@ def _filename_validation(source):
         episode_before="EP",
         episode_after="_",
     )
+
+
+class _MutatingParser:
+    def __init__(self) -> None:
+        self.delegate = ScriptParser()
+
+    def parse(self, file_path, *, episode_number):
+        result = self.delegate.parse(
+            file_path,
+            episode_number=episode_number,
+        )
+        path = result.file_path
+        from pathlib import Path
+
+        source = Path(path)
+        source.write_bytes(source.read_bytes() + b"changed-during-preflight")
+        return result
 
 
 def test_preflight_reuses_production_read_only_inspector_and_parser(tmp_path):
@@ -67,6 +85,27 @@ def test_preflight_reuses_production_read_only_inspector_and_parser(tmp_path):
         "AA23_EP001_SCRIPT.xlsx",
         "AA23_EP002_SCRIPT.xlsm",
     ]
+
+
+def test_preflight_rejects_source_changed_during_parsing(tmp_path):
+    source = tmp_path / "source"
+    _write_script(source / "AA23_EP001_SCRIPT.xlsx")
+
+    progress = []
+    report = SourcePreflightService(parser=_MutatingParser()).run(
+        _filename_validation(source),
+        progress_callback=progress.append,
+    )
+
+    assert report.is_valid is False
+    assert report.is_reusable is False
+    assert report.parsed_files == 1
+    assert any(
+        "Source berubah selama Source Preflight" in problem
+        for problem in report.problems
+    )
+    assert any(item.stage == "snapshot_verifying" for item in progress)
+    assert not any(item.stage == "complete" for item in progress)
 
 
 def test_preflight_snapshot_detects_source_changed_before_create(tmp_path):
