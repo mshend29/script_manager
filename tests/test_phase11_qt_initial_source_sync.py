@@ -21,10 +21,14 @@ if PYSIDE_AVAILABLE:
         TransactionalNewProjectDialog,
     )
     from import_engine.source_sync import SourceSyncProgress, SourceSyncReport
+    from services.initial_project_creation_service import (
+        InitialProjectSourceChangedError,
+    )
     from services.source_preflight_service import (
         SourcePreflightFileResult,
         SourcePreflightReport,
     )
+    from widgets.wizard_milestone_rail import WizardMilestoneState
 
 
 @pytest.fixture(scope="module")
@@ -137,5 +141,34 @@ def test_final_wizard_stays_open_during_initial_sync_and_retry_preserves_input(
     qapp.processEvents()
 
     assert dialog.result() == QDialog.DialogCode.Accepted
+    dialog.close()
+    qapp.processEvents()
+
+
+def test_stale_preflight_routes_back_to_source_and_requires_rerun(qapp, tmp_path):
+    dialog = TransactionalNewProjectDialog()
+    _prepare_ready_dialog(dialog, tmp_path)
+    dialog.show()
+    qapp.processEvents()
+
+    dialog._accept()
+    qapp.processEvents()
+    assert dialog.creation_running is True
+
+    dialog.creation_failed(
+        InitialProjectSourceChangedError(
+            "Source berubah sejak Source Preflight. Jalankan Source Preflight ulang."
+        )
+    )
+    qapp.processEvents()
+
+    assert dialog.creation_running is False
+    assert dialog.current_step == 1
+    assert dialog.source_preflight_report is None
+    assert dialog._step_states[1] == WizardMilestoneState.ERROR
+    assert dialog.next_button.isEnabled() is False
+    assert dialog.source_preflight_panel.start_button.isEnabled() is True
+    assert "Source berubah" in dialog.source_preflight_panel.details.toPlainText()
+
     dialog.close()
     qapp.processEvents()
