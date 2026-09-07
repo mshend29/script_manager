@@ -141,7 +141,10 @@ def test_milestone_state_uses_symbols_not_only_color(qapp):
     dialog.set_step_state(1, WizardMilestoneState.WARNING, "warning")
     dialog.set_step_state(2, WizardMilestoneState.ERROR, "error")
     dialog.set_step_state(3, WizardMilestoneState.PENDING, "")
-    dialog._show_step(3)
+    # Exercise the rail rendering directly. Calling _show_step(3) would
+    # intentionally trigger Milestone 4 validation and replace PENDING with
+    # ERROR, which is unrelated to the non-color accessibility contract.
+    dialog.milestone_rail.set_active(3)
     qapp.processEvents()
 
     symbols = [item.symbol.text() for item in dialog.milestone_rail.items]
