@@ -34,10 +34,10 @@ class InitialProjectCreationResult:
 class InitialProjectCreationService:
     """Create a project, run production source sync, then verify the database.
 
-    When a valid Source Preflight report is supplied, its fingerprint snapshot
-    is verified before the .smproj is created. The already parsed workbook data
-    is then fed back into SourceSyncEngine; the engine's normal Apply freshness
-    check still re-scans source immediately before database mutation.
+    When a reusable Source Preflight report is supplied, its fingerprint
+    snapshot is verified before the .smproj is created. The already parsed
+    workbook data is then fed back into SourceSyncEngine; the engine's normal
+    Apply freshness check still re-scans source before database mutation.
     """
 
     def __init__(
@@ -73,17 +73,23 @@ class InitialProjectCreationService:
         )
 
         def after_create(project: Project) -> None:
-            if prepared_input is None:
-                report = self.source_sync_engine.synchronize(
-                    project,
-                    progress_callback=progress_callback,
-                )
-            else:
-                report = self.source_sync_engine.synchronize(
-                    project,
-                    progress_callback=progress_callback,
-                    prepared_input=prepared_input,
-                )
+            try:
+                if prepared_input is None:
+                    report = self.source_sync_engine.synchronize(
+                        project,
+                        progress_callback=progress_callback,
+                    )
+                else:
+                    report = self.source_sync_engine.synchronize(
+                        project,
+                        progress_callback=progress_callback,
+                        prepared_input=prepared_input,
+                    )
+            except SourceSyncError as exc:
+                if prepared_input is not None:
+                    raise InitialProjectSourceChangedError(str(exc)) from exc
+                raise
+
             report_holder["report"] = report
 
             if report.has_errors:
@@ -129,14 +135,11 @@ class InitialProjectCreationService:
         *,
         progress_callback: ProgressCallback | None,
     ) -> PreparedSourceSyncInput:
-        if (
-            not preflight_report.is_valid
-            or preflight_report.scan is None
-            or not preflight_report.source_snapshot
-        ):
+        if not preflight_report.is_reusable:
             raise InitialProjectSourceChangedError(
-                "Source Preflight belum memiliki snapshot fingerprint yang valid. "
-                "Jalankan Source Preflight ulang sebelum membuat project."
+                "Source Preflight belum memiliki snapshot fingerprint dan hasil "
+                "parse lengkap yang dapat direuse. Jalankan Source Preflight ulang "
+                "sebelum membuat project."
             )
 
         try:
