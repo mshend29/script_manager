@@ -80,7 +80,8 @@ jobs:
             tests/test_phase11_qt_transactional_new_project.py \
             tests/test_phase11_qt_initial_source_sync.py \
             tests/test_phase11_qt_accessibility_regression.py \
-            tests/test_phase11_qt_reusable_roundtrip.py
+            tests/test_phase11_qt_reusable_roundtrip.py \
+            tests/test_help_documentation_runtime.py
 
       - name: Run Phase 11 wizard scale smoke
         run: |
