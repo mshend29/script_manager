@@ -1,6 +1,6 @@
 # Phase 11 — Checkpoint 11.18–11.22 & UAT Gate
 
-Status: **11.01–11.22 implementation COMPLETE; 11.23 staged UAT PENDING**  
+Status: **11.01–11.22 implementation COMPLETE; 11.23 staged UAT A–D COMPLETE, UAT E PENDING**  
 Branch: `phase-11-new-project-setup`  
 PR: #75  
 Packaging EXE: **OUT OF SCOPE / tidak disentuh**.
@@ -191,52 +191,70 @@ Exit criteria terpenuhi: New Project dan Project Settings tidak dapat drift pada
 
 # 11.23 — Staged UAT Gate
 
-Status: [ ] PENDING USER ACCEPTANCE
+Status: [ ] UAT A–D COMPLETE; UAT E PENDING USER ACCEPTANCE
 
 Automated implementation gate 11.01–11.22 sudah selesai. PR #75 **jangan di-merge** sebelum UAT A–E berikut diterima pada environment Windows operator.
 
 ## UAT A — Wizard shell + Milestone 1
 
-- [ ] rail milestone tampil rapi dan status mudah dibaca;
-- [ ] Back/Next mempertahankan input;
-- [ ] Nama/Kode/Klien/Tanggal/Lokasi bekerja;
-- [ ] auto-code berhenti menimpa Kode setelah Kode diedit manual;
-- [ ] preview filename berbentuk `KODE - NAMA PROYEK.smproj`;
-- [ ] existing destination diblokir;
-- [ ] tampilan layak pada 100%, 125%, dan 150% Windows scaling.
+Status: [x] COMPLETE — diterima operator pada Windows.
+
+- [x] rail milestone tampil rapi dan status mudah dibaca;
+- [x] Back/Next mempertahankan input;
+- [x] Nama/Kode/Klien/Tanggal/Lokasi bekerja;
+- [x] auto-code berhenti menimpa Kode setelah Kode diedit manual;
+- [x] preview filename berbentuk `KODE - NAMA PROYEK.smproj`;
+- [x] existing destination diblokir;
+- [x] tampilan layak pada 100%, 125%, dan 150% Windows scaling.
 
 ## UAT B — Sumber Naskah
 
-- [ ] pilih Folder Sumber;
-- [ ] `.xlsx/.xlsm` ter-scan;
-- [ ] representative filename/pattern tampil;
-- [ ] delimiter sebelum/sesudah episode bekerja pada seluruh filename;
-- [ ] preview episode benar;
-- [ ] Source Preflight dapat dijalankan;
-- [ ] blocker workbook/parsing terlihat jelas;
-- [ ] tidak ada `.smproj` dibuat hanya karena preflight/navigation.
+Status: [x] COMPLETE — diterima operator pada Windows.
+
+- [x] pilih Folder Sumber;
+- [x] `.xlsx/.xlsm` ter-scan;
+- [x] representative filename/pattern tampil;
+- [x] delimiter sebelum/sesudah episode bekerja pada seluruh filename;
+- [x] preview episode benar;
+- [x] Source Preflight dapat dijalankan;
+- [x] blocker workbook/parsing terlihat jelas;
+- [x] tidak ada `.smproj` dibuat hanya karena preflight/navigation.
+
+UAT finding yang diperbaiki sebelum acceptance:
+
+- perbedaan case saja (`Episode 1`, `episode 2`, `EPISODE 3`) tidak lagi dianggap pola berbeda;
+- delimiter episode production juga case-insensitive;
+- nama file asli tetap dipertahankan untuk preview/error;
+- pola yang benar-benar berbeda seperti `Episode` vs `Chapter` tetap blocker;
+- regression gate setelah patch: `430 passed, 57 skipped`, Qt runtime + scale smoke success.
 
 ## UAT C — Audio + Folder & Tautan
 
-- [ ] Folder Stem dapat dipilih/dibuat;
-- [ ] Folder Setoran dapat dipilih/dibuat;
-- [ ] WAV sample rate / bit depth / channel tersimpan;
-- [ ] `Source == Stem/Setoran` diblokir;
-- [ ] `Stem == Setoran` memberi warning;
-- [ ] Google Drive Desktop dipakai sebagai filesystem path;
-- [ ] URL browser hanya masuk field Tautan Drive;
-- [ ] tombol help `?` menjelaskan perbedaan filesystem dan URL.
+Status: [x] COMPLETE — diterima operator pada Windows.
+
+- [x] Folder Stem dapat dipilih/dibuat;
+- [x] Folder Setoran dapat dipilih/dibuat;
+- [x] WAV sample rate / bit depth / channel tersimpan;
+- [x] `Source == Stem/Setoran` diblokir;
+- [x] `Stem == Setoran` memberi warning;
+- [x] Google Drive Desktop dipakai sebagai filesystem path;
+- [x] URL browser hanya masuk field Tautan Drive;
+- [x] tombol help `?` menjelaskan perbedaan filesystem dan URL.
 
 ## UAT D — Final Review + Transactional Create
 
-- [ ] Review merangkum seluruh konfigurasi;
-- [ ] tombol `Ubah` kembali ke milestone yang benar;
-- [ ] `Buat Proyek` disabled bila blocker tersisa;
-- [ ] filename final benar;
-- [ ] simulasi failure tidak meninggalkan `.smproj`/SQLite sidecar/project setengah jadi;
-- [ ] input wizard tetap ada setelah failure sehingga dapat dicoba ulang.
+Status: [x] COMPLETE — diterima operator pada Windows.
+
+- [x] Review merangkum seluruh konfigurasi;
+- [x] tombol `Ubah` kembali ke milestone yang benar;
+- [x] `Buat Proyek` disabled bila blocker tersisa;
+- [x] filename final benar;
+- [x] simulasi failure tidak meninggalkan `.smproj`/SQLite sidecar/project setengah jadi;
+- [x] input wizard tetap ada setelah failure sehingga dapat dicoba ulang.
 
 ## UAT E — Initial Sync + Project Settings
+
+Status: [ ] PENDING
 
 - [ ] Create sukses menjalankan Initial Source Sync otomatis;
 - [ ] wizard tetap terbuka selama sync dan progress terlihat;
