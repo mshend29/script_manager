@@ -34,6 +34,10 @@ def extract_episode_number(
 
     Jika delimiter kosong semua,
     angka pertama pada nama file akan digunakan.
+
+    Pencocokan delimiter bersifat case-insensitive agar variasi penulisan
+    seperti "Episode", "episode", atau "EPISODE" tidak memaksa operator
+    mengganti nama file yang secara struktur sebenarnya sama.
     """
 
     stem = Path(file_name).stem.strip()
@@ -48,26 +52,32 @@ def extract_episode_number(
     # ---------------------------------
 
     if before:
-        before_index = stem.find(before)
+        before_match = re.search(
+            re.escape(before),
+            stem,
+            flags=re.IGNORECASE,
+        )
 
-        if before_index < 0:
+        if before_match is None:
             raise EpisodeExtractionError(f'Delimiter awal "{before}" tidak ditemukan.')
 
-        start = before_index + len(before)
+        start = before_match.end()
 
     # ---------------------------------
     # DELIMITER SESUDAH NOMOR EPISODE
     # ---------------------------------
 
     if after:
-        end = stem.find(
-            after,
-            start,
+        after_match = re.search(
+            re.escape(after),
+            stem[start:],
+            flags=re.IGNORECASE,
         )
 
-        if end < 0:
+        if after_match is None:
             raise EpisodeExtractionError(f'Delimiter akhir "{after}" tidak ditemukan.')
 
+        end = start + after_match.start()
         candidate = stem[start:end].strip()
 
     else:
