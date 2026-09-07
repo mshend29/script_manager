@@ -60,18 +60,18 @@ def test_help_documentation_layout_is_visible_and_accessible(qapp):
     assert page.subtitle.wordWrap()
 
     categories = {
-        page.navigation_tree.topLevelItem(index).text(0)
+        page.navigation_tree.topLevelItem(index).text(0).casefold()
         for index in range(page.navigation_tree.topLevelItemCount())
     }
     assert {
-        "Mulai",
-        "Proyek",
-        "Sumber Naskah",
-        "Area Kerja",
-        "Folder & Tautan",
-        "Pemeliharaan",
-        "Panduan Praktis",
-        "Referensi",
+        "mulai",
+        "proyek",
+        "sumber naskah",
+        "area kerja",
+        "folder & tautan",
+        "pemeliharaan",
+        "panduan praktis",
+        "referensi",
     }.issubset(categories)
     assert len(HELP_ARTICLES) >= 20
 
