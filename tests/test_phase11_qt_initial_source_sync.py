@@ -82,6 +82,7 @@ def test_final_wizard_stays_open_during_initial_sync_and_retry_preserves_input(
 ):
     dialog = TransactionalNewProjectDialog()
     _prepare_ready_dialog(dialog, tmp_path)
+    dialog.show()
     qapp.processEvents()
     requested: list[bool] = []
     dialog.create_requested.connect(lambda: requested.append(True))
