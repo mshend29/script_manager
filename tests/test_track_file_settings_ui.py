@@ -31,7 +31,7 @@ def test_project_settings_roundtrip_track_file_configuration(tmp_path):
     assert restored.audio_channels == 1
 
 
-def test_project_settings_dialog_uses_reusable_sections_and_constrained_wav_spec():
+def test_project_settings_dialog_uses_four_aligned_reusable_tabs():
     dialog = _read("dialogs/project_settings_dialog.py")
     widgets = _read("widgets/project_configuration.py")
 
@@ -41,10 +41,13 @@ def test_project_settings_dialog_uses_reusable_sections_and_constrained_wav_spec
     assert "AudioOutputSection" in dialog
     assert "DriveLinksSection" in dialog
     assert "ProjectConfigurationSections" in dialog
-    assert "Proyek" in dialog
-    assert "Output Track & Setoran" in dialog
+    assert '"Proyek"' in dialog
+    assert '"Sumber Naskah"' in dialog
+    assert '"Audio & Setoran"' in dialog
+    assert '"Tautan Drive"' in dialog
+    assert "show_project_file=True" in dialog
     assert "filesystem path" in dialog
-    assert "Google Drive Desktop" in dialog
+    assert "Google Drive" in dialog
 
     assert "Stem / Mixdown / Export" in widgets
     assert "Folder Setoran" in widgets
