@@ -76,6 +76,7 @@ class ApplicationWindow(MainWindow):
             self.source_sync_engine,
             dialog.settings,
             dialog.parent_folder,
+            dialog.source_preflight_report,
         )
         worker.moveToThread(thread)
 
@@ -100,7 +101,7 @@ class ApplicationWindow(MainWindow):
         self._initial_project_thread = thread
         self._initial_project_worker = worker
         self.statusBar().showMessage(
-            "Membuat project dan menjalankan Initial Source Sync…"
+            "Memverifikasi Source Preflight lalu membuat project…"
         )
         thread.start()
 
