@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.14 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.15 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -765,24 +765,37 @@ Checkpoint test setelah 11.14:
 
 ## 11.15 — Hindari double parsing & stale preflight
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.08, 11.14
 
 Tujuan: source tidak dibaca mahal dua kali tanpa kontrol dan source tidak boleh berubah antara preview dan commit tanpa diketahui.
 
 Pekerjaan:
 
-- [ ] Simpan source fingerprint/snapshot dari preflight.
-- [ ] Reuse konsep fingerprint/source safety existing bila tersedia.
-- [ ] Sebelum Create, verifikasi source masih sama.
-- [ ] Bila source berubah, invalidate milestone 2 readiness.
-- [ ] Minta preflight ulang.
-- [ ] Bila aman, reuse hasil preflight bila arsitektur memungkinkan.
-- [ ] Jangan mengorbankan correctness hanya demi menghindari re-read.
+- [x] Simpan source fingerprint/snapshot dari preflight.
+- [x] Reuse konsep fingerprint/source safety existing bila tersedia.
+- [x] Sebelum Create, verifikasi source masih sama.
+- [x] Bila source berubah, invalidate milestone 2 readiness.
+- [x] Minta preflight ulang.
+- [x] Bila aman, reuse hasil preflight bila arsitektur memungkinkan.
+- [x] Jangan mengorbankan correctness hanya demi menghindari re-read.
 
 Exit criteria:
 
 - tidak ada TOCTOU antara preflight dan initial sync.
+
+Checkpoint test setelah 11.15:
+
+- full suite: `398 passed, 41 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk stale-preflight routing dan Initial Source Sync wizard flow: `38 passed`;
+- Phase 11 wizard scale smoke 100% / 125% / 150%: masing-masing `3 passed`;
+- Source Preflight memakai `SourceScanner` produksi dan menyimpan `SourceChangePlanBuilder.scan_snapshot()` berbasis fingerprint;
+- fingerprint diverifikasi kembali setelah workbook parsing untuk menolak source yang berubah selama preflight;
+- Create memverifikasi snapshot lagi **sebelum** `.smproj` dibuat;
+- bila snapshot fresh, hasil `WorkbookInspector` dan `ScriptParser` dari preflight direuse oleh `SourceSyncEngine.prepare()` sehingga workbook tidak di-inspect/parse dua kali;
+- `SourceSyncEngine.apply()` tetap melakukan re-scan production terakhir sebelum database write;
+- source berubah sebelum Create → `.smproj` belum dibuat dan Milestone 2 di-invalidasi; source berubah setelah pre-create check → transactional rollback sebelum perubahan database final.
 
 ---
 
@@ -1320,6 +1333,12 @@ Status: LOCKED
 
 Initial New Project menjalankan `SourceSyncEngine.synchronize()` produksi melalui worker di dalam `ProjectManager.create_transactional()`. Wizard final tetap terbuka dan kontrol perubahan dikunci selama create/sync/verify. Database diverifikasi sebelum dialog diterima; failure pada sync atau verification memicu rollback dan mengembalikan wizard yang sama dengan input tetap utuh. Recent Projects dan Project Dashboard hanya diperbarui setelah success. Optimasi reuse hasil preflight/fingerprint tetap scope 11.15.
 
+## D-020 — Valid preflight dan reusable snapshot adalah dua kontrak terpisah
+
+Status: LOCKED
+
+`SourcePreflightReport.is_valid` tetap berarti workbook lolos inspector/parser. `is_reusable` berarti preflight valid, memiliki production fingerprint snapshot, serta hasil inspector/parser lengkap untuk seluruh source. Preflight memverifikasi fingerprint sebelum dan sesudah parsing; Create memverifikasinya lagi sebelum membuat `.smproj`; dan `SourceSyncEngine.apply()` tetap melakukan freshness scan terakhir sebelum database write. Hashing/re-scan boleh berulang sebagai safety cost, tetapi workbook inspection/parsing tidak diulang bila snapshot fresh. Source yang berubah pada gate mana pun menginvalidasi readiness Milestone 2 dan meminta Source Preflight ulang.
+
 ---
 
 # Progress Log
@@ -1434,6 +1453,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: reuse `SourceSyncEngine.synchronize()` produksi tanpa fork prepare/apply; failure tetap memakai rollback 11.13 dan mempertahankan input wizard; reuse hasil preflight/fingerprint optimization tetap scope 11.15.
 - commit/PR: `18786bfe16906287b7b7a25de3d8c5d37afceabf`, `3a1e916e1811de4a1768d9ffc001c799ba11a720`, `0d987e2f838e8814352cd36b888999e559563702`, `d8247112d767e3922710e4c2a4c1122553879e2e`, `8f4d843ea4531a15f880d46608f164ec255bb425`, `719e12a14a6ec04b5b4d2fa136c11de935d00db0`, `09937ea248fe8926395b26ca378ea0892bdacba8`, `60581fee43d76051b8b8a1c693b1ff397981daad`, `fd9cf7846757f6f75e75853aabf3b417c43bd065`, `e63414b0e1cefeb391ee82e0bd3c9d3b31f943b1` / PR #75.
 - next: 11.15 Hindari double parsing & stale preflight.
+
+2026-09-07 — 11.15
+- perubahan: Source Preflight menyimpan production fingerprint snapshot dan memverifikasinya lagi setelah parsing; delimiter source dipertahankan dalam filename validation; initial creation memverifikasi snapshot sebelum `.smproj`; `PreparedSourceSyncInput` memungkinkan `SourceSyncEngine` mereuse inspections/parse results preflight; stale source mengembalikan wizard ke Milestone 2 dan mewajibkan preflight ulang; production apply freshness scan tetap dipertahankan.
+- test: full suite `398 passed, 41 skipped`; compile success; Qt runtime `38 passed`; scale smoke 100/125/150 masing-masing `3 passed`; coverage mencakup no-double-parse, source berubah selama preflight, berubah sebelum Create, dan berubah setelah pre-create check sebelum database write.
+- keputusan: `is_valid` tetap kontrak keberhasilan parsing, sedangkan `is_reusable` menambah snapshot + completeness; repeated hashing diterima sebagai safety cost, sementara duplicate workbook inspect/parse dihilangkan.
+- commit/PR: `1405048a7a73d25538cb8472abf9be5619f4d4f1`, `5a05ce39c2b3e47812083e5140320749604b6aff`, `14b82d237950e9a810a308ae84fb86be9920e291`, `e98e0605a472ff7e3427428cc36db34a39c84a66`, `b161f073eda09df012f4f31251e949f18e680cbf`, `e522643f7383dea35e9462b39b19dfec7efd3b8b`, `ed05a6c5ec26d761341674ad158084c84505f534`, `e3013fbc6035b0ea87ac2474e5da55eaa4576894`, `5529ff96cba3a7677a7ebd84045cb3c07eaaaede`, `54d680213e53e45bad0e02d45a7a6880b7de0749`, `b2493d6c4b4778669a3a6115694a9f1629836c9c`, `c16044ab8147b294afde5bfeb81d6d22b1902930`, `8d64a9a6b00ebda0ba3c8f1afb5db47578b205e8`, `3d3e49df2172cca18b904a63f21c82fbcf9954c9` / PR #75.
+- next: 11.16 Redesign Pengaturan Proyek agar sejajar dengan wizard.
 
 ---
 
