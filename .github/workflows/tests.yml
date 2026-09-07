@@ -68,6 +68,7 @@ jobs:
             tests/test_phase10_responsive_runtime.py \
             tests/test_phase10_operator_runtime.py \
             tests/test_phase11_qt_project_config.py \
+            tests/test_phase11_qt_project_settings_tabs.py \
             tests/test_phase11_qt_wizard_shell.py \
             tests/test_phase11_qt_source_setup.py \
             tests/test_phase11_qt_source_preflight.py \
