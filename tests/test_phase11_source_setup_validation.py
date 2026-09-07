@@ -31,6 +31,28 @@ def test_source_filename_validation_maps_every_supported_file(tmp_path):
     assert len(result.analysis.patterns) == 1
 
 
+def test_source_filename_case_only_variation_is_one_pattern_and_extracts(tmp_path):
+    source = tmp_path / "source"
+    _touch(source / "AA23_Episode 001_END.xlsx")
+    _touch(source / "AA23_episode 002_end.xlsm")
+    _touch(source / "AA23_EPISODE 003_End.xlsx")
+
+    result = validate_source_filenames(
+        source,
+        episode_before="Episode ",
+        episode_after="_END",
+    )
+
+    assert result.is_valid
+    assert result.file_count == 3
+    assert result.episode_numbers == (1, 2, 3)
+    assert result.analysis is not None
+    assert len(result.analysis.patterns) == 1
+    assert result.analysis.patterns[0].count == 3
+    assert not any(issue.field == "source_pattern" for issue in result.issues)
+    assert not any(issue.field == "source_filename" for issue in result.issues)
+
+
 def test_source_filename_validation_blocks_wrong_delimiter_for_all_files(tmp_path):
     source = tmp_path / "source"
     _touch(source / "AA23_EP001_SCRIPT.xlsx")
