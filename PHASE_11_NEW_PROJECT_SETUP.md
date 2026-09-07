@@ -1,6 +1,6 @@
 # Phase 11 — New Project Setup Wizard & Project Settings Alignment
 
-Status: **IN PROGRESS — 11.01–11.13 COMPLETE**  
+Status: **IN PROGRESS — 11.01–11.14 COMPLETE**  
 Baseline: `main` after PR #73 (`cc64a8c758693d0c1366a417068d37d839105568`)  
 Scope: redesign flow **Proyek Baru**, preflight sumber, initial sync, dan penyelarasan **Pengaturan Proyek**.  
 Packaging EXE: **OUT OF SCOPE** untuk phase ini.
@@ -722,22 +722,22 @@ Checkpoint test setelah 11.13:
 
 ## 11.14 — Initial Source Sync otomatis
 
-Status: [ ] NOT STARTED  
+Status: [x] COMPLETE  
 Depends on: 11.08, 11.13
 
 Tujuan: setelah wizard selesai, project langsung memiliki database produksi.
 
 Pekerjaan:
 
-- [ ] Reuse pipeline `Sinkronkan Sumber` existing.
-- [ ] Jangan duplicate prepare/apply implementation.
-- [ ] Initial sync berjalan setelah `.smproj` dibuat.
-- [ ] Progress tampil di final wizard.
-- [ ] Wizard belum ditutup selama sync.
-- [ ] Sync dapat memberi error detail.
-- [ ] Setelah success, refresh project data state.
-- [ ] Setelah success, record Recent Project.
-- [ ] Setelah success, buka Project Dashboard.
+- [x] Reuse pipeline `Sinkronkan Sumber` existing.
+- [x] Jangan duplicate prepare/apply implementation.
+- [x] Initial sync berjalan setelah `.smproj` dibuat.
+- [x] Progress tampil di final wizard.
+- [x] Wizard belum ditutup selama sync.
+- [x] Sync dapat memberi error detail.
+- [x] Setelah success, refresh project data state.
+- [x] Setelah success, record Recent Project.
+- [x] Setelah success, buka Project Dashboard.
 
 Expected first dashboard:
 
@@ -749,6 +749,17 @@ Expected first dashboard:
 Exit criteria:
 
 - user tidak perlu menekan F5/Sinkronkan Sumber untuk pekerjaan pertama.
+
+Checkpoint test setelah 11.14:
+
+- full suite: `393 passed, 40 skipped`;
+- compile Python sources: success;
+- Qt runtime termasuk Initial Source Sync wizard flow: `37 passed`;
+- Phase 11 wizard scale smoke 100% / 125% / 150%: masing-masing `3 passed`;
+- Initial creation memakai `SourceSyncEngine.synchronize()` produksi sehingga prepare/apply, lineage, audit, backup, dan source safety tetap satu pipeline;
+- final wizard tetap modal selama worker berjalan dan menampilkan progress/detail error;
+- sync report error atau verifikasi database mismatch memicu transactional rollback dan mempertahankan input wizard;
+- Recent Projects dan Project Dashboard hanya diperbarui setelah create + sync + verify sukses.
 
 ---
 
@@ -1303,6 +1314,12 @@ Status: LOCKED
 
 `ProjectManager.create_transactional()` adalah satu boundary rollback untuk tahap setelah `.smproj` dibuat; cleanup mencakup file utama, SQLite `-journal/-wal/-shm`, runtime temp, dan restore current project sebelumnya. `ApplicationWindow` adalah layer tipis di atas `MainWindow` produksi untuk New Project retry sehingga workspace existing tidak perlu diubah. Instance wizard yang sama dibuka kembali setelah failure dan Recent Projects hanya dicatat setelah transaksi sukses.
 
+## D-019 — Initial sync memakai production engine di dalam transaksi dan wizard tetap modal
+
+Status: LOCKED
+
+Initial New Project menjalankan `SourceSyncEngine.synchronize()` produksi melalui worker di dalam `ProjectManager.create_transactional()`. Wizard final tetap terbuka dan kontrol perubahan dikunci selama create/sync/verify. Database diverifikasi sebelum dialog diterima; failure pada sync atau verification memicu rollback dan mengembalikan wizard yang sama dengan input tetap utuh. Recent Projects dan Project Dashboard hanya diperbarui setelah success. Optimasi reuse hasil preflight/fingerprint tetap scope 11.15.
+
 ---
 
 # Progress Log
@@ -1410,6 +1427,13 @@ YYYY-MM-DD — 11.xx
 - keputusan: `MainWindow` tetap base workspace stabil; orchestration New Project Phase 11 berada di `ApplicationWindow` tipis agar initial sync 11.14 dapat ditambahkan tanpa mengubah workspace lain.
 - commit/PR: `6e507b8ea1d471c69f7e5550cfec5f935faeae9e`, `74284735e5fe2c9f13c7376f43b9f7948391f7b5`, `64f24504e1b00586d1a94f2432e5cfbe2c30b988`, `f58dc43b66835957edfd6b3b31a24534fd8d471e`, `0b567a688c16cb270cd00ed203e54e2a0dad3713`, `647cec33f7e911d68c5eb9f1d0e5fa6ebb3a5b17`, `02346126893463db8e06f47e6409cad22f02057f` / PR #75.
 - next: 11.14 Initial Source Sync otomatis.
+
+2026-09-07 — 11.14
+- perubahan: transactional initial creation service + Qt worker + final wizard progress panel; `TransactionalNewProjectDialog` menahan dialog selama create/sync/verify; production source sync otomatis mengisi database; database diverifikasi sebelum success; Recent Projects dan dashboard hanya diperbarui setelah seluruh tahap sukses.
+- test: full suite `393 passed, 40 skipped`; compile success; Qt runtime `37 passed`; scale smoke 100/125/150 masing-masing `3 passed`.
+- keputusan: reuse `SourceSyncEngine.synchronize()` produksi tanpa fork prepare/apply; failure tetap memakai rollback 11.13 dan mempertahankan input wizard; reuse hasil preflight/fingerprint optimization tetap scope 11.15.
+- commit/PR: `18786bfe16906287b7b7a25de3d8c5d37afceabf`, `3a1e916e1811de4a1768d9ffc001c799ba11a720`, `0d987e2f838e8814352cd36b888999e559563702`, `d8247112d767e3922710e4c2a4c1122553879e2e`, `8f4d843ea4531a15f880d46608f164ec255bb425`, `719e12a14a6ec04b5b4d2fa136c11de935d00db0`, `09937ea248fe8926395b26ca378ea0892bdacba8`, `60581fee43d76051b8b8a1c693b1ff397981daad`, `fd9cf7846757f6f75e75853aabf3b417c43bd065`, `e63414b0e1cefeb391ee82e0bd3c9d3b31f943b1` / PR #75.
+- next: 11.15 Hindari double parsing & stale preflight.
 
 ---
 
