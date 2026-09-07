@@ -92,6 +92,10 @@ def test_source_tab_keeps_filename_revalidation_and_settings_roundtrip(qapp, tmp
     settings = _settings(tmp_path)
     source = tmp_path / "source"
     source.mkdir()
+    stem = tmp_path / "stem"
+    delivery = tmp_path / "delivery"
+    stem.mkdir()
+    delivery.mkdir()
     (source / "AA23_EP001_SCRIPT.xlsx").write_bytes(b"filename-only")
     (source / "AA23_EP002_SCRIPT.xlsm").write_bytes(b"filename-only")
 
@@ -126,3 +130,63 @@ def test_source_tab_keeps_filename_revalidation_and_settings_roundtrip(qapp, tmp
     assert restored.main_drive_url == "https://example.com/project"
     assert restored.material_drive_url == settings.material_drive_url
     assert restored.delivery_drive_url == settings.delivery_drive_url
+
+
+def test_unchanged_offline_existing_paths_warn_but_save_is_allowed(qapp, tmp_path):
+    settings = _settings(tmp_path)
+    dialog = ProjectSettingsDialog(settings)
+    dialog.show()
+    qapp.processEvents()
+
+    assert dialog.last_validation is not None
+    assert dialog.last_validation.is_valid
+    assert dialog.last_validation.warnings
+    assert "tetap dapat digunakan" in dialog.validation_status.text()
+
+    dialog._accept_settings()
+    qapp.processEvents()
+
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    assert dialog.result_settings.source_folder == settings.source_folder
+    assert dialog.result_settings.stem_output_folder == settings.stem_output_folder
+    assert dialog.result_settings.delivery_folder == settings.delivery_folder
+
+
+def test_new_invalid_stem_blocks_save_and_focuses_audio_tab(qapp, tmp_path):
+    settings = _settings(tmp_path)
+    dialog = ProjectSettingsDialog(settings)
+    dialog.show()
+    qapp.processEvents()
+
+    dialog.stem_output_folder.setText(str(tmp_path / "new-missing-stem"))
+    dialog._accept_settings()
+    qapp.processEvents()
+
+    assert dialog.result() == QDialog.DialogCode.Rejected
+    assert dialog.last_validation is not None
+    assert not dialog.last_validation.is_valid
+    assert dialog.tabs.currentIndex() == 2
+    assert "belum ada" in dialog.validation_status.text()
+    assert dialog.stem_output_folder.edit.hasFocus()
+
+    dialog.close()
+    qapp.processEvents()
+
+
+def test_new_malformed_drive_url_blocks_save_and_focuses_drive_tab(qapp, tmp_path):
+    settings = _settings(tmp_path)
+    dialog = ProjectSettingsDialog(settings)
+    dialog.show()
+    qapp.processEvents()
+
+    dialog.main_drive_url.setText("G:/Client/AA23")
+    dialog._accept_settings()
+    qapp.processEvents()
+
+    assert dialog.result() == QDialog.DialogCode.Rejected
+    assert dialog.tabs.currentIndex() == 3
+    assert "http/https" in dialog.validation_status.text()
+    assert dialog.main_drive_url.hasFocus()
+
+    dialog.close()
+    qapp.processEvents()
