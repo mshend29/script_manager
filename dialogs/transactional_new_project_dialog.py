@@ -4,6 +4,8 @@ from PySide6.QtCore import Signal, Slot
 
 from dialogs.new_project_dialog import NewProjectDialog
 from import_engine.source_sync import SourceSyncProgress, SourceSyncReport
+from services.initial_project_creation_service import InitialProjectSourceChangedError
+from services.source_preflight_service import SourcePreflightReport
 from widgets.initial_source_sync_panel import InitialSourceSyncPanel
 
 
@@ -46,8 +48,8 @@ class TransactionalNewProjectDialog(NewProjectDialog):
         self._creation_running = True
         self.initial_sync_panel.set_running()
         self.validation_status.setText(
-            "Membuat .smproj dan menjalankan Initial Source Sync. "
-            "Wizard tetap terbuka sampai proses selesai."
+            "Memverifikasi Source Preflight, membuat .smproj, lalu menjalankan "
+            "Initial Source Sync. Wizard tetap terbuka sampai proses selesai."
         )
         self._set_creation_controls_enabled(False)
         self.create_requested.emit()
@@ -77,11 +79,32 @@ class TransactionalNewProjectDialog(NewProjectDialog):
     def creation_failed(self, error: object) -> None:
         self._creation_running = False
         self.initial_sync_panel.set_error(str(error))
+        stale_preflight = isinstance(error, InitialProjectSourceChangedError)
+
+        if stale_preflight:
+            # The filename configuration can still be correct while workbook
+            # bytes changed. Invalidate only the expensive preflight readiness
+            # and route the operator back to Milestone 2 for an explicit rerun.
+            self._source_preflight_report = None
+            self.source_preflight_panel.set_report(
+                SourcePreflightReport(problems=[str(error)])
+            )
+            self.set_step_state(
+                1,
+                "error",
+                "Source berubah sejak Source Preflight. Jalankan Source Preflight ulang.",
+            )
 
         # Rollback removes the destination again. Re-run the existing final
-        # validation so the same preserved input becomes retryable immediately.
+        # validation so the same preserved input becomes retryable after the
+        # relevant blocker is resolved.
         self._refresh_review()
         self._set_creation_controls_enabled(True)
+
+        if stale_preflight:
+            self._show_step(1)
+            return
+
         self.validation_status.setText(
             "✕ Project belum dibuat. Input tetap dipertahankan; "
             "perbaiki penyebab lalu klik Buat Proyek untuk mencoba lagi."
