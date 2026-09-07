@@ -177,6 +177,15 @@ def _method(path: Path, class_name: str, method_name: str) -> ast.FunctionDef:
     raise AssertionError(f"{class_name}.{method_name} not found in {path}")
 
 
+def _called_attributes(function: ast.FunctionDef) -> set[str]:
+    return {
+        node.func.attr
+        for node in ast.walk(function)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+    }
+
+
 def test_f5_preview_and_initial_creation_keep_one_production_sync_pipeline():
     main_path = ROOT / "app" / "main_window.py"
     worker_path = ROOT / "app" / "source_sync_worker.py"
@@ -185,7 +194,7 @@ def test_f5_preview_and_initial_creation_keep_one_production_sync_pipeline():
     sync_source = ast.unparse(_method(main_path, "MainWindow", "sync_source"))
     run_sync = ast.unparse(_method(main_path, "MainWindow", "_run_source_sync"))
     prepared = ast.unparse(_method(main_path, "MainWindow", "_source_sync_prepared"))
-    worker_run = ast.unparse(_method(worker_path, "SourceSyncWorker", "run"))
+    worker_method = _method(worker_path, "SourceSyncWorker", "run")
     initial_run = ast.unparse(
         _method(initial_path, "InitialProjectCreationService", "run")
     )
@@ -199,8 +208,8 @@ def test_f5_preview_and_initial_creation_keep_one_production_sync_pipeline():
     assert "_refresh_tracking_files_state" in prepared
 
     # The background worker owns the same production engine prepare/apply.
-    assert "self.engine.prepare" in worker_run
-    assert "self.engine.apply" in worker_run
+    worker_calls = _called_attributes(worker_method)
+    assert {"prepare", "apply"} <= worker_calls
 
     # Initial New Project does not implement a second importer/parser path.
     assert "self.source_sync_engine.synchronize" in initial_run
