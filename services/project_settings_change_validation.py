@@ -7,6 +7,9 @@ from pathlib import Path
 
 from core.project_settings import ProjectSettings
 from services.audio_setup_validation import validate_audio_setup
+from services.folder_links_setup_validation import (
+    validate_operational_folder_relationships,
+)
 from services.project_setup_validation import SetupValidationIssue, looks_like_browser_url
 from services.source_setup_validation import validate_source_filenames
 
@@ -124,6 +127,7 @@ def validate_existing_project_settings_change(
                 )
             )
 
+    _validate_folder_relationships(old, new, issues)
     _validate_links(old, new, issues)
 
     return ProjectSettingsChangeValidation(
@@ -244,6 +248,33 @@ def _warn_existing_folder(
                 severity="warning",
             )
         )
+
+
+def _validate_folder_relationships(
+    old: ProjectSettings,
+    new: ProjectSettings,
+    issues: list[SetupValidationIssue],
+) -> None:
+    old_issues = {
+        (issue.field, issue.message)
+        for issue in validate_operational_folder_relationships(old)
+    }
+
+    for issue in validate_operational_folder_relationships(new):
+        if issue.severity == "warning":
+            issues.append(issue)
+            continue
+
+        if (issue.field, issue.message) in old_issues:
+            issues.append(
+                SetupValidationIssue(
+                    issue.field,
+                    _existing_warning_message(issue.message),
+                    severity="warning",
+                )
+            )
+        else:
+            issues.append(issue)
 
 
 def _validate_links(
