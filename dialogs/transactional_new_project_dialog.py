@@ -5,8 +5,10 @@ from PySide6.QtCore import Signal, Slot
 from dialogs.new_project_dialog import NewProjectDialog
 from import_engine.source_sync import SourceSyncProgress, SourceSyncReport
 from services.initial_project_creation_service import InitialProjectSourceChangedError
+from services.project_setup_validation import validate_project_identity_destination
 from services.source_preflight_service import SourcePreflightReport
 from widgets.initial_source_sync_panel import InitialSourceSyncPanel
+from widgets.wizard_milestone_rail import WizardMilestoneState
 
 
 class TransactionalNewProjectDialog(NewProjectDialog):
@@ -59,6 +61,89 @@ class TransactionalNewProjectDialog(NewProjectDialog):
             return
         super().reject()
 
+    def _go_next(self) -> None:
+        """Keep keyboard users at the first blocker when navigation is denied."""
+        previous_step = self.current_step
+        super()._go_next()
+        if (
+            self.current_step == previous_step
+            and self._step_states[previous_step] == WizardMilestoneState.ERROR
+        ):
+            self._focus_current_blocker()
+
+    def _focus_current_blocker(self) -> None:
+        step = self.current_step
+        widget = None
+
+        if step == 0:
+            validation = validate_project_identity_destination(
+                self.sections.to_settings(),
+                self.location_edit.text(),
+            )
+            field = validation.issues[0].field if validation.issues else ""
+            widget = {
+                "project_name": self.project_name,
+                "project_code": self.project_code,
+                "client_name": self.client_name,
+                "start_date": self.start_date,
+                "project_destination": self.location_edit,
+                "project_file": self.location_edit,
+            }.get(field)
+
+        elif step == 1:
+            validation = self.source_section.validation
+            if validation is not None and validation.errors:
+                field = validation.errors[0].field
+                widget = {
+                    "source_folder": self.source_folder,
+                    "episode_before": self.episode_before,
+                    "episode_after": self.episode_after,
+                }.get(field)
+                if widget is None:
+                    widget = (
+                        self.episode_before
+                        if self.source_folder.text().strip()
+                        else self.source_folder
+                    )
+            elif self.source_preflight_panel.start_button.isEnabled():
+                widget = self.source_preflight_panel.start_button
+            else:
+                widget = self.source_folder
+
+        elif step == 2:
+            validation = self.audio_validation
+            field = (
+                validation.errors[0].field
+                if validation is not None and validation.errors
+                else ""
+            )
+            widget = {
+                "stem_output_folder": self.stem_output_folder.edit,
+                "delivery_folder": self.delivery_folder.edit,
+                "audio_sample_rate": self.audio_sample_rate,
+                "audio_bit_depth": self.audio_bit_depth,
+                "audio_channels": self.audio_channels,
+            }.get(field)
+
+        elif step == 3:
+            validation = self.folder_links_validation
+            field = (
+                validation.errors[0].field
+                if validation is not None and validation.errors
+                else ""
+            )
+            widget = {
+                "source_folder": self.source_folder,
+                "stem_output_folder": self.stem_output_folder.edit,
+                "delivery_folder": self.delivery_folder.edit,
+                "main_drive_url": self.main_drive_url,
+                "material_drive_url": self.material_drive_url,
+                "delivery_drive_url": self.delivery_drive_url,
+            }.get(field)
+
+        if widget is not None and widget.isEnabled():
+            widget.setFocus()
+
     @Slot(object)
     def update_creation_progress(self, progress: SourceSyncProgress) -> None:
         if not self._creation_running:
@@ -103,6 +188,10 @@ class TransactionalNewProjectDialog(NewProjectDialog):
 
         if stale_preflight:
             self._show_step(1)
+            if self.source_preflight_panel.start_button.isEnabled():
+                self.source_preflight_panel.start_button.setFocus()
+            else:
+                self.source_folder.setFocus()
             return
 
         self.validation_status.setText(
