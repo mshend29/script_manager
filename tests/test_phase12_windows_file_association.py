@@ -11,7 +11,8 @@ def test_main_smoke_mode_can_exercise_project_open_path() -> None:
 
     assert "project_args = [" in source
     assert "project_open_ok = window.open_project_path(" in source
-    assert "show_errors=not smoke_test" in source
+    assert "show_errors=False" in source
+    assert "window.open_project_path(candidate)" in source
     assert "if project_args and not project_open_ok:" in source
     assert "return 30" in source
 
