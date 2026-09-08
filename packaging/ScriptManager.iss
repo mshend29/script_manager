@@ -93,13 +93,7 @@ function OnGoogleDriveDownloadProgress(
   const Progress, ProgressMax: Int64
 ): Boolean;
 begin
-  if ProgressMax > 0 then
-    WizardForm.StatusLabel.Caption := Format(
-      'Mengunduh Google Drive for desktop... %d%%',
-      [(Progress * 100) div ProgressMax]
-    )
-  else
-    WizardForm.StatusLabel.Caption := 'Mengunduh Google Drive for desktop...';
+  WizardForm.StatusLabel.Caption := 'Mengunduh Google Drive for desktop...';
   Result := True;
 end;
 
