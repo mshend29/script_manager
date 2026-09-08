@@ -49,6 +49,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
+          & ".\dist\ScriptManager\ScriptManager.exe" --diagnostics-smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Build release assets
         shell: pwsh
@@ -87,18 +91,35 @@ jobs:
             exit $install.ExitCode
           }
 
-          & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          $installedExe = Join-Path $installDir "ScriptManager.exe"
+          & $installedExe --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & $installedExe --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
 
-          $association = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $association = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\.smproj"
           )
           if (-not $association -or [string]$association.GetValue("") -ne "ScriptManager.Project") {
             throw ".smproj association smoke test failed."
           }
           $association.Close()
+
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (Test-Path $uninstaller) {
+            $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+              "/VERYSILENT",
+              "/SUPPRESSMSGBOXES",
+              "/NORESTART"
+            ) -Wait -PassThru
+            if ($uninstall.ExitCode -ne 0) {
+              exit $uninstall.ExitCode
+            }
+          }
 
       - name: Generate checksums
         shell: pwsh
