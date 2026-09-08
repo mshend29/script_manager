@@ -39,8 +39,18 @@ def test_installer_identity_and_support_links_are_consistent() -> None:
     assert 'UninstallDisplayIcon={app}\\{#MyAppExeName}' in installer
     assert 'ValueData: "Script Manager Project"' in installer
 
+    for expected in (
+        'VersionInfoVersion={#MyAppVersion}',
+        'VersionInfoCompany={#MyAppPublisher}',
+        'VersionInfoDescription={#MyAppName} Setup',
+        'VersionInfoProductName={#MyAppName}',
+        'VersionInfoProductVersion={#MyAppVersion}',
+        'VersionInfoProductTextVersion={#MyAppVersion}',
+    ):
+        assert expected in installer
 
-def test_windows_package_validates_real_exe_version_resource() -> None:
+
+def test_windows_package_validates_real_exe_and_installer_version_resources() -> None:
     workflow = (
         ROOT / ".github" / "workflows" / "windows-package.yml"
     ).read_text(encoding="utf-8")
@@ -52,3 +62,11 @@ def test_windows_package_validates_real_exe_version_resource() -> None:
     assert '$info.OriginalFilename -ne "ScriptManager.exe"' in workflow
     assert "$info.ProductVersion -notlike" in workflow
     assert "$info.FileVersion -notlike" in workflow
+
+    assert "Verify Windows installer identity" in workflow
+    assert '(Get-Item $env:INSTALLER_EXE).VersionInfo' in workflow
+    assert 'Unexpected installer ProductName' in workflow
+    assert 'Unexpected installer FileDescription' in workflow
+    assert 'Unexpected installer CompanyName' in workflow
+    assert 'Unexpected installer ProductVersion' in workflow
+    assert 'Unexpected installer FileVersion' in workflow
