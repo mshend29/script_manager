@@ -146,6 +146,28 @@ jobs:
           }
           "INSTALLER_EXE=$($installer.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      - name: Verify Windows installer identity
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $info = (Get-Item $env:INSTALLER_EXE).VersionInfo
+
+          if ($info.ProductName -ne "Script Manager") {
+            throw "Unexpected installer ProductName: $($info.ProductName)"
+          }
+          if ($info.FileDescription -ne "Script Manager Setup") {
+            throw "Unexpected installer FileDescription: $($info.FileDescription)"
+          }
+          if ($info.CompanyName -ne "Script Manager") {
+            throw "Unexpected installer CompanyName: $($info.CompanyName)"
+          }
+          if ($info.ProductVersion -notlike "$version*") {
+            throw "Unexpected installer ProductVersion: $($info.ProductVersion)"
+          }
+          if ($info.FileVersion -notlike "$version*") {
+            throw "Unexpected installer FileVersion: $($info.FileVersion)"
+          }
+
       - name: Silent install and association smoke test
         shell: pwsh
         run: |
