@@ -140,11 +140,9 @@ begin
       if ResultCode <> 0 then
       begin
         MsgBox(
-          Format(
-            'Instalasi Google Drive belum berhasil diselesaikan (kode %d).' + #13#10 +
-            'Silakan coba lagi atau pilih opsi untuk mengaturnya sendiri.',
-            [ResultCode]
-          ),
+          'Instalasi Google Drive belum berhasil diselesaikan (kode ' +
+          IntToStr(ResultCode) + ').' + #13#10 +
+          'Silakan coba lagi atau pilih opsi untuk mengaturnya sendiri.',
           mbError,
           MB_OK
         );
