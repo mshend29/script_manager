@@ -6,6 +6,7 @@ on:
     paths:
       - "packaging/**"
       - ".github/workflows/windows-package.yml"
+      - ".github/workflows/release.yml"
       - "requirements.txt"
       - "requirements-build.txt"
       - "requirements-release.txt"
@@ -27,6 +28,7 @@ on:
       - "tests/test_phase12_windows_identity.py"
       - "tests/test_phase12_windows_file_association.py"
       - "tests/test_phase12_windows_installer_safety.py"
+      - "tests/test_phase12_release_reproducibility.py"
 
 jobs:
   build-windows:
@@ -316,9 +318,32 @@ jobs:
             throw "ScriptManager.Project registration remains after uninstall."
           }
 
+      - name: Generate release candidate checksums
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $checksumFile = "ScriptManager-$version-SHA256.txt"
+          $assets = @(
+            (Resolve-Path $env:PACKAGE_ZIP).Path,
+            (Resolve-Path $env:INSTALLER_EXE).Path
+          )
+          $lines = foreach ($asset in $assets) {
+            $hash = Get-FileHash -Algorithm SHA256 $asset
+            "$($hash.Hash.ToLower())  $([IO.Path]::GetFileName($asset))"
+          }
+          $lines | Set-Content -Encoding ascii $checksumFile
+          "CHECKSUM_FILE=$checksumFile" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: ScriptManager-windows-installer
           path: installer-dist/ScriptManager-*-Setup.exe
+          if-no-files-found: error
+
+      - name: Upload release candidate checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScriptManager-windows-checksums
+          path: ${{ env.CHECKSUM_FILE }}
           if-no-files-found: error
