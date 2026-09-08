@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
@@ -101,7 +101,7 @@ def main():
     if smoke_test:
         # Packaging CI uses this path to prove that the frozen executable can
         # construct the real production MainWindow and all enhanced pages.
-        # First-run prerequisite dialogs are intentionally not scheduled here.
+        # First-run prerequisite dialogs are intentionally not invoked here.
         app.processEvents()
         window.close()
         app.processEvents()
@@ -125,10 +125,10 @@ def main():
         splash.finish(window)
 
     # Phase 12 keeps Google Drive readiness out of the core workspace shell.
-    # The Help action is always available, while an incomplete setup gets one
-    # non-blocking-at-startup-cycle notice per application version.
+    # The Help action is always available. An incomplete setup receives one
+    # first-run notice per application version, after the main window is shown.
     drive_readiness = GoogleDriveReadinessController(window)
-    QTimer.singleShot(0, drive_readiness.show_first_run_if_needed)
+    drive_readiness.show_first_run_if_needed()
 
     # No startup Recent Projects dialog. When no project is open, the PROJECT
     # workspace itself is the Recent-project home screen.
