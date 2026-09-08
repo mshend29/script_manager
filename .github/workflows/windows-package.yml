@@ -24,6 +24,7 @@ on:
       - "tests/test_phase12_google_drive_readiness.py"
       - "tests/test_phase12_qt_google_drive_readiness.py"
       - "tests/test_phase12_packaged_runtime_diagnostics.py"
+      - "tests/test_phase12_windows_identity.py"
 
 jobs:
   build-windows:
@@ -54,6 +55,32 @@ jobs:
       - name: Build Windows application
         run: |
           python -m PyInstaller --clean --noconfirm packaging/ScriptManager.spec
+
+      - name: Verify Windows application identity
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $exe = Get-Item ".\dist\ScriptManager\ScriptManager.exe"
+          $info = $exe.VersionInfo
+
+          if ($info.ProductName -ne "Script Manager") {
+            throw "Unexpected ProductName: $($info.ProductName)"
+          }
+          if ($info.FileDescription -ne "Script Manager") {
+            throw "Unexpected FileDescription: $($info.FileDescription)"
+          }
+          if ($info.CompanyName -ne "Script Manager") {
+            throw "Unexpected CompanyName: $($info.CompanyName)"
+          }
+          if ($info.OriginalFilename -ne "ScriptManager.exe") {
+            throw "Unexpected OriginalFilename: $($info.OriginalFilename)"
+          }
+          if ($info.ProductVersion -notlike "$version*") {
+            throw "Unexpected ProductVersion: $($info.ProductVersion)"
+          }
+          if ($info.FileVersion -notlike "$version*") {
+            throw "Unexpected FileVersion: $($info.FileVersion)"
+          }
 
       - name: Smoke test frozen executable
         shell: pwsh
@@ -136,6 +163,18 @@ jobs:
           $extensionKey.Close()
           if ($progId -ne "ScriptManager.Project") {
             throw "Unexpected .smproj ProgID: $progId"
+          }
+
+          $projectKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\ScriptManager.Project"
+          )
+          if (-not $projectKey) {
+            throw "ScriptManager.Project registration is missing."
+          }
+          $projectTypeName = [string]$projectKey.GetValue("")
+          $projectKey.Close()
+          if ($projectTypeName -ne "Script Manager Project") {
+            throw "Unexpected .smproj type name: $projectTypeName"
           }
 
           $iconKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
