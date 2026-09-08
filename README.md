@@ -2,13 +2,26 @@
 
 Aplikasi desktop untuk manajemen naskah drama pendek vertikal, recording dialogue, character/talent resolution, tracking stem, dan delivery.
 
-## Requirement
+## Untuk Pengguna Windows
+
+Distribusi normal tidak membutuhkan Python, VS Code, atau Inno Setup.
+
+Tersedia dua bentuk aplikasi:
+
+- **Windows Installer** — jalur utama; memasang Script Manager ke `C:\Program Files\Script Manager`, membuat shortcut, dan mendaftarkan `.smproj` sebagai **Script Manager Project**.
+- **Portable ZIP** — dapat diekstrak dan dijalankan langsung; seluruh folder termasuk `_internal` harus tetap bersama `ScriptManager.exe` dan portable build tidak mengubah file association Windows.
+
+Installer menggunakan Google Drive for desktop sebagai prerequisite untuk workflow project yang memakai folder Google Drive. Bila Google Drive sudah terpasang, installer tidak mengunduh ulang. Login Google tetap dilakukan melalui aplikasi Google Drive sendiri dan Script Manager tidak meminta atau menyimpan credential Google.
+
+Baseline v0.1.0 belum code-signed, sehingga Windows SmartScreen dapat menampilkan `Unknown publisher` / `Windows protected your PC`. Code signing ditunda ke release-hardening berikutnya dan bukan indikasi bahwa project/user data diproses oleh installer.
+
+## Developer Requirements
+
+Untuk menjalankan dari source:
 
 - Python 3.13
 - PySide6
 - SQLite (tersedia di Python standard library)
-
-## Menjalankan
 
 PowerShell:
 
@@ -76,7 +89,7 @@ Aturan identitas project:
 - **Duplicate Project** membuat `project_id` baru.
 - **Recover Project** membuat file recovery baru dari snapshot backup.
 
-Backup project disimpan sebagai `.smproj` di application data per-user, bukan di folder tempat project berada. Logs juga disimpan di application data.
+Backup project disimpan sebagai `.smproj` di application data per-user, bukan di folder tempat project berada. Logs juga disimpan di application data. Uninstall aplikasi tidak menargetkan project, backup, source Excel, audio, stem, atau delivery data eksternal.
 
 ## Sync Source
 
@@ -131,25 +144,26 @@ Dokumentasi utama tersedia offline. Check for Updates memeriksa GitHub Releases 
 
 ## Windows File Association
 
-Fondasi association `.smproj` sudah tersedia di kode melalui spesifikasi:
+Installer mendaftarkan format project dengan identitas:
 
 ```text
 Extension : .smproj
 Prog ID   : ScriptManager.Project
-File Type : Script Management Project
+File Type : Script Manager Project
 Open      : ScriptManager.exe "%1"
 ```
 
-Portable ZIP dapat dijalankan tanpa instalasi dan tidak mengubah file association. Installer Windows memasang Script Manager secara per-user dan mendaftarkan `.smproj` ke `ScriptManager.Project`, sehingga double-click project membuka `ScriptManager.exe "%1"`.
-
+Association didaftarkan machine-wide oleh installer Program Files. Path `.smproj` dengan spasi dan Unicode diuji pada packaged Windows CI. Portable ZIP tidak mendaftarkan file association.
 
 ## Windows Build & Release
 
 Repository menyediakan dua jalur distribusi Windows:
 
-- **Portable ZIP** — hasil PyInstaller onedir; tidak memerlukan instalasi dan tidak mendaftarkan file association.
-- **Installer** — hasil Inno Setup; instalasi per-user di LocalAppData dan mendaftarkan `.smproj`.
+- **Portable ZIP** — hasil PyInstaller onedir.
+- **Installer** — hasil Inno Setup 6.7.1, default ke Program Files dan menggunakan machine-wide `.smproj` association.
 
-Build CI menjalankan smoke test terhadap executable frozen. Installer CI juga melakukan silent install, memverifikasi file association, menjalankan executable terpasang, lalu uninstall kembali.
+Release dependencies dipin secara exact melalui `requirements-release.txt`. Windows Package CI melakukan frozen runtime smoke, diagnostics smoke, installer identity check, install-over-existing, `.smproj` association/path-open test, uninstall/data-safety test, kemudian menghasilkan artifact portable, installer, dan SHA-256 checksum.
+
+Tag release harus cocok dengan `APP_VERSION`. Tag `vX.Y.Z` memicu release workflow yang membangun ulang asset dari source tag tersebut, menghasilkan checksum, mempublikasikan GitHub Release, lalu memverifikasi release melalui jalur updater.
 
 Prosedur versioning dan release tersedia di `RELEASING.md`.
