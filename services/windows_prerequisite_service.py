@@ -8,7 +8,7 @@ from typing import Callable
 
 GOOGLE_DRIVE_UNINSTALL_GUID = "{6BBAE539-2232-434A-A4E5-9A33560C6283}"
 GOOGLE_DRIVE_UNINSTALL_SUBKEY = (
-    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\"
+    "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\"
     + GOOGLE_DRIVE_UNINSTALL_GUID
 )
 GOOGLE_DRIVE_OFFICIAL_DOWNLOAD_URL = (
