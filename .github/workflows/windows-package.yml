@@ -13,7 +13,11 @@ on:
       - "core/resource_paths.py"
       - "resources/**"
       - "main.py"
+      - "app/google_drive_readiness_controller.py"
+      - "dialogs/google_drive_readiness_dialog.py"
       - "services/windows_prerequisite_service.py"
+      - "tests/test_phase12_google_drive_readiness.py"
+      - "tests/test_phase12_qt_google_drive_readiness.py"
 
 jobs:
   build-windows:
@@ -32,6 +36,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt -r requirements-build.txt
+
+      - name: Smoke test Google Drive readiness probes
+        shell: pwsh
+        run: |
+          python -c "from services.windows_prerequisite_service import GoogleDriveReadinessService, _find_google_drive_roots, _is_google_drive_process_running; print('roots=', _find_google_drive_roots()); print('running=', _is_google_drive_process_running()); print('state=', GoogleDriveReadinessService().check().state.value)"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Build Windows application
         run: |
