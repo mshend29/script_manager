@@ -6,9 +6,9 @@
 >
 > PR: #77
 >
-> Source commit: `a43fb0ddc5bad776698887e03de9fd3ac1950cb3`
+> Source commit: `3acf45c4bfd633ce8ea90b6a84e61c3802a03def`
 >
-> Windows Package run: #104 (`34192938996`)
+> Windows Package run: #107 (`34193483461`)
 >
 > Installer artifact: `ScriptManager-windows-installer`
 >
@@ -36,7 +36,13 @@ GitHub Actions Windows runner sudah membuktikan seluruh jalur berikut dari sourc
 - [x] File type name terdaftar sebagai `Script Manager Project`.
 - [x] Project file icon terdaftar dan tersedia setelah install.
 - [x] Open command meneruskan `"%1"` ke `ScriptManager.exe`.
+- [x] Install-over-existing ke lokasi yang sama sukses.
+- [x] Runtime tetap dapat dijalankan setelah install-over-existing.
 - [x] Silent uninstall sukses.
+- [x] Installed executable terhapus setelah uninstall.
+- [x] External `.smproj` tetap ada setelah uninstall.
+- [x] Source/audio/delivery/backup sentinel di luar install directory tetap ada setelah uninstall.
+- [x] `ScriptManager.Project` registration dibersihkan setelah uninstall.
 
 Engine gate pada commit yang sama juga hijau untuk regular regression, Qt runtime smoke, dan Phase 11 scale smoke.
 
