@@ -31,7 +31,8 @@ def test_report_problem_is_wired_to_help_header_and_main_window():
     main = (ROOT / "app" / "main_window.py").read_text(encoding="utf-8")
 
     assert 'HeaderAction("help.report_problem", "Laporkan Masalah")' in header
-    assert 'QPushButton("Laporkan Masalah")' in page
+    assert 'QPushButton("Laporkan Masalah")' not in page
+    assert "def show_report_problem" in page
     assert '"help.report_problem": self.report_problem' in main
     assert "ProblemReportService().build()" in main
     assert 'self.pages["HELP"].show_report_problem(report)' in main
