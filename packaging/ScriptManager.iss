@@ -14,6 +14,7 @@
 AppId={{A4E2C1C2-51AA-4EB8-985B-6B27E473381D}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppPublisherUrl}
 AppSupportURL={#MyAppSupportUrl}
@@ -29,6 +30,12 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Setup
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoProductTextVersion={#MyAppVersion}
 #ifexist "..\resources\app.ico"
 SetupIconFile=..\resources\app.ico
 #endif
