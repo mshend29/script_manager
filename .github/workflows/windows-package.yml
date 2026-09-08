@@ -26,6 +26,7 @@ on:
       - "tests/test_phase12_packaged_runtime_diagnostics.py"
       - "tests/test_phase12_windows_identity.py"
       - "tests/test_phase12_windows_file_association.py"
+      - "tests/test_phase12_windows_installer_safety.py"
 
 jobs:
   build-windows:
@@ -99,6 +100,14 @@ jobs:
           }
           $projectPath = $project.FullName
           "ASSOC_SMOKE_PROJECT=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          $sentinelRoot = Join-Path $fixtureRoot "External Data"
+          New-Item -ItemType Directory -Force -Path $sentinelRoot | Out-Null
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "source-sentinel.xlsx") -Value "source"
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "audio-sentinel.wav") -Value "audio"
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "delivery-sentinel.txt") -Value "delivery"
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "backup-sentinel.smproj.bak") -Value "backup"
+          "ASSOC_SENTINEL_ROOT=$sentinelRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Smoke test frozen executable
         shell: pwsh
@@ -182,13 +191,14 @@ jobs:
         shell: pwsh
         run: |
           $installDir = Join-Path $env:TEMP "ScriptManager-Install-Test"
-          $process = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList @(
+          $installArgs = @(
             "/VERYSILENT",
             "/SUPPRESSMSGBOXES",
             "/NORESTART",
             "/SKIPDRIVEPREREQ=1",
             "/DIR=$installDir"
-          ) -Wait -PassThru
+          )
+          $process = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList $installArgs -Wait -PassThru
           if ($process.ExitCode -ne 0) {
             exit $process.ExitCode
           }
@@ -258,16 +268,52 @@ jobs:
             throw "Unexpected .smproj open command: $openCommand"
           }
 
+          $upgrade = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList $installArgs -Wait -PassThru
+          if ($upgrade.ExitCode -ne 0) {
+            throw "Install-over-existing smoke failed with exit code $($upgrade.ExitCode)"
+          }
+          & $installedExe --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Installed runtime failed after install-over-existing with exit code $LASTEXITCODE"
+          }
+
           $uninstaller = Join-Path $installDir "unins000.exe"
-          if (Test-Path $uninstaller) {
-            $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
-              "/VERYSILENT",
-              "/SUPPRESSMSGBOXES",
-              "/NORESTART"
-            ) -Wait -PassThru
-            if ($uninstall.ExitCode -ne 0) {
-              exit $uninstall.ExitCode
+          if (-not (Test-Path $uninstaller)) {
+            throw "Uninstaller is missing after install-over-existing."
+          }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART"
+          ) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) {
+            exit $uninstall.ExitCode
+          }
+
+          if (Test-Path $installedExe) {
+            throw "Installed executable still exists after uninstall: $installedExe"
+          }
+          if (-not (Test-Path -LiteralPath $env:ASSOC_SMOKE_PROJECT)) {
+            throw "External .smproj was removed by uninstall: $env:ASSOC_SMOKE_PROJECT"
+          }
+          foreach ($sentinel in @(
+            "source-sentinel.xlsx",
+            "audio-sentinel.wav",
+            "delivery-sentinel.txt",
+            "backup-sentinel.smproj.bak"
+          )) {
+            $sentinelPath = Join-Path $env:ASSOC_SENTINEL_ROOT $sentinel
+            if (-not (Test-Path -LiteralPath $sentinelPath)) {
+              throw "External user-data sentinel was removed by uninstall: $sentinelPath"
             }
+          }
+
+          $remainingProjectKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+            "Software\Classes\ScriptManager.Project"
+          )
+          if ($remainingProjectKey) {
+            $remainingProjectKey.Close()
+            throw "ScriptManager.Project registration remains after uninstall."
           }
 
       - name: Upload Windows installer
