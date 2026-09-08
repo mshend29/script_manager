@@ -25,6 +25,7 @@ on:
       - "tests/test_phase12_qt_google_drive_readiness.py"
       - "tests/test_phase12_packaged_runtime_diagnostics.py"
       - "tests/test_phase12_windows_identity.py"
+      - "tests/test_phase12_windows_file_association.py"
 
 jobs:
   build-windows:
@@ -82,6 +83,18 @@ jobs:
             throw "Unexpected FileVersion: $($info.FileVersion)"
           }
 
+      - name: Create smproj path smoke fixture
+        shell: pwsh
+        run: |
+          $fixtureRoot = Join-Path $env:TEMP "Script Manager Association – Uji"
+          New-Item -ItemType Directory -Force -Path $fixtureRoot | Out-Null
+          $env:ASSOC_FIXTURE_ROOT = $fixtureRoot
+          $projectPath = python -c "import os; from core.project_manager import ProjectManager; from core.project_settings import ProjectSettings; project = ProjectManager().create(ProjectSettings(project_name='Association Smoke Project', project_code='ASSOC'), os.environ['ASSOC_FIXTURE_ROOT']); print(project.project_file)"
+          if (-not (Test-Path $projectPath)) {
+            throw "Association smoke .smproj was not created: $projectPath"
+          }
+          "ASSOC_SMOKE_PROJECT=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Smoke test frozen executable
         shell: pwsh
         run: |
@@ -92,6 +105,10 @@ jobs:
           & ".\dist\ScriptManager\ScriptManager.exe" --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
+          }
+          & ".\dist\ScriptManager\ScriptManager.exe" "$env:ASSOC_SMOKE_PROJECT" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Frozen .smproj path-open smoke failed with exit code $LASTEXITCODE"
           }
 
       - name: Create portable ZIP
@@ -144,13 +161,18 @@ jobs:
             exit $process.ExitCode
           }
 
-          & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          $installedExe = Join-Path $installDir "ScriptManager.exe"
+          & $installedExe --smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
-          & (Join-Path $installDir "ScriptManager.exe") --diagnostics-smoke-test
+          & $installedExe --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
+          }
+          & $installedExe "$env:ASSOC_SMOKE_PROJECT" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Installed .smproj path-open smoke failed with exit code $LASTEXITCODE"
           }
 
           $extensionKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
