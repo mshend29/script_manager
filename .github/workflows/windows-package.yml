@@ -89,10 +89,15 @@ jobs:
           $fixtureRoot = Join-Path $env:TEMP "Script Manager Association – Uji"
           New-Item -ItemType Directory -Force -Path $fixtureRoot | Out-Null
           $env:ASSOC_FIXTURE_ROOT = $fixtureRoot
-          $projectPath = python -c "import os; from core.project_manager import ProjectManager; from core.project_settings import ProjectSettings; project = ProjectManager().create(ProjectSettings(project_name='Association Smoke Project', project_code='ASSOC'), os.environ['ASSOC_FIXTURE_ROOT']); print(project.project_file)"
-          if (-not (Test-Path $projectPath)) {
-            throw "Association smoke .smproj was not created: $projectPath"
+          python -c "import os; from core.project_manager import ProjectManager; from core.project_settings import ProjectSettings; ProjectManager().create(ProjectSettings(project_name='Association Smoke Project', project_code='ASSOC'), os.environ['ASSOC_FIXTURE_ROOT'])"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
           }
+          $project = Get-ChildItem -LiteralPath $fixtureRoot -Filter "*.smproj" | Select-Object -First 1
+          if (-not $project) {
+            throw "Association smoke .smproj was not created under: $fixtureRoot"
+          }
+          $projectPath = $project.FullName
           "ASSOC_SMOKE_PROJECT=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Smoke test frozen executable
