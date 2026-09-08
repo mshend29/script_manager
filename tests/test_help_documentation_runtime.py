@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 
 if PYSIDE_AVAILABLE:
     from PySide6.QtCore import QUrl
-    from PySide6.QtWidgets import QApplication, QFrame
+    from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
 
     from pages.help_page import HELP_ARTICLES, HelpPage
 
@@ -79,6 +79,34 @@ def test_help_documentation_layout_is_visible_and_accessible(qapp):
     qapp.processEvents()
 
 
+def test_help_sidebar_has_no_duplicate_menu_actions(qapp):
+    page = HelpPage()
+    page.show()
+    qapp.processEvents()
+
+    sidebar = page.findChild(QFrame, "HelpSidebar")
+    assert sidebar is not None
+
+    label_texts = {label.text() for label in sidebar.findChildren(QLabel)}
+    assert "AKSES CEPAT" not in label_texts
+    assert "BANTUAN APLIKASI" not in label_texts
+
+    button_texts = {
+        button.text() for button in sidebar.findChildren(QPushButton)
+    }
+    assert {
+        "Mulai",
+        "Panduan Pengguna",
+        "Pintasan Keyboard",
+        "Periksa Pembaruan",
+        "Laporkan Masalah",
+        "Tentang Script Manager",
+    }.isdisjoint(button_texts)
+
+    page.close()
+    qapp.processEvents()
+
+
 def test_help_search_filters_by_task_keywords(qapp):
     page = HelpPage()
     page.show()
@@ -128,7 +156,7 @@ def test_help_article_navigation_updates_context_and_content(qapp):
     qapp.processEvents()
 
 
-def test_help_quick_access_preserves_existing_help_surfaces(qapp):
+def test_help_menu_surfaces_remain_callable_without_sidebar_buttons(qapp):
     page = HelpPage()
     page.show()
     qapp.processEvents()
@@ -144,10 +172,6 @@ def test_help_quick_access_preserves_existing_help_surfaces(qapp):
     page.show_keyboard_shortcuts()
     assert page._current_article_key == "keyboard-shortcuts"
     assert page.title.text() == "Pintasan Keyboard"
-
-    assert page.check_updates_button.isVisible()
-    assert page.report_problem_button.isVisible()
-    assert page.about_button.isVisible()
 
     page.close()
     qapp.processEvents()
