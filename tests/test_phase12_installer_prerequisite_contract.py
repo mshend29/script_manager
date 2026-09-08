@@ -39,7 +39,7 @@ def test_google_drive_install_requires_interactive_wizard_choice() -> None:
 def test_silent_setup_never_triggers_google_drive_download() -> None:
     text = _text(INSTALLER)
 
-    assert "IsSilent" in text
+    assert "WizardSilent" in text
     assert "SKIPDRIVEPREREQ" in text
     assert "SkipGoogleDrivePrerequisite" in text
 
