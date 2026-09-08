@@ -217,7 +217,7 @@ jobs:
             throw "Installed .smproj path-open smoke failed with exit code $LASTEXITCODE"
           }
 
-          $extensionKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $extensionKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\.smproj"
           )
           if (-not $extensionKey) {
@@ -229,7 +229,7 @@ jobs:
             throw "Unexpected .smproj ProgID: $progId"
           }
 
-          $projectKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $projectKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\ScriptManager.Project"
           )
           if (-not $projectKey) {
@@ -241,7 +241,7 @@ jobs:
             throw "Unexpected .smproj type name: $projectTypeName"
           }
 
-          $iconKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $iconKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\ScriptManager.Project\DefaultIcon"
           )
           if (-not $iconKey) {
@@ -256,7 +256,7 @@ jobs:
             throw "Installed project_file.ico is missing."
           }
 
-          $commandKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $commandKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\ScriptManager.Project\shell\open\command"
           )
           if (-not $commandKey) {
@@ -308,7 +308,7 @@ jobs:
             }
           }
 
-          $remainingProjectKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $remainingProjectKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\ScriptManager.Project"
           )
           if ($remainingProjectKey) {
