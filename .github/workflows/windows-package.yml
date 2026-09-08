@@ -12,13 +12,18 @@ on:
       - "core/version.py"
       - "core/icon_assets.py"
       - "core/resource_paths.py"
+      - "core/runtime_diagnostics.py"
+      - "core/application_logging.py"
       - "resources/**"
       - "main.py"
       - "app/google_drive_readiness_controller.py"
       - "dialogs/google_drive_readiness_dialog.py"
       - "services/windows_prerequisite_service.py"
+      - "services/problem_report_service.py"
+      - "services/application_info_service.py"
       - "tests/test_phase12_google_drive_readiness.py"
       - "tests/test_phase12_qt_google_drive_readiness.py"
+      - "tests/test_phase12_packaged_runtime_diagnostics.py"
 
 jobs:
   build-windows:
@@ -54,6 +59,10 @@ jobs:
         shell: pwsh
         run: |
           & ".\dist\ScriptManager\ScriptManager.exe" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & ".\dist\ScriptManager\ScriptManager.exe" --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
@@ -109,6 +118,10 @@ jobs:
           }
 
           & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & (Join-Path $installDir "ScriptManager.exe") --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
