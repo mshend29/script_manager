@@ -2,59 +2,83 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>Mulai — Script Manager</title>
+<title>Mulai Cepat — Script Manager</title>
 <style>
-html,body{background:#fff}body{font-family:"Segoe UI",Arial,sans-serif;color:#202124;line-height:1.58;margin:0;padding:8px 4px 34px}h1{font-size:27px;margin:0 0 6px}h2{font-size:19px;margin-top:28px;padding-bottom:5px;border-bottom:1px solid #e1e5ea}p,li{font-size:14px}.note{background:#f5f7fa;border:1px solid #d8dde5;border-radius:8px;padding:12px 14px;margin:14px 0}code{font-family:Consolas,monospace;background:#f1f3f4;padding:1px 4px;border-radius:3px}
+html, body { background: #ffffff; }
+body { font-family: "Segoe UI", Arial, sans-serif; color:#26313d; line-height:1.62; margin:0; padding:4px 8px 36px 4px; max-width:940px; }
+h1 { font-size:29px; color:#17212c; margin:2px 0 8px; }
+h2 { font-size:20px; color:#1d2a38; margin:30px 0 9px; border-bottom:1px solid #e0e5ea; padding-bottom:6px; }
+h3 { font-size:16px; color:#344252; margin:20px 0 7px; }
+p, li, td, th { font-size:14px; }
+li { margin:5px 0; }
+code, kbd { font-family:Consolas, monospace; background:#f1f3f6; border:1px solid #e1e5ea; padding:1px 5px; border-radius:4px; }
+.tip, .note, .warning { border-radius:8px; padding:12px 14px; margin:14px 0; }
+.tip { background:#eef7f1; border-left:4px solid #4c8a61; }
+.note { background:#f5f7fa; border-left:4px solid #8592a2; }
+.warning { background:#fff8e7; border-left:4px solid #c9952f; }
+.steps { counter-reset:step; list-style:none; padding-left:0; }
+.steps li { counter-increment:step; padding:10px 12px 10px 42px; margin:10px 0; background:#f8fafc; border:1px solid #e2e7ed; border-radius:7px; }
+table { border-collapse:collapse; width:100%; margin:12px 0; }
+th, td { border:1px solid #d8dee6; padding:9px 11px; text-align:left; vertical-align:top; }
+th { background:#f5f7f9; }
+a { color:#315f9d; text-decoration:none; }
 </style>
 </head>
 <body>
-<h1>Mulai</h1>
-<p>Panduan singkat untuk memulai proyek manajemen naskah drama pendek vertikal di Script Manager.</p>
+<h1>Mulai Cepat</h1>
+<p>Halaman ini membantu pengguna baru memahami alur dasar Script Manager tanpa perlu mengetahui struktur internal aplikasi.</p>
 
-<h2>1. Buat Proyek</h2>
-<ol>
-<li>Buka workspace <b>Proyek</b>.</li>
-<li>Pilih <b>Proyek Baru</b>.</li>
-<li>Isi Nama Proyek, Kode Proyek, Klien, Tanggal Mulai, dan lokasi penyimpanan.</li>
-<li>Jika sudah tersedia, tentukan <b>Folder Naskah Sumber</b> dan pemisah nomor episode.</li>
-<li>Klik <b>Buat Proyek</b>.</li>
+<div class="note"><b>Konsep utama:</b> satu proyek disimpan sebagai file <code>.smproj</code>. Folder Naskah Sumber, file Excel, Stem, Setoran, dan Google Drive tetap berada di luar file proyek.</div>
+
+<h2>Jika baru pertama kali menggunakan Script Manager</h2>
+<ol class="steps">
+<li><b>Buat Proyek Baru.</b> Gunakan menu Berkas → Proyek Baru atau <kbd>Ctrl+N</kbd>.</li>
+<li><b>Isi identitas proyek.</b> Nama, Kode, Klien, Tanggal Mulai, dan lokasi penyimpanan wajib. Filename baru akan berbentuk <code>KODE - NAMA PROYEK.smproj</code>.</li>
+<li><b>Pilih Folder Naskah Sumber.</b> Tentukan delimiter sebelum/sesudah nomor episode sampai semua file <code>.xlsx/.xlsm</code> terbaca benar.</li>
+<li><b>Jalankan Source Preflight.</b> Pastikan workbook dapat diperiksa dan diparse sebelum proyek dibuat.</li>
+<li><b>Tentukan folder audio/output.</b> Pilih Stem / Mixdown / Export Folder, Folder Setoran, dan format WAV.</li>
+<li><b>Review lalu Buat Proyek.</b> Setelah Create berhasil, Initial Source Sync berjalan otomatis. Anda tidak perlu menjalankan import kedua kali.</li>
+<li><b>Mulai bekerja.</b> Gunakan NASKAH untuk membaca source, DIALOG (Dialog) untuk rekaman, TRACKING (Tracking) untuk status, dan DELIVERY untuk file output/setoran.</li>
 </ol>
-<div class="note">Proyek disimpan sebagai satu file <code>.smproj</code>. File ini menyimpan database kerja, pemetaan, status rekaman, Tracking, pengaturan, dan metadata proyek.</div>
 
-<h2>2. Siapkan Excel Sumber</h2>
-<p>File Excel tetap berada di folder eksternal. Script Manager tidak memasukkan file Excel ke dalam <code>.smproj</code>.</p>
+<div class="tip">Perbedaan huruf besar/kecil pada filename seperti <code>Episode 1</code> dan <code>episode 2</code> tidak dianggap pola berbeda. Yang penting struktur penamaan dan nomor episodenya konsisten.</div>
+
+<h2>Alur kerja sehari-hari</h2>
+<table>
+<tr><th>Saat...</th><th>Lakukan...</th></tr>
+<tr><td>Client mengirim naskah baru/revisi</td><td>Taruh file di Folder Naskah Sumber lalu tekan <kbd>F5</kbd> → <b>Sinkronkan Sumber</b>.</td></tr>
+<tr><td>Ada mapping tokoh/talent yang belum jelas</td><td>Buka DATA → Belum Dipetakan / Pemetaan Tokoh.</td></tr>
+<tr><td>Sesi rekaman berlangsung</td><td>Buka DIALOG (Dialog), pilih Talent/Tokoh/Episode, lalu centang line yang selesai.</td></tr>
+<tr><td>Perlu melihat progres produksi</td><td>Buka TRACKING (Tracking).</td></tr>
+<tr><td>Perlu memeriksa file hasil stem/setoran</td><td>Buka DELIVERY → File Track atau Kondisi Output.</td></tr>
+</table>
+
+<h2>Memahami Sinkronkan Sumber</h2>
+<p><b>Sinkronkan Sumber</b> adalah tindakan yang digunakan baik untuk import pertama maupun revisi source berikutnya. <b>Sinkronisasi pertama</b> dan <b>Sinkronisasi berikutnya</b> memakai tombol dan jalur kerja yang sama, sehingga user tidak perlu mencari menu import terpisah.</p>
 <ul>
-<li>Atur <b>Folder Naskah Sumber</b> melalui <b>Pengaturan Proyek</b>.</li>
-<li>Pastikan pola nama file episode sesuai pemisah yang ditentukan.</li>
-<li>File sumber dapat berupa <code>.xlsx</code> atau <code>.xlsm</code> sesuai dukungan impor.</li>
+<li><kbd>F5</kbd> menjalankan Sinkronkan Sumber.</li>
+<li>Aplikasi menyiapkan Preview sebelum Apply.</li>
+<li>Apply membuat safety backup dan menulis secara transaksional.</li>
+<li>Recording history tidak dihapus hanya karena source direvisi.</li>
+<li>Perubahan formatting Excel saja tidak seharusnya mereset Tracking.</li>
 </ul>
 
-<h2>3. Sinkronkan Sumber</h2>
-<ol>
-<li>Pada workspace <b>Proyek</b>, pilih <b>Sinkronkan Sumber</b>.</li>
-<li>Script Manager memindai file, memeriksa workbook, mem-parse naskah, menormalisasi data, menyelesaikan Tokoh/Talent, lalu menjalankan validasi.</li>
-<li>Periksa pratinjau perubahan.</li>
-<li>Terapkan pembaruan jika hasilnya sesuai.</li>
-</ol>
-<p>Sinkronisasi pertama mengisi proyek dari sumber. Sinkronisasi berikutnya hanya memproses perubahan yang relevan.</p>
+<div class="warning">Jangan menganggap mengedit Excel otomatis mengubah data di Script Manager. Sampai Sinkronkan Sumber berhasil, workspace tetap membaca keadaan terakhir di <code>.smproj</code>.</div>
 
-<h2>4. Saat Klien Merevisi Naskah</h2>
-<p>Perbarui file Excel di <b>Folder Naskah Sumber</b>, lalu jalankan <b>Sinkronkan Sumber</b> lagi. Riwayat rekaman dan pemetaan manual dipertahankan. Tracking lanjutan hanya direset pada lingkup Episode + Talent + Tokoh yang benar-benar terdampak.</p>
+<h2>Perbedaan file/folder yang sering membingungkan</h2>
+<ul>
+<li><b>Folder filesystem:</b> path seperti <code>I:\Project</code>, Google Drive Desktop <code>G:\My Drive\...</code>, mapped drive, atau network path. Aplikasi dapat membaca file dari sini.</li>
+<li><b>Drive URL:</b> link seperti <code>https://drive.google.com/...</code>. Ini hanya tautan untuk dibuka di browser dan ditempatkan di Tautan Drive.</li>
+</ul>
 
-<h2>5. Rekaman Dialog</h2>
-<p>Buka workspace <b>Dialog</b>. Gunakan checkbox untuk menandai dialog yang sudah direkam. Jika sumber berubah setelah rekaman, dialog diberi indikator <b>Sumber Direvisi</b> sampai operator menerima hasil rekaman ulang.</p>
-
-<h2>6. Tracking dan Setoran</h2>
-<p><b>Tracking</b> merangkum progres per Talent, Tokoh, dan Episode. Status lanjutan seperti Stem, Setoran, dan Revisi mengikuti alur produksi.</p>
-
-<h2>7. Simpan dan Pemulihan</h2>
+<h2>Proyek dan keamanan data</h2>
 <ul>
 <li><b>Simpan</b> menyimpan proyek aktif.</li>
 <li><b>Simpan Sebagai</b> membuat file baru dengan identitas proyek yang sama.</li>
-<li><b>Duplikat</b> membuat proyek baru dengan data awal yang sama dan identitas baru.</li>
-<li><b>Pulihkan Proyek</b> membuat file proyek baru dari cadangan yang tersedia.</li>
+<li><b>Duplikat</b> membuat proyek baru dengan identitas baru.</li>
+<li><b>Pulihkan Proyek</b> digunakan untuk membuat proyek aktif dari recovery/backup.</li>
 </ul>
 
-<div class="note">Gunakan <b>Panduan Pengguna</b> untuk penjelasan lengkap, <b>Pintasan Keyboard</b> untuk navigasi cepat, dan <b>Laporkan Masalah</b> untuk menyiapkan laporan teknis.</div>
+<p>Untuk penjelasan lebih lengkap, pilih topik di panel kiri atau klik <b>Panduan Pengguna</b>. Pintasan lengkap tersedia di <b>Pintasan Keyboard</b>.</p>
 </body>
 </html>

@@ -24,7 +24,8 @@ def test_check_updates_is_wired_to_help_and_background_worker():
     ).read_text(encoding="utf-8")
 
     assert 'HeaderAction("help.check_updates", "Periksa Pembaruan")' in header
-    assert 'QPushButton("Periksa Pembaruan")' in page
+    assert 'QPushButton("Periksa Pembaruan")' not in page
+    assert "def show_update_checking" in page
     assert '"help.check_updates": self.check_for_updates' in main
     assert "def check_for_updates" in main
     assert "QThread(self)" in main
