@@ -2,6 +2,9 @@
 #define MyAppExeName "ScriptManager.exe"
 #define MyAppPublisher "Script Manager"
 #define MyAppProgId "ScriptManager.Project"
+#define MyAppPublisherUrl "https://github.com/mshend29/script_manager"
+#define MyAppSupportUrl "https://github.com/mshend29/script_manager/issues"
+#define MyAppUpdatesUrl "https://github.com/mshend29/script_manager/releases"
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
@@ -12,6 +15,9 @@ AppId={{A4E2C1C2-51AA-4EB8-985B-6B27E473381D}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppPublisherUrl}
+AppSupportURL={#MyAppSupportUrl}
+AppUpdatesURL={#MyAppUpdatesUrl}
 DefaultDirName={localappdata}\Programs\Script Manager
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
@@ -39,16 +45,16 @@ Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+Name: "desktopicon"; Description: "Buat pintasan di Desktop"; GroupDescription: "Pintasan tambahan:"; Flags: unchecked
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\.smproj"; ValueType: string; ValueName: ""; ValueData: "{#MyAppProgId}"; Flags: uninsdeletevalue
-Root: HKCU; Subkey: "Software\Classes\{#MyAppProgId}"; ValueType: string; ValueName: ""; ValueData: "Script Management Project"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\{#MyAppProgId}"; ValueType: string; ValueName: ""; ValueData: "Script Manager Project"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\{#MyAppProgId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\resources\project_file.ico"
 Root: HKCU; Subkey: "Software\Classes\{#MyAppProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Jalankan {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 const
