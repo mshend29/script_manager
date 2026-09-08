@@ -156,20 +156,25 @@ jobs:
         run: |
           $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
           $info = (Get-Item $env:INSTALLER_EXE).VersionInfo
+          $productName = ([string]$info.ProductName).Trim()
+          $fileDescription = ([string]$info.FileDescription).Trim()
+          $companyName = ([string]$info.CompanyName).Trim()
+          $productVersion = ([string]$info.ProductVersion).Trim()
+          $fileVersion = ([string]$info.FileVersion).Trim()
 
-          if ($info.ProductName -ne "Script Manager") {
+          if ($productName -ne "Script Manager") {
             throw "Unexpected installer ProductName: $($info.ProductName)"
           }
-          if ($info.FileDescription -ne "Script Manager Setup") {
+          if ($fileDescription -ne "Script Manager Setup") {
             throw "Unexpected installer FileDescription: $($info.FileDescription)"
           }
-          if ($info.CompanyName -ne "Script Manager") {
+          if ($companyName -ne "Script Manager") {
             throw "Unexpected installer CompanyName: $($info.CompanyName)"
           }
-          if ($info.ProductVersion -notlike "$version*") {
+          if ($productVersion -notlike "$version*") {
             throw "Unexpected installer ProductVersion: $($info.ProductVersion)"
           }
-          if ($info.FileVersion -notlike "$version*") {
+          if ($fileVersion -notlike "$version*") {
             throw "Unexpected installer FileVersion: $($info.FileVersion)"
           }
 
