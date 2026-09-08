@@ -300,52 +300,6 @@ class HelpPage(PageShell):
         layout.addWidget(self.navigation_tree, 1)
         self._populate_navigation_tree()
 
-        quick_label = QLabel("AKSES CEPAT")
-        quick_label.setObjectName("HelpSidebarSection")
-        layout.addWidget(quick_label)
-
-        self.getting_started_button = QPushButton("Mulai")
-        self.getting_started_button.setProperty("primary", True)
-        self.getting_started_button.clicked.connect(self.show_getting_started)
-        layout.addWidget(self.getting_started_button)
-
-        self.user_guide_button = QPushButton("Panduan Pengguna")
-        self.user_guide_button.setProperty("secondary", True)
-        self.user_guide_button.clicked.connect(self.show_user_guide)
-        layout.addWidget(self.user_guide_button)
-
-        self.keyboard_shortcuts_button = QPushButton("Pintasan Keyboard")
-        self.keyboard_shortcuts_button.setProperty("secondary", True)
-        self.keyboard_shortcuts_button.clicked.connect(
-            self.show_keyboard_shortcuts
-        )
-        layout.addWidget(self.keyboard_shortcuts_button)
-
-        app_label = QLabel("BANTUAN APLIKASI")
-        app_label.setObjectName("HelpSidebarSection")
-        layout.addWidget(app_label)
-
-        self.check_updates_button = QPushButton("Periksa Pembaruan")
-        self.check_updates_button.setProperty("secondary", True)
-        self.check_updates_button.clicked.connect(
-            lambda: self.action_requested.emit("help.check_updates")
-        )
-        layout.addWidget(self.check_updates_button)
-
-        self.report_problem_button = QPushButton("Laporkan Masalah")
-        self.report_problem_button.setProperty("secondary", True)
-        self.report_problem_button.clicked.connect(
-            lambda: self.action_requested.emit("help.report_problem")
-        )
-        layout.addWidget(self.report_problem_button)
-
-        self.about_button = QPushButton("Tentang Script Manager")
-        self.about_button.setProperty("secondary", True)
-        self.about_button.clicked.connect(
-            lambda: self.action_requested.emit("help.about")
-        )
-        layout.addWidget(self.about_button)
-
         sidebar.setStyleSheet(
             """
             QFrame#HelpSidebar {
@@ -360,12 +314,6 @@ class HelpPage(PageShell):
             QLabel#HelpSidebarDescription {
                 color: #64707d;
                 font-size: 12px;
-            }
-            QLabel#HelpSidebarSection {
-                color: #7a8490;
-                font-size: 10px;
-                font-weight: 700;
-                margin-top: 6px;
             }
             QLineEdit#HelpSearch {
                 min-height: 32px;
@@ -505,9 +453,7 @@ class HelpPage(PageShell):
             any_visible = False
             for child_index in range(category_item.childCount()):
                 item = category_item.child(child_index)
-                key = str(
-                    item.data(0, Qt.ItemDataRole.UserRole) or ""
-                )
+                key = str(item.data(0, Qt.ItemDataRole.UserRole) or "")
                 article = self._article_by_key.get(key)
                 haystack = ""
                 if article is not None:
@@ -542,13 +488,6 @@ class HelpPage(PageShell):
 
         self._hide_release_button()
         self._hide_problem_buttons()
-        if article.file_path == GETTING_STARTED_FILE:
-            self._set_active_button(self.getting_started_button)
-        elif article.file_path == KEYBOARD_SHORTCUTS_FILE:
-            self._set_active_button(self.keyboard_shortcuts_button)
-        else:
-            self._set_active_button(self.user_guide_button)
-
         self._current_article_key = article.key
         self.breadcrumb.setText(
             f"Bantuan › {article.category} › {article.title}"
@@ -616,21 +555,6 @@ class HelpPage(PageShell):
         if not url.scheme() and url.fragment():
             self.browser.scrollToAnchor(url.fragment())
 
-    def _set_active_button(self, active: QPushButton) -> None:
-        for button in (
-            self.getting_started_button,
-            self.user_guide_button,
-            self.keyboard_shortcuts_button,
-            self.check_updates_button,
-            self.report_problem_button,
-            self.about_button,
-        ):
-            is_active = button is active
-            button.setProperty("primary", is_active)
-            button.setProperty("secondary", not is_active)
-            button.style().unpolish(button)
-            button.style().polish(button)
-
     def show_getting_started(self) -> None:
         self.show_article("getting-started")
 
@@ -640,15 +564,9 @@ class HelpPage(PageShell):
     def show_keyboard_shortcuts(self) -> None:
         self.show_article("keyboard-shortcuts")
 
-    def _prepare_dynamic_page(
-        self,
-        active_button: QPushButton,
-        title: str,
-        subtitle: str,
-    ) -> None:
+    def _prepare_dynamic_page(self, title: str, subtitle: str) -> None:
         self._current_article_key = ""
         self.navigation_tree.clearSelection()
-        self._set_active_button(active_button)
         self.breadcrumb.setText(f"Bantuan › {title}")
         self.title.setText(title)
         self.subtitle.setText(subtitle)
@@ -659,11 +577,9 @@ class HelpPage(PageShell):
         self._hide_problem_buttons()
         self._hide_release_button()
         self._prepare_dynamic_page(
-            self.check_updates_button,
             "Periksa Pembaruan",
             f"Versi saat ini: {current_version}",
         )
-        self.check_updates_button.setEnabled(False)
         self.browser.setHtml(
             "<h2>Memeriksa pembaruan…</h2>"
             "<p>Script Manager sedang memeriksa GitHub Releases. "
@@ -672,25 +588,15 @@ class HelpPage(PageShell):
 
     def show_update_result(self, result) -> None:
         self._hide_problem_buttons()
-        self.check_updates_button.setEnabled(True)
 
         status = str(getattr(result, "status", ""))
-        current = escape(
-            str(getattr(result, "current_version", "") or "")
-        )
-        latest = escape(
-            str(getattr(result, "latest_version", "") or "")
-        )
+        current = escape(str(getattr(result, "current_version", "") or ""))
+        latest = escape(str(getattr(result, "latest_version", "") or ""))
         name = escape(str(getattr(result, "release_name", "") or ""))
-        published = escape(
-            str(getattr(result, "published_at", "") or "")
-        )
-        release_url = str(
-            getattr(result, "release_url", "") or ""
-        ).strip()
+        published = escape(str(getattr(result, "published_at", "") or ""))
+        release_url = str(getattr(result, "release_url", "") or "").strip()
 
         self._prepare_dynamic_page(
-            self.check_updates_button,
             "Periksa Pembaruan",
             f"Versi saat ini: {current}",
         )
@@ -730,10 +636,8 @@ class HelpPage(PageShell):
         current_version: str,
     ) -> None:
         self._hide_problem_buttons()
-        self.check_updates_button.setEnabled(True)
         self._hide_release_button()
         self._prepare_dynamic_page(
-            self.check_updates_button,
             "Periksa Pembaruan",
             f"Versi saat ini: {escape(str(current_version))}",
         )
@@ -747,7 +651,6 @@ class HelpPage(PageShell):
         self._hide_release_button()
         self._hide_problem_buttons()
         self._prepare_dynamic_page(
-            self.about_button,
             "Tentang Script Manager",
             "Informasi aplikasi, format proyek, skema database, dan runtime.",
         )
@@ -791,7 +694,6 @@ class HelpPage(PageShell):
     def show_report_problem(self, report) -> None:
         self._hide_release_button()
         self._prepare_dynamic_page(
-            self.report_problem_button,
             "Laporkan Masalah",
             "Buat laporan bug dengan informasi lingkungan teknis "
             "yang aman untuk privasi.",
@@ -819,12 +721,8 @@ class HelpPage(PageShell):
         self.browser.setHtml(html.replace("{{ENVIRONMENT_ROWS}}", rows))
         self.browser.verticalScrollBar().setValue(0)
 
-        self._issue_url = str(
-            getattr(report, "issue_url", "") or ""
-        ).strip()
-        self._problem_report_text = str(
-            getattr(report, "body", "") or ""
-        )
+        self._issue_url = str(getattr(report, "issue_url", "") or "").strip()
+        self._problem_report_text = str(getattr(report, "body", "") or "")
         self.open_issue_button.setVisible(bool(self._issue_url))
         self.copy_report_button.setVisible(bool(self._problem_report_text))
         self.copy_report_button.setText("Salin Template Laporan")
