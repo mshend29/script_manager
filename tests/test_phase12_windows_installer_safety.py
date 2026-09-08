@@ -24,6 +24,18 @@ def test_windows_package_checks_install_over_existing_and_uninstall_safety() -> 
     assert "ScriptManager.Project registration remains after uninstall" in workflow
 
 
+def test_installer_defaults_to_program_files_and_machine_wide_registration() -> None:
+    installer = (ROOT / "packaging" / "ScriptManager.iss").read_text(
+        encoding="utf-8"
+    )
+
+    assert "DefaultDirName={autopf}\\Script Manager" in installer
+    assert "PrivilegesRequired=admin" in installer
+    assert 'Name: "{autoprograms}\\{#MyAppName}"' in installer
+    assert 'Name: "{autodesktop}\\{#MyAppName}"' in installer
+    assert 'Root: HKA; Subkey: "Software\\Classes\\.smproj"' in installer
+
+
 def test_installer_keeps_project_and_external_data_outside_install_tree() -> None:
     installer = (ROOT / "packaging" / "ScriptManager.iss").read_text(
         encoding="utf-8"
