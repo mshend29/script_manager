@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
-from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
 
 from app.application_window import ApplicationWindow
 from app.google_drive_readiness_controller import GoogleDriveReadinessController
@@ -13,9 +13,13 @@ from app.light_runtime import (
     install_light_window_chrome,
 )
 from app.theme import APP_STYLESHEET
-from core.application_logging import configure_application_logging
+from core.application_logging import (
+    configure_application_logging,
+    record_fatal_startup_error,
+)
 from core.resource_paths import application_icon_path
 from core.version import APP_VERSION
+from services.problem_report_service import ProblemReportService
 
 
 def create_splash_screen() -> QSplashScreen:
@@ -71,7 +75,32 @@ def create_splash_screen() -> QSplashScreen:
     return splash
 
 
-def main():
+def _show_startup_failure(log_path: Path) -> None:
+    message = (
+        "Script Manager gagal memulai.\n\n"
+        "Detail teknis telah disimpan di:\n"
+        f"{log_path}\n\n"
+        "Jika masalah berulang, lampirkan file log tersebut saat melaporkan masalah."
+    )
+
+    app = QApplication.instance()
+    if app is not None:
+        QMessageBox.critical(None, "Script Manager", message)
+        return
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(0, message, "Script Manager", 0x10)
+            return
+        except Exception:
+            pass
+
+    sys.stderr.write(message + "\n")
+
+
+def _run_application() -> int:
     configure_application_logging()
     app = QApplication(sys.argv)
     app.setApplicationName("Script Manager")
@@ -86,6 +115,17 @@ def main():
 
     arguments = [str(value) for value in sys.argv[1:]]
     smoke_test = "--smoke-test" in arguments
+    diagnostics_smoke_test = "--diagnostics-smoke-test" in arguments
+
+    if diagnostics_smoke_test:
+        environment = ProblemReportService().build().environment
+        if environment.get("Runtime") != "Packaged (PyInstaller)":
+            return 20
+        if environment.get("PySide6") in {"", "unknown", "not installed"}:
+            return 21
+        if "Script Manager" not in environment.get("Diagnostic log", ""):
+            return 22
+        return 0
 
     splash = None
     if not smoke_test:
@@ -133,6 +173,15 @@ def main():
     # No startup Recent Projects dialog. When no project is open, the PROJECT
     # workspace itself is the Recent-project home screen.
     return app.exec()
+
+
+def main() -> int:
+    try:
+        return _run_application()
+    except Exception as exc:
+        log_path = record_fatal_startup_error(exc)
+        _show_startup_failure(log_path)
+        return 1
 
 
 if __name__ == "__main__":
