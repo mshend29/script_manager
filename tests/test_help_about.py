@@ -59,7 +59,8 @@ def test_about_page_renders_dynamic_engine_information():
         in page
     )
     assert 'html.replace(' in page
-    assert "self.about_button" in page
+    assert "self.about_button" not in page
+    assert "def _prepare_dynamic_page" in page
 
 
 def test_help_header_contains_complete_planned_help_set():
