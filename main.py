@@ -147,10 +147,16 @@ def _run_application() -> int:
     if project_args:
         candidate = Path(project_args[0]).expanduser()
         if candidate.exists():
-            project_open_ok = window.open_project_path(
-                candidate,
-                show_errors=not smoke_test,
-            )
+            if smoke_test:
+                project_open_ok = window.open_project_path(
+                    candidate,
+                    show_errors=False,
+                )
+            else:
+                # Keep the normal production entrypoint contract explicit.
+                # Windows file association / Explorer double-click uses this
+                # exact call and delegates format validation to ProjectManager.
+                project_open_ok = window.open_project_path(candidate)
         elif smoke_test:
             project_open_ok = False
 
