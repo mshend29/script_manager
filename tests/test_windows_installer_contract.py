@@ -4,14 +4,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_inno_installer_registers_smproj_per_user() -> None:
+def test_inno_installer_registers_smproj_machine_wide() -> None:
     source = (ROOT / "packaging" / "ScriptManager.iss").read_text(
         encoding="utf-8"
     )
 
-    assert "PrivilegesRequired=lowest" in source
-    assert "DefaultDirName={localappdata}\\Programs\\Script Manager" in source
-    assert 'Subkey: "Software\\Classes\\.smproj"' in source
+    assert "PrivilegesRequired=admin" in source
+    assert "DefaultDirName={autopf}\\Script Manager" in source
+    assert 'Root: HKA; Subkey: "Software\\Classes\\.smproj"' in source
     assert 'ValueData: "{#MyAppProgId}"' in source
     assert 'ValueData: "Script Manager Project"' in source
     assert 'ScriptManager.Project' in source
