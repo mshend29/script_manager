@@ -138,24 +138,33 @@ def _run_application() -> int:
     _workspace_base = MainWindow
     window = ApplicationWindow()
 
-    if smoke_test:
-        # Packaging CI uses this path to prove that the frozen executable can
-        # construct the real production MainWindow and all enhanced pages.
-        # First-run prerequisite dialogs are intentionally not invoked here.
-        app.processEvents()
-        window.close()
-        app.processEvents()
-        return 0
-
     project_args = [
         value
         for value in arguments
         if not value.startswith("--")
     ]
+    project_open_ok = True
     if project_args:
         candidate = Path(project_args[0]).expanduser()
         if candidate.exists():
-            window.open_project_path(candidate)
+            project_open_ok = window.open_project_path(
+                candidate,
+                show_errors=not smoke_test,
+            )
+        elif smoke_test:
+            project_open_ok = False
+
+    if smoke_test:
+        # Packaging CI uses this path to prove that the frozen executable can
+        # construct the real production MainWindow and, when a path argument is
+        # supplied, exercise the same project-open route used by file
+        # association / Explorer double-click.
+        app.processEvents()
+        window.close()
+        app.processEvents()
+        if project_args and not project_open_ok:
+            return 30
+        return 0
 
     # Maximized while preserving native title bar/minimize/maximize/close.
     window.showMaximized()
