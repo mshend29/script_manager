@@ -3,7 +3,9 @@ from __future__ import annotations
 import logging
 import platform
 import sys
+import tempfile
 import threading
+import traceback as traceback_module
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -17,6 +19,7 @@ LOGGER_NAME = "script_manager"
 LOG_FILE_NAME = "script_manager.log"
 MAX_LOG_BYTES = 2 * 1024 * 1024
 BACKUP_LOG_COUNT = 3
+FALLBACK_FATAL_LOG_FILE_NAME = "ScriptManager-startup-error.log"
 
 
 def application_logs_dir() -> Path:
@@ -73,6 +76,47 @@ def configure_application_logging() -> logging.Logger:
         threading.excepthook = _thread_exception_hook
 
     return logger
+
+
+def record_fatal_startup_error(exc: BaseException) -> Path:
+    """Persist a fatal startup failure and return a local diagnostic path.
+
+    The normal application log is preferred. If the configured per-user log
+    location is unavailable, a temp-directory fallback is written so a
+    windowed packaged build never fails without a diagnostic artifact.
+    """
+
+    logger = logging.getLogger(LOGGER_NAME)
+    try:
+        logger.critical(
+            "Fatal startup exception",
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+        for handler in logger.handlers:
+            try:
+                handler.flush()
+            except Exception:
+                pass
+
+        log_path = application_log_file()
+        if log_path.is_file():
+            return log_path
+    except Exception:
+        pass
+
+    fallback = Path(tempfile.gettempdir()) / FALLBACK_FATAL_LOG_FILE_NAME
+    trace_text = "".join(
+        traceback_module.format_exception(type(exc), exc, exc.__traceback__)
+    )
+    fallback.write_text(
+        (
+            f"{datetime.now().isoformat(timespec='seconds')} | "
+            f"{APP_NAME} {APP_VERSION} fatal startup exception\n"
+            f"{trace_text}"
+        ),
+        encoding="utf-8",
+    )
+    return fallback
 
 
 def _unhandled_exception_hook(
