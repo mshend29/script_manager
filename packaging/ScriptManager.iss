@@ -72,7 +72,7 @@ var
   ParamValue: String;
 begin
   ParamValue := ExpandConstant('{param:SKIPDRIVEPREREQ|0}');
-  Result := IsSilent or (CompareText(ParamValue, '1') = 0) or IsGoogleDriveInstalled;
+  Result := WizardSilent or (CompareText(ParamValue, '1') = 0) or IsGoogleDriveInstalled;
 end;
 
 procedure OpenGoogleDriveHelp(Sender: TObject);
@@ -113,76 +113,78 @@ begin
   WizardForm.NextButton.Enabled := False;
 
   try
-    WizardForm.StatusLabel.Caption := 'Mengunduh installer resmi Google...';
-    DownloadTemporaryFile(
-      GoogleDriveDownloadUrl,
-      'GoogleDriveSetup.exe',
-      '',
-      @OnGoogleDriveDownloadProgress
-    );
+    try
+      WizardForm.StatusLabel.Caption := 'Mengunduh installer resmi Google...';
+      DownloadTemporaryFile(
+        GoogleDriveDownloadUrl,
+        'GoogleDriveSetup.exe',
+        '',
+        @OnGoogleDriveDownloadProgress
+      );
 
-    InstallerPath := ExpandConstant('{tmp}\GoogleDriveSetup.exe');
-    WizardForm.StatusLabel.Caption := 'Menginstal Google Drive for desktop...';
+      InstallerPath := ExpandConstant('{tmp}\GoogleDriveSetup.exe');
+      WizardForm.StatusLabel.Caption := 'Menginstal Google Drive for desktop...';
 
-    if not Exec(
-      InstallerPath,
-      '--silent --gsuite_shortcuts=false',
-      ExpandConstant('{tmp}'),
-      SW_SHOWNORMAL,
-      ewWaitUntilTerminated,
-      ResultCode
-    ) then
-    begin
+      if not Exec(
+        InstallerPath,
+        '--silent --gsuite_shortcuts=false',
+        ExpandConstant('{tmp}'),
+        SW_SHOWNORMAL,
+        ewWaitUntilTerminated,
+        ResultCode
+      ) then
+      begin
+        MsgBox(
+          'Installer Google Drive tidak dapat dijalankan. ' +
+          'Anda dapat mencobanya lagi atau memilih opsi untuk mengaturnya sendiri.',
+          mbError,
+          MB_OK
+        );
+        Exit;
+      end;
+
+      if ResultCode <> 0 then
+      begin
+        MsgBox(
+          Format(
+            'Instalasi Google Drive belum berhasil diselesaikan (kode %d).' + #13#10 +
+            'Silakan coba lagi atau pilih opsi untuk mengaturnya sendiri.',
+            [ResultCode]
+          ),
+          mbError,
+          MB_OK
+        );
+        Exit;
+      end;
+
+      if IsGoogleDriveInstalled then
+      begin
+        WizardForm.StatusLabel.Caption := 'Google Drive for desktop berhasil dipasang.';
+        Result := True;
+        Exit;
+      end;
+
+      ContinueChoice := MsgBox(
+        'Installer Google Drive telah selesai, tetapi instalasinya belum dapat ' +
+        'dikonfirmasi dari Windows.' + #13#10 + #13#10 +
+        'Anda tetap dapat menginstal Script Manager dan menyelesaikan Google Drive nanti.' + #13#10 + #13#10 +
+        'Lanjutkan instalasi Script Manager?',
+        mbConfirmation,
+        MB_YESNO
+      );
+      Result := ContinueChoice = IDYES;
+    except
       MsgBox(
-        'Installer Google Drive tidak dapat dijalankan. ' +
-        'Anda dapat mencobanya lagi atau memilih opsi untuk mengaturnya sendiri.',
+        'Google Drive for desktop tidak dapat diunduh atau dipasang.' + #13#10 + #13#10 +
+        GetExceptionMessage + #13#10 + #13#10 +
+        'Periksa koneksi internet, coba lagi, atau pilih opsi untuk mengaturnya sendiri.',
         mbError,
         MB_OK
       );
-      Exit;
     end;
-
-    if ResultCode <> 0 then
-    begin
-      MsgBox(
-        Format(
-          'Instalasi Google Drive belum berhasil diselesaikan (kode %d).' + #13#10 +
-          'Silakan coba lagi atau pilih opsi untuk mengaturnya sendiri.',
-          [ResultCode]
-        ),
-        mbError,
-        MB_OK
-      );
-      Exit;
-    end;
-
-    if IsGoogleDriveInstalled then
-    begin
-      WizardForm.StatusLabel.Caption := 'Google Drive for desktop berhasil dipasang.';
-      Result := True;
-      Exit;
-    end;
-
-    ContinueChoice := MsgBox(
-      'Installer Google Drive telah selesai, tetapi instalasinya belum dapat ' +
-      'dikonfirmasi dari Windows.' + #13#10 + #13#10 +
-      'Anda tetap dapat menginstal Script Manager dan menyelesaikan Google Drive nanti.' + #13#10 + #13#10 +
-      'Lanjutkan instalasi Script Manager?',
-      mbConfirmation,
-      MB_YESNO
-    );
-    Result := ContinueChoice = IDYES;
-  except
-    MsgBox(
-      'Google Drive for desktop tidak dapat diunduh atau dipasang.' + #13#10 + #13#10 +
-      GetExceptionMessage + #13#10 + #13#10 +
-      'Periksa koneksi internet, coba lagi, atau pilih opsi untuk mengaturnya sendiri.',
-      mbError,
-      MB_OK
-    );
+  finally
+    WizardForm.NextButton.Enabled := True;
   end;
-
-  WizardForm.NextButton.Enabled := True;
 end;
 
 procedure InitializeWizard;
