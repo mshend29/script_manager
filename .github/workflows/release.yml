@@ -80,6 +80,7 @@ jobs:
             "/VERYSILENT",
             "/SUPPRESSMSGBOXES",
             "/NORESTART",
+            "/SKIPDRIVEPREREQ=1",
             "/DIR=$installDir"
           ) -Wait -PassThru
           if ($install.ExitCode -ne 0) {
