@@ -90,11 +90,10 @@ def test_help_page_can_switch_between_getting_started_and_user_guide():
     page = (ROOT / "pages" / "help_page.py").read_text(encoding="utf-8")
 
     assert "USER_GUIDE_FILE" in page
-    assert 'QPushButton("Panduan Pengguna")' in page
+    assert 'QPushButton("Panduan Pengguna")' not in page
     assert "def show_user_guide" in page
-    assert "def _set_active_button" in page
-    assert 'button.setProperty("primary", is_active)' in page
-    assert 'button.setProperty("secondary", not is_active)' in page
+    assert 'self.show_article("guide-overview")' in page
+    assert "def _set_active_button" not in page
 
 
 def test_help_page_uses_structured_offline_documentation_workspace():
