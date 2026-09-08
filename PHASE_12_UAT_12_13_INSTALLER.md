@@ -1,14 +1,14 @@
 # Phase 12 — UAT 12.13 Windows Installer v0.1.0
 
-> Status: **READY FOR USER UAT**
+> Status: **PARTIAL PASS — PROGRAM FILES REVALIDATION PENDING**
 >
 > Branch: `phase-12-first-windows-release`
 >
 > PR: #77
 >
-> Source commit: `3acf45c4bfd633ce8ea90b6a84e61c3802a03def`
+> Latest Program Files source commit: `1c4e8f37db8e1c9f68afb94697ec7c7411631164`
 >
-> Windows Package run: #107 (`34193483461`)
+> Latest Windows Package run: #112 (`34211494661`)
 >
 > Installer artifact: `ScriptManager-windows-installer`
 >
@@ -16,9 +16,62 @@
 
 ---
 
-## Automated gate confirmed before user UAT
+## User UAT result already accepted
 
-GitHub Actions Windows runner sudah membuktikan seluruh jalur berikut dari source commit yang sama:
+UAT pada build installer sebelumnya sudah mengonfirmasi:
+
+- [x] Install berjalan tanpa kendala.
+- [x] Uninstall berjalan tanpa kendala.
+- [x] Project lama dapat dibuka tanpa kendala.
+- [x] SmartScreen warning diketahui berasal dari unsigned baseline build.
+
+### SmartScreen / code signing decision
+
+**DEFERRED — bukan blocker Phase 12 v0.1.0 baseline.**
+
+User memilih untuk menunda code signing / SmartScreen reputation work. Jangan menahan release-candidate baseline hanya karena installer belum signed. Pekerjaan ini dipindahkan ke release-hardening setelah baseline/update lifecycle selesai.
+
+---
+
+## Program Files policy update
+
+Berdasarkan feedback UAT, installer diubah dari per-user LocalAppData menjadi administrative Program Files install:
+
+```text
+C:\Program Files\Script Manager
+```
+
+Implementation policy:
+
+- [x] `DefaultDirName={autopf}\Script Manager`.
+- [x] `PrivilegesRequired=admin`.
+- [x] Start Menu/Desktop shortcut memakai auto scope.
+- [x] `.smproj` association menjadi machine-wide registration.
+- [x] Windows Package #112 compile sukses.
+- [x] Installer identity sukses.
+- [x] Install-over-existing sukses.
+- [x] Installed runtime smoke sukses.
+- [x] `.smproj` open/association smoke sukses.
+- [x] Uninstall sukses.
+- [x] External `.smproj`, source/audio/delivery/backup sentinel tetap aman setelah uninstall.
+
+### Manual revalidation — USER
+
+- [ ] Jalankan installer terbaru.
+- [ ] Confirm default destination menunjukkan `C:\Program Files\Script Manager`.
+- [ ] Accept UAC/admin prompt.
+- [ ] Launch aplikasi setelah install.
+- [ ] Open project lama.
+- [ ] Double-click `.smproj` bila convenient.
+- [ ] Uninstall dan confirm project tetap ada.
+
+Jika seluruh poin di atas aman, tidak perlu mengulang seluruh workflow UAT sebelumnya.
+
+---
+
+## Automated gate confirmed
+
+GitHub Actions Windows runner sudah membuktikan:
 
 - [x] PyInstaller frozen build sukses.
 - [x] Windows application identity/version metadata valid.
@@ -26,9 +79,9 @@ GitHub Actions Windows runner sudah membuktikan seluruh jalur berikut dari sourc
 - [x] Packaged runtime diagnostics smoke sukses.
 - [x] `.smproj` path dengan spasi + Unicode dapat dibuka oleh frozen EXE.
 - [x] Portable ZIP berhasil dibuat dan di-upload.
-- [x] Inno Setup 6.7.1 compile sukses.
+- [x] Inno Setup compile sukses.
 - [x] Installer version/product/company metadata valid.
-- [x] Silent per-user install sukses.
+- [x] Administrative install sukses.
 - [x] Installed EXE runtime smoke sukses.
 - [x] Installed EXE diagnostics smoke sukses.
 - [x] Installed EXE dapat membuka `.smproj` path dengan spasi + Unicode.
@@ -38,84 +91,13 @@ GitHub Actions Windows runner sudah membuktikan seluruh jalur berikut dari sourc
 - [x] Open command meneruskan `"%1"` ke `ScriptManager.exe`.
 - [x] Install-over-existing ke lokasi yang sama sukses.
 - [x] Runtime tetap dapat dijalankan setelah install-over-existing.
-- [x] Silent uninstall sukses.
+- [x] Uninstall sukses.
 - [x] Installed executable terhapus setelah uninstall.
 - [x] External `.smproj` tetap ada setelah uninstall.
 - [x] Source/audio/delivery/backup sentinel di luar install directory tetap ada setelah uninstall.
 - [x] `ScriptManager.Project` registration dibersihkan setelah uninstall.
 
 Engine gate pada commit yang sama juga hijau untuk regular regression, Qt runtime smoke, dan Phase 11 scale smoke.
-
----
-
-## UAT di PC user — Google Drive sudah terpasang
-
-Gunakan PC normal yang saat ini memang dipakai untuk Script Manager. **Jangan uninstall Google Drive hanya demi pengujian.**
-
-### A. Install
-
-- [ ] Tutup portable Script Manager bila masih terbuka.
-- [ ] Jalankan `ScriptManager-0.1.0-Setup.exe` sebagai user normal.
-- [ ] SmartScreen warning, bila muncul karena build belum code-signed, dicatat tetapi bukan blocker fungsional baseline.
-- [ ] Installer mengenali Google Drive existing / tidak memaksa download ulang.
-- [ ] Lokasi install terlihat wajar untuk per-user install.
-- [ ] Start Menu shortcut dibuat.
-- [ ] Desktop shortcut hanya dibuat bila opsi dipilih.
-- [ ] Instalasi selesai tanpa membutuhkan Python, VS Code, atau Inno Setup.
-
-### B. Launch & identity
-
-- [ ] Launch dari Start Menu berhasil.
-- [ ] Bila Desktop shortcut dipilih, shortcut tersebut berhasil launch.
-- [ ] Icon aplikasi benar di shortcut/window/taskbar.
-- [ ] Tidak muncul console Python.
-- [ ] UI utama tampil normal.
-
-### C. `.smproj` association
-
-Gunakan project test/backup-safe, bukan satu-satunya copy project produksi.
-
-- [ ] Double-click `.smproj` dari File Explorer membuka Script Manager.
-- [ ] Project yang benar langsung terbuka.
-- [ ] File icon `.smproj` terlihat sebagai Script Manager Project.
-- [ ] Path `.smproj` yang mengandung spasi aman.
-- [ ] Jika tersedia project di path Unicode, double-click juga aman.
-- [ ] File → Open dari dalam aplikasi tetap bekerja normal.
-
-### D. Workflow smoke
-
-Tidak perlu mengulang seluruh regression manual. Spot-check workflow nyata cukup:
-
-- [ ] Open existing project.
-- [ ] New Project test bila aman dilakukan.
-- [ ] Source Sync.
-- [ ] NASKAH.
-- [ ] DIALOG.
-- [ ] TRACKING.
-- [ ] DELIVERY.
-- [ ] DATA.
-- [ ] Project Settings.
-- [ ] Help / User Guide.
-- [ ] Close dan reopen aplikasi.
-
-### E. Uninstall & data safety
-
-Sebelum uninstall, catat lokasi satu project test yang sudah berhasil dibuka.
-
-- [ ] Uninstall Script Manager dari Windows Apps / Installed apps.
-- [ ] Aplikasi terhapus dari install directory.
-- [ ] Shortcut aplikasi terhapus.
-- [ ] Project `.smproj` user **tidak terhapus**.
-- [ ] Source Excel **tidak terhapus**.
-- [ ] Audio/stem/delivery external data **tidak terhapus**.
-- [ ] Backup project **tidak terhapus**.
-
-### F. Reinstall
-
-- [ ] Install kembali installer v0.1.0 yang sama.
-- [ ] Existing `.smproj` tetap dapat dibuka.
-- [ ] Double-click association kembali bekerja.
-- [ ] Project state/data tetap utuh.
 
 ---
 
@@ -136,35 +118,12 @@ Bagian ini boleh dipisahkan dari acceptance PC produksi selama jalur `Google Dri
 
 ---
 
-## Acceptance report
-
-Untuk mempercepat triage, user cukup mengembalikan status berikut:
-
-```text
-12.13 Installer UAT
-A Install: PASS / FAIL
-B Launch & identity: PASS / FAIL
-C .smproj double-click: PASS / FAIL
-D Workflow smoke: PASS / FAIL
-E Uninstall & data safety: PASS / FAIL
-F Reinstall: PASS / FAIL
-
-Catatan/error:
-...
-```
-
-Screenshot hanya diperlukan bila ada tampilan, warning, icon, association, atau error yang tidak sesuai.
-
----
-
 ## Exit criteria
 
-12.13 dapat ditandai **COMPLETE** setelah:
+12.13 dapat ditandai **COMPLETE** setelah Program Files build terbaru diverifikasi pada PC nyata:
 
-1. installer dapat dipakai sebagai user normal tanpa development environment;
-2. installed Script Manager dapat menjalankan workflow inti;
-3. `.smproj` double-click berfungsi pada PC nyata;
-4. uninstall tidak menghapus project/user production data;
-5. reinstall tetap dapat membuka project existing.
+1. default destination benar di `C:\Program Files\Script Manager`;
+2. installed Script Manager dapat launch dan membuka project existing;
+3. uninstall tetap tidak menghapus project/user data.
 
-Google Drive missing-path flow dapat divalidasi terpisah di lingkungan aman tanpa mengganggu Google Drive produksi user.
+SmartScreen/code signing tidak termasuk exit criteria baseline v0.1.0 berdasarkan keputusan user.
