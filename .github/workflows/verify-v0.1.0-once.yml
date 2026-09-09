@@ -1,0 +1,54 @@
+name: Verify v0.1.0 Once
+
+on:
+  push:
+    branches:
+      - phase-12-first-windows-release
+    paths:
+      - ".github/workflows/verify-v0.1.0-once.yml"
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: v0.1.0
+  RELEASE_TARGET: 23047f5676fe79f11d7a733e34b60760fed78758
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout published release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TARGET }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify tag target and release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tagTarget = gh api "repos/${{ github.repository }}/git/ref/tags/$env:RELEASE_TAG" --jq ".object.sha"
+          if ($tagTarget -ne $env:RELEASE_TARGET) {
+            throw "Published tag points to $tagTarget instead of $env:RELEASE_TARGET"
+          }
+
+          $assets = gh release view $env:RELEASE_TAG --repo "${{ github.repository }}" --json assets --jq ".assets[].name"
+          foreach ($required in @(
+            "ScriptManager-0.1.0-windows-x64.zip",
+            "ScriptManager-0.1.0-Setup.exe",
+            "ScriptManager-0.1.0-SHA256.txt"
+          )) {
+            if ($assets -notcontains $required) {
+              throw "Published release is missing required asset: $required"
+            }
+          }
+
+      - name: Verify published release through UpdateService
+        run: |
+          python -m scripts.verify_published_release
