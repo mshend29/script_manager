@@ -1,0 +1,165 @@
+name: Publish v0.1.0 Once
+
+on:
+  push:
+    branches:
+      - phase-12-first-windows-release
+    paths:
+      - ".github/workflows/publish-v0.1.0-once.yml"
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: v0.1.0
+  RELEASE_TARGET: 23047f5676fe79f11d7a733e34b60760fed78758
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout accepted release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TARGET }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate release target and version
+        shell: pwsh
+        run: |
+          $head = git rev-parse HEAD
+          if ($head -ne $env:RELEASE_TARGET) {
+            throw "Checkout target mismatch: $head"
+          }
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          if ($version -ne "0.1.0") {
+            throw "Expected APP_VERSION 0.1.0, got $version"
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Ensure release does not already exist
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:RELEASE_TAG --repo "${{ github.repository }}" 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Release $env:RELEASE_TAG already exists; refusing duplicate publication."
+          }
+          $global:LASTEXITCODE = 0
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-release.txt
+          choco install innosetup --version=6.7.1 -y --no-progress
+
+      - name: Build portable application
+        run: |
+          python -m PyInstaller --clean --noconfirm packaging/ScriptManager.spec
+
+      - name: Smoke test frozen executable
+        shell: pwsh
+        run: |
+          & ".\dist\ScriptManager\ScriptManager.exe" --smoke-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ".\dist\ScriptManager\ScriptManager.exe" --diagnostics-smoke-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build release assets
+        shell: pwsh
+        run: |
+          $zip = "ScriptManager-$env:APP_VERSION-windows-x64.zip"
+          Compress-Archive -Path ".\dist\ScriptManager\*" -DestinationPath $zip
+
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DMyAppVersion=$env:APP_VERSION" "packaging\ScriptManager.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $installer = Get-ChildItem ".\installer-dist\ScriptManager-*-Setup.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Installer output was not created." }
+
+          "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "INSTALLER_EXE=$($installer.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Smoke test installer
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:TEMP "ScriptManager-Release-Test"
+          $install = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/SKIPDRIVEPREREQ=1",
+            "/DIR=$installDir"
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { exit $install.ExitCode }
+
+          $installedExe = Join-Path $installDir "ScriptManager.exe"
+          & $installedExe --smoke-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedExe --diagnostics-smoke-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $association = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey("Software\Classes\.smproj")
+          if (-not $association -or [string]$association.GetValue("") -ne "ScriptManager.Project") {
+            throw ".smproj association smoke test failed."
+          }
+          $association.Close()
+
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (Test-Path $uninstaller) {
+            $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+              "/VERYSILENT",
+              "/SUPPRESSMSGBOXES",
+              "/NORESTART"
+            ) -Wait -PassThru
+            if ($uninstall.ExitCode -ne 0) { exit $uninstall.ExitCode }
+          }
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $checksumFile = "ScriptManager-$env:APP_VERSION-SHA256.txt"
+          $assets = @(
+            (Resolve-Path $env:PORTABLE_ZIP).Path,
+            (Resolve-Path $env:INSTALLER_EXE).Path
+          )
+          $lines = foreach ($asset in $assets) {
+            $hash = Get-FileHash -Algorithm SHA256 $asset
+            "$($hash.Hash.ToLower())  $([IO.Path]::GetFileName($asset))"
+          }
+          $lines | Set-Content -Encoding ascii $checksumFile
+          "CHECKSUM_FILE=$checksumFile" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Publish GitHub Release v0.1.0
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:RELEASE_TAG `
+            --repo "${{ github.repository }}" `
+            --target $env:RELEASE_TARGET `
+            --title "Script Manager 0.1.0" `
+            --generate-notes `
+            "$env:PORTABLE_ZIP" `
+            "$env:INSTALLER_EXE" `
+            "$env:CHECKSUM_FILE"
+
+      - name: Verify tag target and published release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tagTarget = gh api "repos/${{ github.repository }}/git/ref/tags/$env:RELEASE_TAG" --jq ".object.sha"
+          if ($tagTarget -ne $env:RELEASE_TARGET) {
+            throw "Published tag points to $tagTarget instead of $env:RELEASE_TARGET"
+          }
+          gh release view $env:RELEASE_TAG --repo "${{ github.repository }}"
+          python scripts/verify_published_release.py
