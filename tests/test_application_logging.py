@@ -70,6 +70,24 @@ def test_unhandled_exception_hook_records_traceback_locally(
     _close_handlers()
 
 
+def test_fatal_startup_error_returns_local_diagnostic_file(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    _close_handlers()
+    application_logging.configure_application_logging()
+
+    exc = RuntimeError("startup exploded")
+    path = application_logging.record_fatal_startup_error(exc)
+
+    assert path.is_file()
+    content = path.read_text(encoding="utf-8")
+    assert "Fatal startup exception" in content
+    assert "RuntimeError: startup exploded" in content
+    _close_handlers()
+
+
 def test_main_configures_logging_before_qt_event_loop() -> None:
     source = Path("main.py").read_text(encoding="utf-8")
 
@@ -77,3 +95,5 @@ def test_main_configures_logging_before_qt_event_loop() -> None:
     assert source.index("configure_application_logging()") < source.index(
         "QApplication(sys.argv)"
     )
+    assert "record_fatal_startup_error" in source
+    assert "_show_startup_failure" in source

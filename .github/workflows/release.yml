@@ -35,7 +35,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt -r requirements-build.txt
+          python -m pip install -r requirements-release.txt
           choco install innosetup --version=6.7.1 -y --no-progress
 
       - name: Build portable application
@@ -46,6 +46,10 @@ jobs:
         shell: pwsh
         run: |
           & ".\dist\ScriptManager\ScriptManager.exe" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & ".\dist\ScriptManager\ScriptManager.exe" --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
@@ -80,24 +84,42 @@ jobs:
             "/VERYSILENT",
             "/SUPPRESSMSGBOXES",
             "/NORESTART",
+            "/SKIPDRIVEPREREQ=1",
             "/DIR=$installDir"
           ) -Wait -PassThru
           if ($install.ExitCode -ne 0) {
             exit $install.ExitCode
           }
 
-          & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          $installedExe = Join-Path $installDir "ScriptManager.exe"
+          & $installedExe --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & $installedExe --diagnostics-smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
 
-          $association = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $association = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\.smproj"
           )
           if (-not $association -or [string]$association.GetValue("") -ne "ScriptManager.Project") {
             throw ".smproj association smoke test failed."
           }
           $association.Close()
+
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (Test-Path $uninstaller) {
+            $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+              "/VERYSILENT",
+              "/SUPPRESSMSGBOXES",
+              "/NORESTART"
+            ) -Wait -PassThru
+            if ($uninstall.ExitCode -ne 0) {
+              exit $uninstall.ExitCode
+            }
+          }
 
       - name: Generate checksums
         shell: pwsh

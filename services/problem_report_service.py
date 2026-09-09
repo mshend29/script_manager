@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import platform
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version
 from urllib.parse import urlencode
 
 from core.database import SCHEMA_VERSION
 from core.project import PROJECT_FORMAT_VERSION
+from core.runtime_diagnostics import (
+    diagnostic_log_location_hint,
+    package_version,
+    runtime_mode_label,
+)
 from core.version import (
     APP_NAME,
     APP_VERSION,
@@ -59,20 +63,15 @@ class ProblemReportService:
     def _environment(self) -> dict[str, str]:
         return {
             "Application": f"{APP_NAME} {self.app_version}",
+            "Runtime": runtime_mode_label(),
             "Project format": str(PROJECT_FORMAT_VERSION),
             "Database schema": str(SCHEMA_VERSION),
             "Python": platform.python_version(),
-            "PySide6": self._package_version("PySide6"),
+            "PySide6": package_version("PySide6"),
             "OS": f"{platform.system()} {platform.release()}".strip(),
             "Architecture": platform.machine() or "unknown",
+            "Diagnostic log": diagnostic_log_location_hint(),
         }
-
-    @staticmethod
-    def _package_version(package_name: str) -> str:
-        try:
-            return version(package_name)
-        except PackageNotFoundError:
-            return "not installed"
 
     @staticmethod
     def _body(environment: dict[str, str]) -> str:

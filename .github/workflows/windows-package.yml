@@ -1,11 +1,34 @@
 name: Windows Package
 
 on:
-  # Packaging is intentionally manual during Phase 10 UI construction.
-  # Re-enable an automatic release/package gate only after the application
-  # workspaces are finalized, to avoid rebuilding Windows artifacts on every
-  # visual iteration.
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "packaging/**"
+      - ".github/workflows/windows-package.yml"
+      - ".github/workflows/release.yml"
+      - "requirements.txt"
+      - "requirements-build.txt"
+      - "requirements-release.txt"
+      - "core/version.py"
+      - "core/icon_assets.py"
+      - "core/resource_paths.py"
+      - "core/runtime_diagnostics.py"
+      - "core/application_logging.py"
+      - "resources/**"
+      - "main.py"
+      - "app/google_drive_readiness_controller.py"
+      - "dialogs/google_drive_readiness_dialog.py"
+      - "services/windows_prerequisite_service.py"
+      - "services/problem_report_service.py"
+      - "services/application_info_service.py"
+      - "tests/test_phase12_google_drive_readiness.py"
+      - "tests/test_phase12_qt_google_drive_readiness.py"
+      - "tests/test_phase12_packaged_runtime_diagnostics.py"
+      - "tests/test_phase12_windows_identity.py"
+      - "tests/test_phase12_windows_file_association.py"
+      - "tests/test_phase12_windows_installer_safety.py"
+      - "tests/test_phase12_release_reproducibility.py"
 
 jobs:
   build-windows:
@@ -23,11 +46,70 @@ jobs:
       - name: Install packaging dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt -r requirements-build.txt
+          python -m pip install -r requirements-release.txt
+
+      - name: Smoke test Google Drive readiness probes
+        shell: pwsh
+        run: |
+          python -c "from services.windows_prerequisite_service import GoogleDriveReadinessService, _find_google_drive_roots, _is_google_drive_process_running; print('roots=', _find_google_drive_roots()); print('running=', _is_google_drive_process_running()); print('state=', GoogleDriveReadinessService().check().state.value)"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Build Windows application
         run: |
           python -m PyInstaller --clean --noconfirm packaging/ScriptManager.spec
+
+      - name: Verify Windows application identity
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $exe = Get-Item ".\dist\ScriptManager\ScriptManager.exe"
+          $info = $exe.VersionInfo
+
+          if ($info.ProductName -ne "Script Manager") {
+            throw "Unexpected ProductName: $($info.ProductName)"
+          }
+          if ($info.FileDescription -ne "Script Manager") {
+            throw "Unexpected FileDescription: $($info.FileDescription)"
+          }
+          if ($info.CompanyName -ne "Script Manager") {
+            throw "Unexpected CompanyName: $($info.CompanyName)"
+          }
+          if ($info.OriginalFilename -ne "ScriptManager.exe") {
+            throw "Unexpected OriginalFilename: $($info.OriginalFilename)"
+          }
+          if ($info.ProductVersion -notlike "$version*") {
+            throw "Unexpected ProductVersion: $($info.ProductVersion)"
+          }
+          if ($info.FileVersion -notlike "$version*") {
+            throw "Unexpected FileVersion: $($info.FileVersion)"
+          }
+
+      - name: Create smproj path smoke fixture
+        shell: pwsh
+        run: |
+          $fixtureRoot = Join-Path $env:TEMP "Script Manager Association – Uji"
+          New-Item -ItemType Directory -Force -Path $fixtureRoot | Out-Null
+          $env:ASSOC_FIXTURE_ROOT = $fixtureRoot
+          python -c "import os; from core.project_manager import ProjectManager; from core.project_settings import ProjectSettings; ProjectManager().create(ProjectSettings(project_name='Association Smoke Project', project_code='ASSOC'), os.environ['ASSOC_FIXTURE_ROOT'])"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          $project = Get-ChildItem -LiteralPath $fixtureRoot -Filter "*.smproj" | Select-Object -First 1
+          if (-not $project) {
+            throw "Association smoke .smproj was not created under: $fixtureRoot"
+          }
+          $projectPath = $project.FullName
+          "ASSOC_SMOKE_PROJECT=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          $sentinelRoot = Join-Path $fixtureRoot "External Data"
+          New-Item -ItemType Directory -Force -Path $sentinelRoot | Out-Null
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "source-sentinel.xlsx") -Value "source"
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "audio-sentinel.wav") -Value "audio"
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "delivery-sentinel.txt") -Value "delivery"
+          Set-Content -LiteralPath (Join-Path $sentinelRoot "backup-sentinel.smproj.bak") -Value "backup"
+          "ASSOC_SENTINEL_ROOT=$sentinelRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Smoke test frozen executable
         shell: pwsh
@@ -35,6 +117,14 @@ jobs:
           & ".\dist\ScriptManager\ScriptManager.exe" --smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
+          }
+          & ".\dist\ScriptManager\ScriptManager.exe" --diagnostics-smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & ".\dist\ScriptManager\ScriptManager.exe" "$env:ASSOC_SMOKE_PROJECT" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Frozen .smproj path-open smoke failed with exit code $LASTEXITCODE"
           }
 
       - name: Create portable ZIP
@@ -72,26 +162,64 @@ jobs:
           }
           "INSTALLER_EXE=$($installer.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      - name: Verify Windows installer identity
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $info = (Get-Item $env:INSTALLER_EXE).VersionInfo
+          $productName = ([string]$info.ProductName).Trim()
+          $fileDescription = ([string]$info.FileDescription).Trim()
+          $companyName = ([string]$info.CompanyName).Trim()
+          $productVersion = ([string]$info.ProductVersion).Trim()
+          $fileVersion = ([string]$info.FileVersion).Trim()
+
+          if ($productName -ne "Script Manager") {
+            throw "Unexpected installer ProductName: $($info.ProductName)"
+          }
+          if ($fileDescription -ne "Script Manager Setup") {
+            throw "Unexpected installer FileDescription: $($info.FileDescription)"
+          }
+          if ($companyName -ne "Script Manager") {
+            throw "Unexpected installer CompanyName: $($info.CompanyName)"
+          }
+          if ($productVersion -notlike "$version*") {
+            throw "Unexpected installer ProductVersion: $($info.ProductVersion)"
+          }
+          if ($fileVersion -notlike "$version*") {
+            throw "Unexpected installer FileVersion: $($info.FileVersion)"
+          }
+
       - name: Silent install and association smoke test
         shell: pwsh
         run: |
           $installDir = Join-Path $env:TEMP "ScriptManager-Install-Test"
-          $process = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList @(
+          $installArgs = @(
             "/VERYSILENT",
             "/SUPPRESSMSGBOXES",
             "/NORESTART",
+            "/SKIPDRIVEPREREQ=1",
             "/DIR=$installDir"
-          ) -Wait -PassThru
+          )
+          $process = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList $installArgs -Wait -PassThru
           if ($process.ExitCode -ne 0) {
             exit $process.ExitCode
           }
 
-          & (Join-Path $installDir "ScriptManager.exe") --smoke-test
+          $installedExe = Join-Path $installDir "ScriptManager.exe"
+          & $installedExe --smoke-test
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
+          & $installedExe --diagnostics-smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          & $installedExe "$env:ASSOC_SMOKE_PROJECT" --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Installed .smproj path-open smoke failed with exit code $LASTEXITCODE"
+          }
 
-          $extensionKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $extensionKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\.smproj"
           )
           if (-not $extensionKey) {
@@ -103,7 +231,19 @@ jobs:
             throw "Unexpected .smproj ProgID: $progId"
           }
 
-          $iconKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $projectKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
+            "Software\Classes\ScriptManager.Project"
+          )
+          if (-not $projectKey) {
+            throw "ScriptManager.Project registration is missing."
+          }
+          $projectTypeName = [string]$projectKey.GetValue("")
+          $projectKey.Close()
+          if ($projectTypeName -ne "Script Manager Project") {
+            throw "Unexpected .smproj type name: $projectTypeName"
+          }
+
+          $iconKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\ScriptManager.Project\DefaultIcon"
           )
           if (-not $iconKey) {
@@ -118,7 +258,7 @@ jobs:
             throw "Installed project_file.ico is missing."
           }
 
-          $commandKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+          $commandKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             "Software\Classes\ScriptManager.Project\shell\open\command"
           )
           if (-not $commandKey) {
@@ -130,21 +270,80 @@ jobs:
             throw "Unexpected .smproj open command: $openCommand"
           }
 
+          $upgrade = Start-Process -FilePath $env:INSTALLER_EXE -ArgumentList $installArgs -Wait -PassThru
+          if ($upgrade.ExitCode -ne 0) {
+            throw "Install-over-existing smoke failed with exit code $($upgrade.ExitCode)"
+          }
+          & $installedExe --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Installed runtime failed after install-over-existing with exit code $LASTEXITCODE"
+          }
+
           $uninstaller = Join-Path $installDir "unins000.exe"
-          if (Test-Path $uninstaller) {
-            $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
-              "/VERYSILENT",
-              "/SUPPRESSMSGBOXES",
-              "/NORESTART"
-            ) -Wait -PassThru
-            if ($uninstall.ExitCode -ne 0) {
-              exit $uninstall.ExitCode
+          if (-not (Test-Path $uninstaller)) {
+            throw "Uninstaller is missing after install-over-existing."
+          }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART"
+          ) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) {
+            exit $uninstall.ExitCode
+          }
+
+          if (Test-Path $installedExe) {
+            throw "Installed executable still exists after uninstall: $installedExe"
+          }
+          if (-not (Test-Path -LiteralPath $env:ASSOC_SMOKE_PROJECT)) {
+            throw "External .smproj was removed by uninstall: $env:ASSOC_SMOKE_PROJECT"
+          }
+          foreach ($sentinel in @(
+            "source-sentinel.xlsx",
+            "audio-sentinel.wav",
+            "delivery-sentinel.txt",
+            "backup-sentinel.smproj.bak"
+          )) {
+            $sentinelPath = Join-Path $env:ASSOC_SENTINEL_ROOT $sentinel
+            if (-not (Test-Path -LiteralPath $sentinelPath)) {
+              throw "External user-data sentinel was removed by uninstall: $sentinelPath"
             }
           }
+
+          $remainingProjectKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
+            "Software\Classes\ScriptManager.Project"
+          )
+          if ($remainingProjectKey) {
+            $remainingProjectKey.Close()
+            throw "ScriptManager.Project registration remains after uninstall."
+          }
+
+      - name: Generate release candidate checksums
+        shell: pwsh
+        run: |
+          $version = python -c "from core.version import APP_VERSION; print(APP_VERSION)"
+          $checksumFile = "ScriptManager-$version-SHA256.txt"
+          $assets = @(
+            (Resolve-Path $env:PACKAGE_ZIP).Path,
+            (Resolve-Path $env:INSTALLER_EXE).Path
+          )
+          $lines = foreach ($asset in $assets) {
+            $hash = Get-FileHash -Algorithm SHA256 $asset
+            "$($hash.Hash.ToLower())  $([IO.Path]::GetFileName($asset))"
+          }
+          $lines | Set-Content -Encoding ascii $checksumFile
+          "CHECKSUM_FILE=$checksumFile" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: ScriptManager-windows-installer
           path: installer-dist/ScriptManager-*-Setup.exe
+          if-no-files-found: error
+
+      - name: Upload release candidate checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScriptManager-windows-checksums
+          path: ${{ env.CHECKSUM_FILE }}
           if-no-files-found: error
